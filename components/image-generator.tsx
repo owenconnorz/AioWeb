@@ -4,7 +4,7 @@ import { useState, useEffect, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Loader2, Download, ThumbsUp, ThumbsDown, Upload, X } from "lucide-react"
+import { Loader2, Download, ThumbsUp, ThumbsDown, Upload, X, AlertTriangle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 
@@ -159,6 +159,10 @@ export function ImageGenerator() {
     const reader = new FileReader()
     reader.onload = (event) => {
       setUploadedImage(event.target?.result as string)
+      // Automatically switch to PromptChan for image editing
+      if (selectedModel !== "promptchan") {
+        setSelectedModel("promptchan")
+      }
     }
     reader.readAsDataURL(file)
   }
@@ -171,16 +175,40 @@ export function ImageGenerator() {
         </Label>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           {uploadedImage
-            ? "Tell the AI what changes to make to your uploaded image. For best results, use PromptChan AI model for image editing."
+            ? "Tell the AI what changes to make to your uploaded image"
             : "Be specific about what you want to see in your generated image"}
         </p>
       </div>
 
-      {uploadedImage && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-          <p className="text-sm text-blue-900 dark:text-blue-300">
-            📸 Image uploaded! For best editing results, use <strong>PromptChan AI</strong> model which supports direct
-            image-to-image editing.
+      {uploadedImage && selectedModel !== "promptchan" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">
+                Image editing not supported with this model
+              </p>
+              <p className="text-sm text-amber-800 dark:text-amber-400 mt-1">
+                The selected model will generate a NEW image based on your description, not edit your uploaded photo.
+                Switch to <strong>PromptChan AI</strong> for true image-to-image editing.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 border-amber-600 text-amber-700 hover:bg-amber-100 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-900/50 bg-transparent"
+                onClick={() => setSelectedModel("promptchan")}
+              >
+                Switch to PromptChan AI
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadedImage && selectedModel === "promptchan" && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
+          <p className="text-sm text-green-900 dark:text-green-300">
+            ✓ Ready for image editing! PromptChan AI will modify your uploaded photo based on your instructions.
           </p>
         </div>
       )}

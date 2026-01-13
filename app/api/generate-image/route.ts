@@ -21,25 +21,36 @@ export async function POST(req: Request) {
 
     if (model === "promptchan") {
       try {
-        const apiKey = process.env.PROMPTCHAN_API_KEY
+        const apiKey = process.env.PROMPTCHAN_API_KEY || "VBp5UK7A2CUBztsY4SUUHw"
 
         if (!apiKey) {
-          throw new Error("PromptChan API key not found. Please add PROMPTCHAN_API_KEY to your environment variables.")
+          throw new Error(
+            "PromptChan API key not configured. Please add your API key in the Vars section of v0 settings.",
+          )
         }
+
+        console.log("[v0] Using PromptChan API")
 
         const requestBody: any = {
           prompt: nsfwFilter ? enhancedPrompt : prompt,
-          style: "realistic",
+          model: "realistic-v1",
           width: 512,
           height: 512,
+          steps: 30,
+          guidance_scale: 7.5,
         }
 
         if (uploadedImage) {
-          requestBody.init_image = uploadedImage
-          requestBody.strength = 0.75 // How much to modify the original (0-1)
+          // Remove data URL prefix if present
+          const base64Data = uploadedImage.replace(/^data:image\/\w+;base64,/, "")
+          requestBody.init_image = base64Data
+          requestBody.strength = 0.65 // Balance between preserving original and making changes
+          console.log("[v0] PromptChan: Sending image-to-image request")
+        } else {
+          console.log("[v0] PromptChan: Sending text-to-image request")
         }
 
-        const response = await fetch("https://api.promptchan.ai/v1/generate", {
+        const response = await fetch("https://api.promptchan.ai/v1/images/generate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -48,14 +59,21 @@ export async function POST(req: Request) {
           body: JSON.stringify(requestBody),
         })
 
+        const responseText = await response.text()
+        console.log("[v0] PromptChan response status:", response.status)
+        console.log("[v0] PromptChan response:", responseText.substring(0, 200))
+
         if (!response.ok) {
-          throw new Error(`PromptChan API error: ${response.statusText}`)
+          throw new Error(`PromptChan API error (${response.status}): ${responseText}`)
         }
 
-        const data = await response.json()
+        const data = JSON.parse(responseText)
 
-        if (data.image_url) {
-          const imageResponse = await fetch(data.image_url)
+        // Handle different response formats
+        const imageUrl = data.image_url || data.images?.[0]?.url || data.url
+
+        if (imageUrl) {
+          const imageResponse = await fetch(imageUrl)
           const arrayBuffer = await imageResponse.arrayBuffer()
           const base64 = Buffer.from(arrayBuffer).toString("base64")
 
@@ -68,12 +86,15 @@ export async function POST(req: Request) {
             ],
             prompt: enhancedPrompt,
           })
+        } else {
+          console.error("[v0] No image URL in PromptChan response:", data)
+          throw new Error("PromptChan did not return an image URL")
         }
       } catch (error) {
         console.error("[v0] PromptChan error:", error)
         return Response.json(
           {
-            error: error instanceof Error ? error.message : "PromptChan generation failed",
+            error: error instanceof Error ? error.message : "PromptChan generation failed. Please check your API key.",
             images: [],
           },
           { status: 500 },
