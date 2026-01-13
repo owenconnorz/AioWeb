@@ -9,27 +9,34 @@ import { Sparkles, ImageIcon, Users, Settings, Video } from "lucide-react"
 export default function Home() {
   const [activeTab, setActiveTab] = useState("image")
   const [isDarkMode, setIsDarkMode] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Set dark mode as default
+    setMounted(true)
     try {
       const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
       if (savedSettings) {
         const settings = JSON.parse(savedSettings)
         setIsDarkMode(settings.darkMode ?? true)
       }
-      // Apply dark mode class to html element
-      if (isDarkMode) {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
     } catch (error) {
       console.error("Error loading dark mode setting:", error)
-      setIsDarkMode(true)
-      document.documentElement.classList.add("dark")
     }
-  }, [isDarkMode])
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+  }, [isDarkMode, mounted])
+
+  if (!mounted) {
+    return null
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -133,8 +140,10 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
   const [highQuality, setHighQuality] = useState(true)
   const [showWatermark, setShowWatermark] = useState(false)
   const [darkMode, setDarkMode] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     try {
       const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
       if (savedSettings) {
@@ -145,8 +154,6 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
         setShowWatermark(settings.showWatermark ?? false)
         setDarkMode(settings.darkMode ?? true)
       } else {
-        // Set default dark mode
-        setDarkMode(true)
         const defaultSettings = {
           nsfwFilter: true,
           autoSave: false,
@@ -168,6 +175,8 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
   }
 
   const handleSaveSettings = (overrides = {}) => {
+    if (!mounted) return
+
     try {
       const settings = {
         nsfwFilter,
@@ -181,6 +190,10 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     } catch (error) {
       console.error("Error saving settings:", error)
     }
+  }
+
+  if (!mounted) {
+    return <div className="p-8 text-center text-slate-600 dark:text-slate-400">Loading settings...</div>
   }
 
   return (

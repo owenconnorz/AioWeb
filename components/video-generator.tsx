@@ -24,19 +24,29 @@ export function VideoGenerator() {
   const [selectedModel, setSelectedModel] = useState("promptchan-video")
   const [progress, setProgress] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const savedHistory = localStorage.getItem("videoGenerationHistory")
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory))
+    setMounted(true)
+    try {
+      const savedHistory = localStorage.getItem("videoGenerationHistory")
+      if (savedHistory) {
+        setHistory(JSON.parse(savedHistory))
+      }
+    } catch (err) {
+      console.error("[v0] Failed to load video history:", err)
     }
   }, [])
 
   useEffect(() => {
-    if (history.length > 0) {
+    if (!mounted || history.length === 0) return
+
+    try {
       localStorage.setItem("videoGenerationHistory", JSON.stringify(history))
+    } catch (err) {
+      console.error("[v0] Failed to save video history:", err)
     }
-  }, [history])
+  }, [history, mounted])
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return

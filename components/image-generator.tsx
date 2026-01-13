@@ -25,8 +25,10 @@ export function ImageGenerator() {
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     try {
       const savedHistory = localStorage.getItem("imageGenerationHistory")
       if (savedHistory) {
@@ -38,14 +40,14 @@ export function ImageGenerator() {
   }, [])
 
   useEffect(() => {
-    if (history.length > 0) {
-      try {
-        localStorage.setItem("imageGenerationHistory", JSON.stringify(history))
-      } catch (err) {
-        console.error("[v0] Failed to save history:", err)
-      }
+    if (!mounted || history.length === 0) return
+
+    try {
+      localStorage.setItem("imageGenerationHistory", JSON.stringify(history))
+    } catch (err) {
+      console.error("[v0] Failed to save history:", err)
     }
-  }, [history])
+  }, [history, mounted])
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return
