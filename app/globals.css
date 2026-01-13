@@ -130,9 +130,13 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8);
   }
 
+  .dark .glass-nav-pill {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  }
+
   .nav-item {
     @apply relative flex flex-col items-center justify-center gap-1 rounded-full px-3 py-2 transition-all duration-300 ease-out sm:px-4 sm:py-2.5;
-    @apply text-slate-600 hover:text-slate-900;
+    @apply text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white;
   }
 
   .nav-item.active {
@@ -141,7 +145,7 @@
   }
 
   .nav-item:not(.active):hover {
-    @apply bg-slate-100/50;
+    @apply bg-slate-100/50 dark:bg-slate-700/50;
   }
 
   .nav-label {
