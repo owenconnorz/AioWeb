@@ -57,6 +57,8 @@ export function ImageGenerator() {
     setProgress(0)
 
     console.log("[v0] Starting image generation...")
+    console.log("[v0] Has uploaded image:", !!uploadedImage)
+    console.log("[v0] Model:", selectedModel)
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -165,14 +167,23 @@ export function ImageGenerator() {
     <div className="space-y-6">
       <div>
         <Label htmlFor="image-prompt" className="text-base font-semibold text-slate-900 dark:text-white">
-          Describe your image
+          {uploadedImage ? "Describe your edits" : "Describe your image"}
         </Label>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           {uploadedImage
-            ? "Describe what changes you want to make to your uploaded image"
+            ? "Tell the AI what changes to make to your uploaded image. For best results, use PromptChan AI model for image editing."
             : "Be specific about what you want to see in your generated image"}
         </p>
       </div>
+
+      {uploadedImage && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+          <p className="text-sm text-blue-900 dark:text-blue-300">
+            📸 Image uploaded! For best editing results, use <strong>PromptChan AI</strong> model which supports direct
+            image-to-image editing.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Image (Optional)</Label>
