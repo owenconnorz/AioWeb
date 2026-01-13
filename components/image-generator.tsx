@@ -21,6 +21,7 @@ export function ImageGenerator() {
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<ImageGenerationHistory[]>([])
   const [selectedModel, setSelectedModel] = useState("perchance")
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("imageGenerationHistory")
@@ -41,12 +42,17 @@ export function ImageGenerator() {
     setIsLoading(true)
     setImages([])
     setFeedback(null)
+    setError(null)
+
+    console.log("[v0] Starting image generation...")
 
     try {
       const positivePrompts = history
         .filter((h) => h.feedback === "positive")
         .slice(-5)
         .map((h) => h.prompt)
+
+      console.log("[v0] Sending request to API...")
 
       const response = await fetch("/api/generate-image", {
         method: "POST",
@@ -59,8 +65,14 @@ export function ImageGenerator() {
       })
 
       const data = await response.json()
+      console.log("[v0] Response received:", data)
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate image")
+      }
 
       if (data.images && data.images.length > 0) {
+        console.log("[v0] Images generated successfully:", data.images.length)
         setImages(data.images)
 
         const newEntry: ImageGenerationHistory = {
@@ -70,9 +82,12 @@ export function ImageGenerator() {
           timestamp: Date.now(),
         }
         setHistory((prev) => [...prev, newEntry])
+      } else {
+        throw new Error("No images were generated")
       }
     } catch (error) {
       console.error("[v0] Image generation error:", error)
+      setError(error instanceof Error ? error.message : "Failed to generate image")
     } finally {
       setIsLoading(false)
     }
@@ -149,6 +164,12 @@ export function ImageGenerator() {
           "Generate Image"
         )}
       </Button>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
 
       {images.length > 0 && (
         <div className="space-y-4">

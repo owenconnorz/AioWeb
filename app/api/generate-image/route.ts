@@ -10,74 +10,37 @@ export async function POST(req: Request) {
       enhancedPrompt = `${prompt}. Style inspiration: ${learningContext}`
     }
 
-    if (model === "perchance") {
-      // Perchance AI uses a specific format
-      const perchancePayload = {
-        prompt: enhancedPrompt,
-        negativePrompt: "nsfw, nudity, text, watermark, blurry, low quality",
-        resolution: "512x768",
-        guidanceScale: 7,
+    // Generate multiple images for better user experience
+    const imageCount = 2
+    const images = []
+
+    for (let i = 0; i < imageCount; i++) {
+      // Use a reliable image placeholder service with the prompt as a query
+      const seed = Date.now() + i
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=768&height=768&seed=${seed}&nologo=true`
+
+      // Fetch the image and convert to base64
+      const imageResponse = await fetch(imageUrl)
+      if (imageResponse.ok) {
+        const arrayBuffer = await imageResponse.arrayBuffer()
+        const base64 = Buffer.from(arrayBuffer).toString("base64")
+
+        images.push({
+          base64: base64,
+          mediaType: "image/jpeg",
+        })
       }
-
-      console.log("[v0] Using Perchance AI with payload:", perchancePayload)
-
-      // Call Perchance's image generation endpoint
-      const response = await fetch("https://image-generation.perchance.org/api/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(perchancePayload),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("[v0] Perchance API error:", response.status, errorText)
-        throw new Error(`Perchance API error: ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log("[v0] Perchance response received")
-
-      // Perchance returns base64 image data
-      const images = [
-        {
-          base64: data.image || data.base64,
-          mediaType: "image/png",
-        },
-      ]
-
-      return Response.json({
-        images,
-        prompt: enhancedPrompt,
-      })
     }
 
-    // Fallback to AI SDK for other models
-    const { generateText } = await import("ai")
+    console.log("[v0] Generated", images.length, "images")
 
-    const result = await generateText({
-      model,
-      prompt: enhancedPrompt,
-    })
-
-    const images = []
-    if (result.files) {
-      for (const file of result.files) {
-        if (file.mediaType.startsWith("image/")) {
-          images.push({
-            base64: file.base64,
-            mediaType: file.mediaType,
-          })
-        }
-      }
+    if (images.length === 0) {
+      throw new Error("No images were generated")
     }
 
     return Response.json({
-      text: result.text,
       images,
-      usage: result.usage,
-      finishReason: result.finishReason,
+      prompt: enhancedPrompt,
     })
   } catch (error) {
     console.error("[v0] Image generation error:", error)
