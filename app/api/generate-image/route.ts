@@ -1,6 +1,6 @@
 export async function POST(req: Request) {
   try {
-    const { prompt, learningContext, model = "perchance", nsfwFilter = true, uploadedImage } = await req.json()
+    const { prompt, learningContext, model = "pollinations", nsfwFilter = true, uploadedImage } = await req.json()
 
     console.log("[v0] Image generation started with model:", model, "NSFW filter:", nsfwFilter)
     console.log("[v0] Prompt:", prompt)
@@ -117,6 +117,9 @@ export async function POST(req: Request) {
 
         console.log("[v0] Request body keys:", Object.keys(requestBody))
 
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
         const response = await fetch("https://api.promptchan.ai/v2/generate", {
           method: "POST",
           headers: {
@@ -124,7 +127,16 @@ export async function POST(req: Request) {
             "X-API-Key": apiKey,
           },
           body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        }).catch((err) => {
+          clearTimeout(timeoutId)
+          console.error("[v0] PromptChan fetch error:", err)
+          throw new Error(
+            `PromptChan API connection failed: ${err.message}. The service may be down. Try using Perchance or Grok AI instead.`,
+          )
         })
+
+        clearTimeout(timeoutId)
 
         const responseText = await response.text()
         console.log("[v0] PromptChan response status:", response.status)
@@ -132,7 +144,9 @@ export async function POST(req: Request) {
 
         if (!response.ok) {
           console.error("[v0] PromptChan full error:", responseText)
-          throw new Error(`PromptChan API error (${response.status}): ${responseText}`)
+          throw new Error(
+            `PromptChan API error (${response.status}): ${responseText}. Try using Perchance AI instead for better reliability.`,
+          )
         }
 
         const data = JSON.parse(responseText)
@@ -158,7 +172,7 @@ export async function POST(req: Request) {
         } else {
           console.error("[v0] No image URL in PromptChan response. Full data:", JSON.stringify(data, null, 2))
           throw new Error(
-            "PromptChan did not return an image URL. The API might have changed or there's an authentication issue.",
+            "PromptChan did not return an image URL. The API may be temporarily unavailable. Try using Perchance AI instead.",
           )
         }
       } catch (error) {
@@ -168,7 +182,7 @@ export async function POST(req: Request) {
             error:
               error instanceof Error
                 ? error.message
-                : "PromptChan generation failed. Check console for details or verify your API key.",
+                : "PromptChan generation failed. Check console for details or try Perchance AI.",
             images: [],
           },
           { status: 500 },
@@ -184,33 +198,31 @@ export async function POST(req: Request) {
       const safeParam = nsfwFilter ? "&safe=true" : ""
 
       if (uploadedImage) {
-        // For image editing, we'll use a combination approach
-        // Note: Pollinations doesn't support direct image-to-image, so we enhance the prompt
         const editPrompt = `Based on a photo: ${enhancedPrompt}. Keep similar composition, lighting, and style as the original reference.`
         const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(editPrompt)}?width=512&height=512&seed=${seed}&nologo=true${safeParam}`
 
-        const imageResponse = await fetch(imageUrl)
-        if (imageResponse.ok) {
-          const arrayBuffer = await imageResponse.arrayBuffer()
-          const base64 = Buffer.from(arrayBuffer).toString("base64")
-
-          images.push({
-            base64: base64,
-            mediaType: "image/jpeg",
-          })
+        try {
+          const imageResponse = await fetch(imageUrl, { signal: AbortSignal.timeout(30000) })
+          if (imageResponse.ok) {
+            const arrayBuffer = await imageResponse.arrayBuffer()
+            const base64 = Buffer.from(arrayBuffer).toString("base64")
+            images.push({ base64, mediaType: "image/jpeg" })
+          }
+        } catch (err) {
+          console.error("[v0] Pollinations fetch error:", err)
         }
       } else {
         const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=512&height=512&seed=${seed}&nologo=true${safeParam}`
 
-        const imageResponse = await fetch(imageUrl)
-        if (imageResponse.ok) {
-          const arrayBuffer = await imageResponse.arrayBuffer()
-          const base64 = Buffer.from(arrayBuffer).toString("base64")
-
-          images.push({
-            base64: base64,
-            mediaType: "image/jpeg",
-          })
+        try {
+          const imageResponse = await fetch(imageUrl, { signal: AbortSignal.timeout(30000) })
+          if (imageResponse.ok) {
+            const arrayBuffer = await imageResponse.arrayBuffer()
+            const base64 = Buffer.from(arrayBuffer).toString("base64")
+            images.push({ base64, mediaType: "image/jpeg" })
+          }
+        } catch (err) {
+          console.error("[v0] Pollinations fetch error:", err)
         }
       }
     }

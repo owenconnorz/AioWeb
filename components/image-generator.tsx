@@ -21,7 +21,7 @@ export function ImageGenerator() {
   const [isLoading, setIsLoading] = useState(false)
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<ImageGenerationHistory[]>([])
-  const [selectedModel, setSelectedModel] = useState("perchance")
+  const [selectedModel, setSelectedModel] = useState("pollinations")
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
@@ -87,6 +87,9 @@ export function ImageGenerator() {
 
       console.log("[v0] Sending request to API with NSFW filter:", nsfwFilter)
 
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+
       const response = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,13 +100,19 @@ export function ImageGenerator() {
           nsfwFilter,
           uploadedImage,
         }),
+        signal: controller.signal,
+      }).catch((err) => {
+        clearTimeout(timeoutId)
+        throw new Error(`Network error: ${err.message}. Check your internet connection or try again.`)
       })
+
+      clearTimeout(timeoutId)
 
       const data = await response.json()
       console.log("[v0] Response received:", data)
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to generate image")
+        throw new Error(data.error || `Server error (${response.status}). Please try again.`)
       }
 
       if (data.images && data.images.length > 0) {
@@ -119,11 +128,15 @@ export function ImageGenerator() {
         }
         setHistory((prev) => [...prev, newEntry])
       } else {
-        throw new Error("No images were generated")
+        throw new Error("No images were generated. The AI service may be temporarily unavailable.")
       }
     } catch (error) {
       console.error("[v0] Image generation error:", error)
-      setError(error instanceof Error ? error.message : "Failed to generate image")
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to generate image. Please check your internet connection and try again."
+      setError(errorMessage)
       setProgress(0)
     } finally {
       clearInterval(progressInterval)
@@ -161,10 +174,6 @@ export function ImageGenerator() {
     const reader = new FileReader()
     reader.onload = (event) => {
       setUploadedImage(event.target?.result as string)
-      // Automatically switch to PromptChan for image editing
-      if (selectedModel !== "promptchan") {
-        setSelectedModel("promptchan")
-      }
     }
     reader.readAsDataURL(file)
   }
@@ -252,9 +261,9 @@ export function ImageGenerator() {
             <SelectValue placeholder="Select AI model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="perchance">Perchance AI - Free & Unlimited (Recommended)</SelectItem>
+            <SelectItem value="pollinations">Pollinations AI - Free & Unlimited (Recommended)</SelectItem>
             <SelectItem value="grok">Grok AI - xAI's Image Generator</SelectItem>
-            <SelectItem value="promptchan">PromptChan AI - NSFW & Image Editing Specialist ⭐</SelectItem>
+            <SelectItem value="promptchan">PromptChan AI - NSFW & Image Editing (May have issues)</SelectItem>
             <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro</SelectItem>
             <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
             <SelectItem value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</SelectItem>
