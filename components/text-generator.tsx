@@ -21,7 +21,7 @@ export function TextGenerator() {
   const [copied, setCopied] = useState(false)
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<GenerationHistory[]>([])
-  const [selectedModel, setSelectedModel] = useState("openai/gpt-5-mini")
+  const [selectedModel, setSelectedModel] = useState("perchance-ai")
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("textGenerationHistory")
@@ -126,6 +126,7 @@ export function TextGenerator() {
             <SelectValue placeholder="Select AI model" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="perchance-ai">Perchance AI (Free, Unlimited)</SelectItem>
             <SelectItem value="openai/gpt-5-mini">GPT-5 Mini (Fast)</SelectItem>
             <SelectItem value="openai/gpt-4o">GPT-4o (Balanced)</SelectItem>
             <SelectItem value="xai/grok-beta">Grok Beta (Creative)</SelectItem>

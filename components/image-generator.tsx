@@ -20,7 +20,7 @@ export function ImageGenerator() {
   const [isLoading, setIsLoading] = useState(false)
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<ImageGenerationHistory[]>([])
-  const [selectedModel, setSelectedModel] = useState("google/gemini-3-pro-image-preview")
+  const [selectedModel, setSelectedModel] = useState("perchance")
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("imageGenerationHistory")
@@ -115,7 +115,8 @@ export function ImageGenerator() {
             <SelectValue placeholder="Select AI model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro (Recommended)</SelectItem>
+            <SelectItem value="perchance">Perchance AI - Free & Unlimited (Recommended)</SelectItem>
+            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro</SelectItem>
             <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
             <SelectItem value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</SelectItem>
             <SelectItem value="darlink/darlink-1">Darlink (Specialized)</SelectItem>

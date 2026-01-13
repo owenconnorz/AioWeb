@@ -14,7 +14,7 @@ export function ImageEditor() {
   const [editedImage, setEditedImage] = useState<string | null>(null)
   const [editPrompt, setEditPrompt] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedModel, setSelectedModel] = useState("google/gemini-3-pro-image-preview")
+  const [selectedModel, setSelectedModel] = useState("perchance-ai-edit")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,7 +86,8 @@ export function ImageEditor() {
             <SelectValue placeholder="Select AI model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro (Recommended)</SelectItem>
+            <SelectItem value="perchance-ai-edit">Perchance AI (Free)</SelectItem>
+            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro</SelectItem>
             <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
             <SelectItem value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</SelectItem>
             <SelectItem value="darlink/darlink-1">Darlink (Specialized)</SelectItem>

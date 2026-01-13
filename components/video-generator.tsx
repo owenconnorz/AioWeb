@@ -20,7 +20,7 @@ export function VideoGenerator() {
   const [isLoading, setIsLoading] = useState(false)
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<VideoGenerationHistory[]>([])
-  const [selectedModel, setSelectedModel] = useState("openai/gpt-4o-video")
+  const [selectedModel, setSelectedModel] = useState("perchance-ai-video")
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("videoGenerationHistory")
@@ -136,7 +136,8 @@ export function VideoGenerator() {
             <SelectValue placeholder="Select AI model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="openai/gpt-4o-video">GPT-4o Video (Recommended)</SelectItem>
+            <SelectItem value="perchance-ai-video">Perchance AI Video (Free)</SelectItem>
+            <SelectItem value="openai/gpt-4o-video">GPT-4o Video</SelectItem>
             <SelectItem value="google/gemini-3-pro-video">Gemini 3 Pro Video</SelectItem>
             <SelectItem value="anthropic/claude-3-5-video">Claude 3.5 Video</SelectItem>
             <SelectItem value="darlink/darlink-video">Darlink Video</SelectItem>

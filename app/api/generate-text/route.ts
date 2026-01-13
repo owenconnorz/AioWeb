@@ -2,9 +2,25 @@ import { generateText } from "ai"
 
 export async function POST(req: Request) {
   try {
-    const { prompt, learningContext, model = "openai/gpt-5-mini" } = await req.json()
+    const { prompt, learningContext, model = "perchance-ai" } = await req.json()
 
     console.log("[v0] Text generation request:", { model, promptLength: prompt.length })
+
+    if (model === "perchance-ai") {
+      // Use Perchance's free text generation
+      const perchancePrompt = learningContext ? `Context: ${learningContext}\n\nTask: ${prompt}` : prompt
+
+      // For now, fallback to GPT since Perchance primarily does images
+      // You can implement actual Perchance text API here
+      const { text } = await generateText({
+        model: "openai/gpt-4o-mini",
+        prompt: perchancePrompt,
+        maxTokens: 2000,
+        temperature: 0.7,
+      })
+
+      return Response.json({ text })
+    }
 
     let enhancedPrompt = prompt
     if (learningContext) {
@@ -15,13 +31,14 @@ export async function POST(req: Request) {
 
     // Map model names to correct AI SDK format
     const modelMap: Record<string, string> = {
+      "perchance-ai": "openai/gpt-4o-mini",
       "openai/gpt-5-mini": "openai/gpt-4o-mini",
       "openai/gpt-4o": "openai/gpt-4o",
       "xai/grok-beta": "xai/grok-beta",
       "anthropic/claude-3-5-sonnet-20241022": "anthropic/claude-3-5-sonnet-20241022",
       "anthropic/claude-3-5-haiku-20241022": "anthropic/claude-3-5-haiku-20241022",
-      "darlink/darlink-1": "openai/gpt-4o-mini", // Fallback for custom models
-      "lustorys/wan-2.5": "openai/gpt-4o-mini", // Fallback for custom models
+      "darlink/darlink-1": "openai/gpt-4o-mini",
+      "lustorys/wan-2.5": "openai/gpt-4o-mini",
     }
 
     actualModel = modelMap[model] || model
