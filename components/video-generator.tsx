@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Loader2, Download, ThumbsUp, ThumbsDown, Play } from "lucide-react"
+import { Loader2, Download, ThumbsUp, ThumbsDown, Play, Upload, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 
@@ -23,6 +23,7 @@ export function VideoGenerator() {
   const [history, setHistory] = useState<VideoGenerationHistory[]>([])
   const [selectedModel, setSelectedModel] = useState("promptchan-video")
   const [progress, setProgress] = useState(0)
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("videoGenerationHistory")
@@ -70,7 +71,8 @@ export function VideoGenerator() {
           prompt,
           learningContext: positivePrompts.join(", "),
           model: selectedModel,
-          nsfwFilter, // Pass NSFW filter to API
+          nsfwFilter,
+          uploadedImage,
         }),
       })
 
@@ -135,19 +137,75 @@ export function VideoGenerator() {
     link.click()
   }
 
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setUploadedImage(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setUploadedImage(null)
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <Label htmlFor="video-prompt" className="text-base font-semibold text-slate-900">
+        <Label htmlFor="video-prompt" className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Describe your video
         </Label>
-        <p className="mt-1 text-sm text-slate-600">
-          Be specific about the scenes, actions, and style you want in your video
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          {uploadedImage
+            ? "Describe how to animate or transform this image"
+            : "Be specific about the scenes, actions, and style you want in your video"}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="video-model-select" className="text-sm font-medium text-slate-700">
+        <Label htmlFor="video-image-upload" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          Upload Image (Optional)
+        </Label>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Upload an image to animate or create a video from it
+        </p>
+        {!uploadedImage ? (
+          <label
+            htmlFor="video-image-upload"
+            className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 p-6 transition-colors hover:border-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+          >
+            <Upload className="h-8 w-8 text-slate-400 dark:text-slate-500 mb-2" />
+            <span className="text-sm text-slate-600 dark:text-slate-400">Click to upload an image</span>
+            <input
+              id="video-image-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={isLoading}
+            />
+          </label>
+        ) : (
+          <div className="relative rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600">
+            <img src={uploadedImage || "/placeholder.svg"} alt="Uploaded" className="w-full h-48 object-cover" />
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleRemoveImage}
+              disabled={isLoading}
+              className="absolute top-2 right-2"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="video-model-select" className="text-sm font-medium text-slate-700 dark:text-slate-300">
           AI Model
         </Label>
         <Select value={selectedModel} onValueChange={setSelectedModel}>
@@ -168,7 +226,11 @@ export function VideoGenerator() {
 
       <Textarea
         id="video-prompt"
-        placeholder="A cinematic shot of a sunset over the ocean with waves gently crashing on the shore, camera slowly panning right..."
+        placeholder={
+          uploadedImage
+            ? "Animate this image with smooth transitions, add motion to make it come alive..."
+            : "A cinematic shot of a sunset over the ocean with waves gently crashing on the shore, camera slowly panning right..."
+        }
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         className="min-h-32 resize-none text-sm sm:text-base"
@@ -184,12 +246,12 @@ export function VideoGenerator() {
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating Video...
+            {uploadedImage ? "Animating Image..." : "Generating Video..."}
           </>
         ) : (
           <>
             <Play className="mr-2 h-4 w-4" />
-            Generate Video
+            {uploadedImage ? "Animate Image" : "Generate Video"}
           </>
         )}
       </Button>
@@ -197,7 +259,7 @@ export function VideoGenerator() {
       {isLoading && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-sm text-slate-700">Generating video...</Label>
+            <Label className="text-sm text-slate-700 dark:text-slate-300">Generating video...</Label>
             <span className="text-sm font-semibold text-indigo-600">{progress}%</span>
           </div>
           <Progress value={progress} className="h-2" />
@@ -214,7 +276,7 @@ export function VideoGenerator() {
       {videoUrl && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold text-slate-900">Generated Video</Label>
+            <Label className="text-base font-semibold text-slate-900 dark:text-slate-100">Generated Video</Label>
             <div className="flex gap-2">
               <Button
                 variant="ghost"

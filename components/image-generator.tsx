@@ -251,7 +251,8 @@ export function ImageGenerator() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="perchance">Perchance AI - Free & Unlimited (Recommended)</SelectItem>
-            <SelectItem value="promptchan">PromptChan AI - NSFW Specialist</SelectItem>
+            <SelectItem value="grok">Grok AI - xAI's Image Generator</SelectItem>
+            <SelectItem value="promptchan">PromptChan AI - NSFW & Image Editing Specialist ⭐</SelectItem>
             <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro</SelectItem>
             <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
             <SelectItem value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</SelectItem>
