@@ -1,8 +1,8 @@
 export async function POST(req: Request) {
   try {
-    const { prompt, learningContext, model = "perchance" } = await req.json()
+    const { prompt, learningContext, model = "perchance", nsfwFilter = true } = await req.json()
 
-    console.log("[v0] Image generation started with model:", model)
+    console.log("[v0] Image generation started with model:", model, "NSFW filter:", nsfwFilter)
     console.log("[v0] Prompt:", prompt)
 
     let enhancedPrompt = prompt
@@ -10,16 +10,18 @@ export async function POST(req: Request) {
       enhancedPrompt = `${prompt}. Style inspiration: ${learningContext}`
     }
 
-    // Generate multiple images for better user experience
-    const imageCount = 2
+    if (nsfwFilter) {
+      enhancedPrompt += ". Safe for work, appropriate content only, no nudity or explicit material"
+    }
+
+    const imageCount = 1
     const images = []
 
     for (let i = 0; i < imageCount; i++) {
-      // Use a reliable image placeholder service with the prompt as a query
       const seed = Date.now() + i
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=768&height=768&seed=${seed}&nologo=true`
+      const safeParam = nsfwFilter ? "&safe=true" : ""
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=512&height=512&seed=${seed}&nologo=true${safeParam}`
 
-      // Fetch the image and convert to base64
       const imageResponse = await fetch(imageUrl)
       if (imageResponse.ok) {
         const arrayBuffer = await imageResponse.arrayBuffer()

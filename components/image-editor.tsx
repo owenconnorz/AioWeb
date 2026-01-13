@@ -33,6 +33,9 @@ export function ImageEditor() {
     setEditedImage(null)
 
     try {
+      const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
+      const nsfwFilter = savedSettings ? (JSON.parse(savedSettings).nsfwFilter ?? true) : true
+
       const response = await fetch("/api/edit-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,6 +43,7 @@ export function ImageEditor() {
           imageData: uploadedImage,
           editPrompt,
           model: selectedModel,
+          nsfwFilter, // Pass NSFW filter to API
         }),
       })
 

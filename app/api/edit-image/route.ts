@@ -1,35 +1,34 @@
 import { generateText } from "ai"
 
 export async function POST(req: Request) {
-  const { imageData, editPrompt, model = "perchance-ai-edit" } = await req.json()
+  const { imageData, editPrompt, model = "perchance-ai-edit", nsfwFilter = true } = await req.json()
 
-  console.log("[v0] Image editing request:", { model, editPrompt })
+  console.log("[v0] Image editing request:", { model, editPrompt, nsfwFilter })
 
   try {
     if (model === "perchance-ai-edit") {
-      // Use Perchance for image editing
-      // For now, this is a placeholder - actual implementation would call Perchance API
       console.log("[v0] Using Perchance AI for image editing")
 
-      // Simulate processing delay
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      // Return a placeholder response
       return Response.json({
         images: [],
         text: "Image editing with Perchance AI requires additional integration. Using fallback preview mode.",
       })
     }
 
-    // Extract base64 data from data URL if necessary
     let base64Data = imageData
     if (imageData.startsWith("data:")) {
       base64Data = imageData.split(",")[1]
     }
 
+    const filteredEditPrompt = nsfwFilter
+      ? `${editPrompt}. Keep content safe, appropriate, and family-friendly.`
+      : editPrompt
+
     const result = await generateText({
       model,
-      prompt: `Edit this image according to the following instruction: ${editPrompt}`,
+      prompt: `Edit this image according to the following instruction: ${filteredEditPrompt}`,
       messages: [
         {
           role: "user",
@@ -40,7 +39,7 @@ export async function POST(req: Request) {
             },
             {
               type: "text",
-              text: `Edit this image: ${editPrompt}`,
+              text: `Edit this image: ${filteredEditPrompt}`,
             },
           ],
         },

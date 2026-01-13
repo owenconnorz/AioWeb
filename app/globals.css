@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -75,8 +75,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -121,5 +121,34 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Added iOS-style glass morphism navigation pill styles */
+@layer components {
+  .glass-nav-pill {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  }
+
+  .nav-item {
+    @apply relative flex flex-col items-center justify-center gap-1 rounded-full px-3 py-2 transition-all duration-300 ease-out sm:px-4 sm:py-2.5;
+    @apply text-slate-600 hover:text-slate-900;
+  }
+
+  .nav-item.active {
+    @apply bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  }
+
+  .nav-item:not(.active):hover {
+    @apply bg-slate-100/50;
+  }
+
+  .nav-label {
+    @apply text-[10px] font-medium sm:text-xs;
+  }
+
+  .nav-item.active .nav-label {
+    @apply font-semibold;
   }
 }

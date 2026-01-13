@@ -58,7 +58,10 @@ export function VideoGenerator() {
         .slice(-5)
         .map((h) => h.prompt)
 
-      console.log("[v0] Sending video generation request...")
+      const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
+      const nsfwFilter = savedSettings ? (JSON.parse(savedSettings).nsfwFilter ?? true) : true
+
+      console.log("[v0] Sending video generation request with NSFW filter:", nsfwFilter)
 
       const response = await fetch("/api/generate-video", {
         method: "POST",
@@ -67,6 +70,7 @@ export function VideoGenerator() {
           prompt,
           learningContext: positivePrompts.join(", "),
           model: selectedModel,
+          nsfwFilter, // Pass NSFW filter to API
         }),
       })
 
@@ -236,7 +240,7 @@ export function VideoGenerator() {
               className="h-auto w-full object-cover"
             />
             <div className="bg-indigo-50 border-t border-indigo-200 p-3">
-              <p className="text-xs text-indigo-900">
+              <p className="text-xs sm:text-sm text-indigo-900">
                 Video preview mode - Connect a video AI integration for full video generation
               </p>
             </div>

@@ -26,15 +26,23 @@ export function ImageGenerator() {
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
-    const savedHistory = localStorage.getItem("imageGenerationHistory")
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory))
+    try {
+      const savedHistory = localStorage.getItem("imageGenerationHistory")
+      if (savedHistory) {
+        setHistory(JSON.parse(savedHistory))
+      }
+    } catch (err) {
+      console.error("[v0] Failed to load history:", err)
     }
   }, [])
 
   useEffect(() => {
     if (history.length > 0) {
-      localStorage.setItem("imageGenerationHistory", JSON.stringify(history))
+      try {
+        localStorage.setItem("imageGenerationHistory", JSON.stringify(history))
+      } catch (err) {
+        console.error("[v0] Failed to save history:", err)
+      }
     }
   }, [history])
 
@@ -52,9 +60,9 @@ export function ImageGenerator() {
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) return prev
-        return prev + 10
+        return prev + 15
       })
-    }, 500)
+    }, 300)
 
     try {
       const positivePrompts = history
@@ -62,7 +70,17 @@ export function ImageGenerator() {
         .slice(-5)
         .map((h) => h.prompt)
 
-      console.log("[v0] Sending request to API...")
+      let nsfwFilter = true
+      try {
+        const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
+        if (savedSettings) {
+          nsfwFilter = JSON.parse(savedSettings).nsfwFilter ?? true
+        }
+      } catch (err) {
+        console.error("[v0] Failed to parse settings:", err)
+      }
+
+      console.log("[v0] Sending request to API with NSFW filter:", nsfwFilter)
 
       const response = await fetch("/api/generate-image", {
         method: "POST",
@@ -71,6 +89,7 @@ export function ImageGenerator() {
           prompt,
           learningContext: positivePrompts.join(", "),
           model: selectedModel,
+          nsfwFilter,
         }),
       })
 
@@ -119,10 +138,14 @@ export function ImageGenerator() {
   }
 
   const handleDownload = (base64: string, index: number) => {
-    const link = document.createElement("a")
-    link.href = `data:image/png;base64,${base64}`
-    link.download = `generated-image-${index + 1}.png`
-    link.click()
+    try {
+      const link = document.createElement("a")
+      link.href = `data:image/png;base64,${base64}`
+      link.download = `generated-image-${index + 1}.png`
+      link.click()
+    } catch (err) {
+      console.error("[v0] Download failed:", err)
+    }
   }
 
   return (

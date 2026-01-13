@@ -50,7 +50,10 @@ export function TextGenerator() {
         .map((h) => `User: ${h.prompt}\nAssistant: ${h.response}`)
         .join("\n\n")
 
-      console.log("[v0] Sending request with model:", selectedModel)
+      const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
+      const nsfwFilter = savedSettings ? (JSON.parse(savedSettings).nsfwFilter ?? true) : true
+
+      console.log("[v0] Sending request with model:", selectedModel, "NSFW filter:", nsfwFilter)
 
       const response = await fetch("/api/generate-text", {
         method: "POST",
@@ -59,6 +62,7 @@ export function TextGenerator() {
           prompt,
           learningContext: positiveExamples,
           model: selectedModel,
+          nsfwFilter, // Pass NSFW filter to API
         }),
       })
 

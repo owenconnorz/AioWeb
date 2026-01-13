@@ -2,19 +2,20 @@ import { generateText } from "ai"
 
 export async function POST(req: Request) {
   try {
-    const { prompt, learningContext, model = "perchance-ai" } = await req.json()
+    const { prompt, learningContext, model = "perchance-ai", nsfwFilter = true } = await req.json()
 
-    console.log("[v0] Text generation request:", { model, promptLength: prompt.length })
+    console.log("[v0] Text generation request:", { model, promptLength: prompt.length, nsfwFilter })
 
     if (model === "perchance-ai") {
-      // Use Perchance's free text generation
       const perchancePrompt = learningContext ? `Context: ${learningContext}\n\nTask: ${prompt}` : prompt
 
-      // For now, fallback to GPT since Perchance primarily does images
-      // You can implement actual Perchance text API here
+      const filteredPrompt = nsfwFilter
+        ? `${perchancePrompt}\n\nIMPORTANT: Keep the content safe, appropriate, and free from adult or explicit material.`
+        : perchancePrompt
+
       const { text } = await generateText({
         model: "openai/gpt-4o-mini",
-        prompt: perchancePrompt,
+        prompt: filteredPrompt,
         maxTokens: 2000,
         temperature: 0.7,
       })
@@ -27,9 +28,12 @@ export async function POST(req: Request) {
       enhancedPrompt = `Here are some examples of responses the user liked:\n\n${learningContext}\n\nNow, using a similar style and quality, respond to this request:\n${prompt}`
     }
 
+    if (nsfwFilter) {
+      enhancedPrompt += "\n\nIMPORTANT: Keep the content safe, appropriate, and free from adult or explicit material."
+    }
+
     let actualModel = model
 
-    // Map model names to correct AI SDK format
     const modelMap: Record<string, string> = {
       "perchance-ai": "openai/gpt-4o-mini",
       "openai/gpt-5-mini": "openai/gpt-4o-mini",

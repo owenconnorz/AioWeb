@@ -1,5 +1,5 @@
 "use client"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { TextGenerator } from "@/components/text-generator"
 import { ImageGenerator } from "@/components/image-generator"
@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState("text")
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28">
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12">
         <div className="mb-8 text-center sm:mb-12">
           <div className="mb-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
@@ -38,76 +40,97 @@ export default function Home() {
           </p>
         </div>
 
-        <Tabs defaultValue="text" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 gap-1 bg-white p-1 shadow-sm">
-            <TabsTrigger value="text" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Text</span>
-              <span className="sm:hidden">Text</span>
-            </TabsTrigger>
-            <TabsTrigger value="image" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-              <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Image</span>
-              <span className="sm:hidden">Image</span>
-            </TabsTrigger>
-            <TabsTrigger value="edit" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-              <Wand2 className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Edit</span>
-              <span className="sm:hidden">Edit</span>
-            </TabsTrigger>
-            <TabsTrigger value="video" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-              <Video className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Video</span>
-              <span className="sm:hidden">Video</span>
-            </TabsTrigger>
-            <TabsTrigger value="faceswap" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Face</span>
-              <span className="sm:hidden">Face</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="text" className="mt-4 sm:mt-6">
+        <div className="w-full">
+          {activeTab === "text" && (
             <Card className="border-0 shadow-lg">
               <CardContent className="p-4 sm:p-6">
                 <TextGenerator />
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="image" className="mt-4 sm:mt-6">
+          {activeTab === "image" && (
             <Card className="border-0 shadow-lg">
               <CardContent className="p-4 sm:p-6">
                 <ImageGenerator />
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="edit" className="mt-4 sm:mt-6">
+          {activeTab === "edit" && (
             <Card className="border-0 shadow-lg">
               <CardContent className="p-4 sm:p-6">
                 <ImageEditor />
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="video" className="mt-4 sm:mt-6">
+          {activeTab === "video" && (
             <Card className="border-0 shadow-lg">
               <CardContent className="p-4 sm:p-6">
                 <VideoGenerator />
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="faceswap" className="mt-4 sm:mt-6">
+          {activeTab === "faceswap" && (
             <Card className="border-0 shadow-lg">
               <CardContent className="p-4 sm:p-6">
                 <FaceSwap />
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
+
+      <nav className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
+        <div className="glass-nav-pill flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-2xl backdrop-blur-xl sm:gap-2 sm:p-2.5">
+          <button
+            onClick={() => setActiveTab("text")}
+            className={`nav-item ${activeTab === "text" ? "active" : ""}`}
+            aria-label="Text Generator"
+          >
+            <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Text</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("image")}
+            className={`nav-item ${activeTab === "image" ? "active" : ""}`}
+            aria-label="Image Generator"
+          >
+            <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Image</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("edit")}
+            className={`nav-item ${activeTab === "edit" ? "active" : ""}`}
+            aria-label="Image Editor"
+          >
+            <Wand2 className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Edit</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("video")}
+            className={`nav-item ${activeTab === "video" ? "active" : ""}`}
+            aria-label="Video Generator"
+          >
+            <Video className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Video</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("faceswap")}
+            className={`nav-item ${activeTab === "faceswap" ? "active" : ""}`}
+            aria-label="Face Swap"
+          >
+            <Users className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Face</span>
+          </button>
+        </div>
+      </nav>
     </main>
   )
 }

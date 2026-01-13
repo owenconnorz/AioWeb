@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -15,6 +15,18 @@ export default function SettingsPage() {
   const [highQuality, setHighQuality] = useState(true)
   const [showWatermark, setShowWatermark] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings)
+      setNsfwFilter(settings.nsfwFilter ?? true)
+      setAutoSave(settings.autoSave ?? false)
+      setHighQuality(settings.highQuality ?? true)
+      setShowWatermark(settings.showWatermark ?? false)
+      setDarkMode(settings.darkMode ?? false)
+    }
+  }, [])
 
   const handleSaveSettings = () => {
     // Save settings to localStorage or backend
