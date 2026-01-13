@@ -29,11 +29,15 @@ export async function POST(req: Request) {
 
         console.log("[v0] Using Grok AI for image generation")
 
+        const grokApiKey =
+          process.env.XAI_API_KEY ||
+          "xai-JKkVkV2Jj3sLI1UqMuiZ1qpqAqN7YTGcaj6j53YsRQng4THSNpLBN3aOfykrRg8KuqNlBwAO1bKEBAO3"
+
         const response = await fetch("https://api.x.ai/v1/images/generations", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.XAI_API_KEY || ""}`,
+            Authorization: `Bearer ${grokApiKey}`,
           },
           body: JSON.stringify({
             model: "grok-2-image",
