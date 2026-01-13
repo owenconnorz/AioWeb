@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Loader2, Download, ThumbsUp, ThumbsDown } from "lucide-react"
+import { Loader2, Download, ThumbsUp, ThumbsDown, Upload, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 
@@ -24,6 +24,7 @@ export function ImageGenerator() {
   const [selectedModel, setSelectedModel] = useState("perchance")
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -90,6 +91,7 @@ export function ImageGenerator() {
           learningContext: positivePrompts.join(", "),
           model: selectedModel,
           nsfwFilter,
+          uploadedImage,
         }),
       })
 
@@ -148,17 +150,60 @@ export function ImageGenerator() {
     }
   }
 
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setUploadedImage(event.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <Label htmlFor="image-prompt" className="text-base font-semibold text-slate-900">
+        <Label htmlFor="image-prompt" className="text-base font-semibold text-slate-900 dark:text-white">
           Describe your image
         </Label>
-        <p className="mt-1 text-sm text-slate-600">Be specific about what you want to see in your generated image</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          {uploadedImage
+            ? "Describe what changes you want to make to your uploaded image"
+            : "Be specific about what you want to see in your generated image"}
+        </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="image-model-select" className="text-sm font-medium text-slate-700">
+        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Image (Optional)</Label>
+        {uploadedImage ? (
+          <div className="relative">
+            <img
+              src={uploadedImage || "/placeholder.svg"}
+              alt="Uploaded"
+              className="h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-indigo-500 dark:hover:bg-slate-800"
+            />
+            <Button
+              variant="destructive"
+              size="sm"
+              className="absolute right-2 top-2"
+              onClick={() => setUploadedImage(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <label className="flex h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-indigo-500 dark:hover:bg-slate-800">
+            <Upload className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+            <span className="mt-2 text-sm text-slate-600 dark:text-slate-400">Click to upload an image</span>
+            <span className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG up to 10MB</span>
+            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+          </label>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="image-model-select" className="text-sm font-medium text-slate-700 dark:text-slate-300">
           AI Model
         </Label>
         <Select value={selectedModel} onValueChange={setSelectedModel}>
@@ -179,7 +224,11 @@ export function ImageGenerator() {
 
       <Textarea
         id="image-prompt"
-        placeholder="A serene mountain landscape at sunset with a crystal clear lake reflecting the colorful sky..."
+        placeholder={
+          uploadedImage
+            ? "Add a sunset background, change the colors to blue and gold, enhance details..."
+            : "A serene mountain landscape at sunset with a crystal clear lake reflecting the colorful sky..."
+        }
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         className="min-h-32 resize-none"
@@ -189,14 +238,16 @@ export function ImageGenerator() {
       <Button
         onClick={handleGenerate}
         disabled={!prompt.trim() || isLoading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
         size="lg"
       >
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating Image...
+            {uploadedImage ? "Editing Image..." : "Generating Image..."}
           </>
+        ) : uploadedImage ? (
+          "Edit Image"
         ) : (
           "Generate Image"
         )}
@@ -205,11 +256,11 @@ export function ImageGenerator() {
       {isLoading && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-sm text-slate-700">Generating...</Label>
-            <span className="text-sm font-semibold text-indigo-600">{progress}%</span>
+            <Label className="text-sm text-slate-700 dark:text-slate-300">Generating...</Label>
+            <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-500">{progress}%</span>
           </div>
           <Progress value={progress} className="h-2" />
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-xs text-slate-500 text-center dark:text-slate-400">
             {progress < 30 && "Preparing your request..."}
             {progress >= 30 && progress < 60 && "AI is creating your image..."}
             {progress >= 60 && progress < 90 && "Finalizing details..."}
@@ -219,21 +270,21 @@ export function ImageGenerator() {
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+          <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
         </div>
       )}
 
       {images.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold text-slate-900">Generated Images</Label>
+            <Label className="text-base font-semibold text-slate-900 dark:text-white">Generated Images</Label>
             <div className="flex gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleFeedback("positive")}
-                className={`gap-2 ${feedback === "positive" ? "text-green-600" : ""}`}
+                className={`gap-2 ${feedback === "positive" ? "text-green-600 dark:text-green-400" : ""}`}
               >
                 <ThumbsUp className="h-4 w-4" />
               </Button>
@@ -241,7 +292,7 @@ export function ImageGenerator() {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleFeedback("negative")}
-                className={`gap-2 ${feedback === "negative" ? "text-red-600" : ""}`}
+                className={`gap-2 ${feedback === "negative" ? "text-red-600 dark:text-red-400" : ""}`}
               >
                 <ThumbsDown className="h-4 w-4" />
               </Button>
@@ -251,7 +302,7 @@ export function ImageGenerator() {
             {images.map((image, index) => (
               <div
                 key={index}
-                className="group relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+                className="group relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
               >
                 <img
                   src={`data:${image.mediaType};base64,${image.base64}`}
@@ -273,14 +324,14 @@ export function ImageGenerator() {
             ))}
           </div>
           {feedback === "positive" && (
-            <p className="text-xs text-green-600">Thanks! The AI will learn from this example.</p>
+            <p className="text-xs text-green-600 dark:text-green-400">Thanks! The AI will learn from this example.</p>
           )}
         </div>
       )}
 
       {history.length > 0 && (
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-          <p className="text-sm text-indigo-900">
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-800 dark:bg-indigo-900/20">
+          <p className="text-sm text-indigo-900 dark:text-indigo-300">
             AI Learning: {history.filter((h) => h.feedback === "positive").length} positive examples saved
           </p>
         </div>

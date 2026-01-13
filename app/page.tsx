@@ -1,14 +1,13 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { TextGenerator } from "@/components/text-generator"
 import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { Sparkles, ImageIcon, Users, Settings, Video } from "lucide-react"
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("text")
+  const [activeTab, setActiveTab] = useState("image")
   const [isDarkMode, setIsDarkMode] = useState(true)
 
   useEffect(() => {
@@ -51,14 +50,6 @@ export default function Home() {
         </div>
 
         <div className="w-full">
-          {activeTab === "text" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-              <CardContent className="p-4 sm:p-6">
-                <TextGenerator />
-              </CardContent>
-            </Card>
-          )}
-
           {activeTab === "image" && (
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
@@ -95,15 +86,6 @@ export default function Home() {
 
       <nav className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
         <div className="glass-nav-pill flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80 sm:gap-2 sm:p-2.5">
-          <button
-            onClick={() => setActiveTab("text")}
-            className={`nav-item ${activeTab === "text" ? "active" : ""}`}
-            aria-label="Text Generator"
-          >
-            <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Text</span>
-          </button>
-
           <button
             onClick={() => setActiveTab("image")}
             className={`nav-item ${activeTab === "image" ? "active" : ""}`}
