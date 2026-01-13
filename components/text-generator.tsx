@@ -50,6 +50,8 @@ export function TextGenerator() {
         .map((h) => `User: ${h.prompt}\nAssistant: ${h.response}`)
         .join("\n\n")
 
+      console.log("[v0] Sending request with model:", selectedModel)
+
       const response = await fetch("/api/generate-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,6 +63,14 @@ export function TextGenerator() {
       })
 
       const data = await response.json()
+
+      if (!response.ok || data.error) {
+        console.error("[v0] API error:", data)
+        setGeneratedText(data.error || "An error occurred while generating text. Please try a different model.")
+        return
+      }
+
+      console.log("[v0] Text generation successful")
       setGeneratedText(data.text)
 
       const newEntry: GenerationHistory = {
@@ -72,7 +82,7 @@ export function TextGenerator() {
       setHistory((prev) => [...prev, newEntry])
     } catch (error) {
       console.error("[v0] Text generation error:", error)
-      setGeneratedText("An error occurred while generating text. Please try again.")
+      setGeneratedText("An error occurred while generating text. Please check your connection and try again.")
     } finally {
       setIsLoading(false)
     }
