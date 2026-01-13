@@ -1,8 +1,5 @@
 "use client"
-
-import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState, useRef, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,7 +14,7 @@ export function ImageEditor() {
   const [selectedModel, setSelectedModel] = useState("perchance-ai-edit")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
       const reader = new FileReader()

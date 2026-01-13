@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Download, ThumbsUp, ThumbsDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Progress } from "@/components/ui/progress"
 
 interface ImageGenerationHistory {
   prompt: string
@@ -22,6 +23,7 @@ export function ImageGenerator() {
   const [history, setHistory] = useState<ImageGenerationHistory[]>([])
   const [selectedModel, setSelectedModel] = useState("perchance")
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("imageGenerationHistory")
@@ -43,8 +45,16 @@ export function ImageGenerator() {
     setImages([])
     setFeedback(null)
     setError(null)
+    setProgress(0)
 
     console.log("[v0] Starting image generation...")
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) return prev
+        return prev + 10
+      })
+    }, 500)
 
     try {
       const positivePrompts = history
@@ -73,6 +83,7 @@ export function ImageGenerator() {
 
       if (data.images && data.images.length > 0) {
         console.log("[v0] Images generated successfully:", data.images.length)
+        setProgress(100)
         setImages(data.images)
 
         const newEntry: ImageGenerationHistory = {
@@ -88,7 +99,9 @@ export function ImageGenerator() {
     } catch (error) {
       console.error("[v0] Image generation error:", error)
       setError(error instanceof Error ? error.message : "Failed to generate image")
+      setProgress(0)
     } finally {
+      clearInterval(progressInterval)
       setIsLoading(false)
     }
   }
@@ -164,6 +177,22 @@ export function ImageGenerator() {
           "Generate Image"
         )}
       </Button>
+
+      {isLoading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm text-slate-700">Generating...</Label>
+            <span className="text-sm font-semibold text-indigo-600">{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <p className="text-xs text-slate-500 text-center">
+            {progress < 30 && "Preparing your request..."}
+            {progress >= 30 && progress < 60 && "AI is creating your image..."}
+            {progress >= 60 && progress < 90 && "Finalizing details..."}
+            {progress >= 90 && "Almost done..."}
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">

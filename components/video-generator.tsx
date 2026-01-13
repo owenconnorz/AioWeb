@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Download, ThumbsUp, ThumbsDown, Play } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Progress } from "@/components/ui/progress"
 
 interface VideoGenerationHistory {
   prompt: string
@@ -21,6 +22,7 @@ export function VideoGenerator() {
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<VideoGenerationHistory[]>([])
   const [selectedModel, setSelectedModel] = useState("perchance-ai-video")
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("videoGenerationHistory")
@@ -41,6 +43,14 @@ export function VideoGenerator() {
     setIsLoading(true)
     setVideoUrl(null)
     setFeedback(null)
+    setProgress(0)
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 85) return prev
+        return prev + 5
+      })
+    }, 800)
 
     try {
       const positivePrompts = history
@@ -69,11 +79,13 @@ export function VideoGenerator() {
       if (!response.ok) {
         console.error("[v0] Error response:", data)
         alert(`Error: ${data.error || "Failed to generate video"}`)
+        setProgress(0)
         return
       }
 
       if (data.videoUrl) {
         console.log("[v0] Setting video URL:", data.videoUrl)
+        setProgress(100)
         setVideoUrl(data.videoUrl)
 
         const newEntry: VideoGenerationHistory = {
@@ -86,11 +98,14 @@ export function VideoGenerator() {
       } else {
         console.error("[v0] No video URL in response")
         alert("No video was generated. Please try again.")
+        setProgress(0)
       }
     } catch (error) {
       console.error("[v0] Video generation error:", error)
       alert(`Failed to generate video: ${error instanceof Error ? error.message : "Unknown error"}`)
+      setProgress(0)
     } finally {
+      clearInterval(progressInterval)
       setIsLoading(false)
     }
   }
@@ -173,6 +188,23 @@ export function VideoGenerator() {
           </>
         )}
       </Button>
+
+      {isLoading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm text-slate-700">Generating video...</Label>
+            <span className="text-sm font-semibold text-indigo-600">{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <p className="text-xs text-slate-500 text-center">
+            {progress < 25 && "Preparing your video request..."}
+            {progress >= 25 && progress < 50 && "AI is processing scenes..."}
+            {progress >= 50 && progress < 75 && "Rendering video frames..."}
+            {progress >= 75 && progress < 90 && "Finalizing video..."}
+            {progress >= 90 && "Almost ready..."}
+          </p>
+        </div>
+      )}
 
       {videoUrl && (
         <div className="space-y-4">

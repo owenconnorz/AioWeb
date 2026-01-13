@@ -1,8 +1,5 @@
 "use client"
-
-import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState, useRef, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Loader2, Upload, Download, AlertCircle } from "lucide-react"
@@ -16,7 +13,7 @@ export function FaceSwap() {
   const sourceInputRef = useRef<HTMLInputElement>(null)
   const targetInputRef = useRef<HTMLInputElement>(null)
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setImage: (image: string) => void) => {
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>, setImage: (image: string) => void) => {
     const file = event.target.files?.[0]
     if (file) {
       const reader = new FileReader()
