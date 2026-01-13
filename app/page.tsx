@@ -5,8 +5,7 @@ import { TextGenerator } from "@/components/text-generator"
 import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
-import { ImageEditor } from "@/components/image-editor"
-import { Sparkles, ImageIcon, Users, Settings, Video, Wand2 } from "lucide-react"
+import { Sparkles, ImageIcon, Users, Settings, Video } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("text")
@@ -68,14 +67,6 @@ export default function Home() {
             </Card>
           )}
 
-          {activeTab === "edit" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-              <CardContent className="p-4 sm:p-6">
-                <ImageEditor />
-              </CardContent>
-            </Card>
-          )}
-
           {activeTab === "video" && (
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
@@ -120,15 +111,6 @@ export default function Home() {
           >
             <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="nav-label">Image</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("edit")}
-            className={`nav-item ${activeTab === "edit" ? "active" : ""}`}
-            aria-label="Image Editor"
-          >
-            <Wand2 className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Edit</span>
           </button>
 
           <button
@@ -310,6 +292,24 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
                 <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
               </label>
             </div>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 pt-6 dark:border-slate-700">
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">About</h3>
+          <div className="space-y-3 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 p-4 dark:from-indigo-950/30 dark:to-purple-950/30">
+            <div>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">Naughty AI</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Version 1.0.0</p>
+            </div>
+            <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Developed by</p>
+              <p className="mt-1 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Owen Connor Z</p>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              An AI-powered creative suite for generating images, text, videos, and face swaps using cutting-edge
+              artificial intelligence.
+            </p>
           </div>
         </div>
       </div>

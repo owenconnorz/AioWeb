@@ -14,6 +14,61 @@ export async function POST(req: Request) {
       enhancedPrompt += ". Safe for work, appropriate content only, no nudity or explicit material"
     }
 
+    if (model === "promptchan") {
+      try {
+        const apiKey = process.env.PROMPTCHAN_API_KEY
+
+        if (!apiKey) {
+          throw new Error("PromptChan API key not found. Please add PROMPTCHAN_API_KEY to your environment variables.")
+        }
+
+        const response = await fetch("https://api.promptchan.ai/v1/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            prompt: nsfwFilter ? enhancedPrompt : prompt,
+            style: "realistic",
+            width: 512,
+            height: 512,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`PromptChan API error: ${response.statusText}`)
+        }
+
+        const data = await response.json()
+
+        if (data.image_url) {
+          const imageResponse = await fetch(data.image_url)
+          const arrayBuffer = await imageResponse.arrayBuffer()
+          const base64 = Buffer.from(arrayBuffer).toString("base64")
+
+          return Response.json({
+            images: [
+              {
+                base64: base64,
+                mediaType: "image/jpeg",
+              },
+            ],
+            prompt: enhancedPrompt,
+          })
+        }
+      } catch (error) {
+        console.error("[v0] PromptChan error:", error)
+        return Response.json(
+          {
+            error: error instanceof Error ? error.message : "PromptChan generation failed",
+            images: [],
+          },
+          { status: 500 },
+        )
+      }
+    }
+
     const imageCount = 1
     const images = []
 
