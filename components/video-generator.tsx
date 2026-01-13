@@ -48,6 +48,8 @@ export function VideoGenerator() {
         .slice(-5)
         .map((h) => h.prompt)
 
+      console.log("[v0] Sending video generation request...")
+
       const response = await fetch("/api/generate-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,9 +60,20 @@ export function VideoGenerator() {
         }),
       })
 
+      console.log("[v0] Response status:", response.status)
+
       const data = await response.json()
 
+      console.log("[v0] Response data:", data)
+
+      if (!response.ok) {
+        console.error("[v0] Error response:", data)
+        alert(`Error: ${data.error || "Failed to generate video"}`)
+        return
+      }
+
       if (data.videoUrl) {
+        console.log("[v0] Setting video URL:", data.videoUrl)
         setVideoUrl(data.videoUrl)
 
         const newEntry: VideoGenerationHistory = {
@@ -70,9 +83,13 @@ export function VideoGenerator() {
           timestamp: Date.now(),
         }
         setHistory((prev) => [...prev, newEntry])
+      } else {
+        console.error("[v0] No video URL in response")
+        alert("No video was generated. Please try again.")
       }
     } catch (error) {
       console.error("[v0] Video generation error:", error)
+      alert(`Failed to generate video: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setIsLoading(false)
     }
@@ -179,14 +196,21 @@ export function VideoGenerator() {
               </Button>
             </div>
           </div>
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-black shadow-lg">
-            <video src={videoUrl} controls className="h-auto w-full" poster="/placeholder.svg?height=400&width=600">
-              Your browser does not support the video tag.
-            </video>
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-lg">
+            <img
+              src={videoUrl || "/placeholder.svg"}
+              alt="Generated video preview"
+              className="h-auto w-full object-cover"
+            />
+            <div className="bg-indigo-50 border-t border-indigo-200 p-3">
+              <p className="text-xs text-indigo-900">
+                Video preview mode - Connect a video AI integration for full video generation
+              </p>
+            </div>
           </div>
           <Button onClick={handleDownload} variant="outline" className="w-full gap-2 bg-transparent">
             <Download className="h-4 w-4" />
-            Download Video
+            Download Preview
           </Button>
           {feedback === "positive" && (
             <p className="text-xs text-green-600">Thanks! The AI will learn from this example.</p>

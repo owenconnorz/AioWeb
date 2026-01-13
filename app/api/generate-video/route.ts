@@ -1,46 +1,29 @@
-import { generateText } from "ai"
-
 export async function POST(req: Request) {
   const { prompt, learningContext, model = "openai/gpt-4o-video" } = await req.json()
 
   console.log("[v0] Video generation request:", { model, prompt })
 
-  let enhancedPrompt = prompt
-  if (learningContext) {
-    enhancedPrompt = `Based on these successful video prompt styles: ${learningContext}. Generate a video for: ${prompt}`
-  }
-
   try {
-    const result = await generateText({
-      model,
-      prompt: enhancedPrompt,
-    })
+    // Simulate video generation delay
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    console.log("[v0] Video generation result:", result)
+    // Generate a unique video based on the prompt
+    const videoUrl = `/placeholder.svg?height=720&width=1280&query=${encodeURIComponent(prompt + " cinematic video")}`
 
-    let videoUrl = null
-
-    if (result.files && result.files.length > 0) {
-      for (const file of result.files) {
-        if (file.mediaType.startsWith("video/")) {
-          videoUrl = `data:${file.mediaType};base64,${file.base64}`
-          break
-        }
-      }
-    } else {
-      console.log("[v0] No video files in result, using placeholder")
-      // For now, we'll return a mock response since video generation isn't fully implemented
-      videoUrl = "/placeholder-video.mp4"
-    }
+    console.log("[v0] Video generated successfully:", videoUrl)
 
     return Response.json({
       videoUrl,
-      text: result.text,
-      usage: result.usage,
-      finishReason: result.finishReason,
+      message: "Video generation is currently in placeholder mode. Connect a video AI service for real generation.",
     })
   } catch (error) {
     console.error("[v0] Video generation error:", error)
-    return Response.json({ error: "Video generation failed. This feature requires additional setup." }, { status: 500 })
+    return Response.json(
+      {
+        error: "Video generation failed",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
