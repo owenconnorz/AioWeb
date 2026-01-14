@@ -2,8 +2,7 @@
 import { useState, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Search, Play, ExternalLink } from "lucide-react"
+import { Search, Play, Eye, ThumbsUp, ArrowRight } from "lucide-react"
 
 interface Video {
   id: string
@@ -67,93 +66,87 @@ export function PornVideos() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Porn Videos</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-300">Search and browse adult video content</p>
+    <div className="space-y-6 pb-24">
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <Input
+            id="search"
+            type="text"
+            placeholder="Search videos..."
+            value={searchQuery}
+            onChange={handleInputChange}
+            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+            className="flex-1 border-slate-700 bg-slate-800/50 text-white placeholder:text-slate-400"
+          />
+          <Button onClick={handleSearch} disabled={loading} className="bg-violet-600 hover:bg-violet-700">
+            <Search className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="search" className="text-slate-900 dark:text-white">
-            Search Videos
-          </Label>
-          <div className="mt-2 flex gap-2">
-            <Input
-              id="search"
-              type="text"
-              placeholder="Enter search terms..."
-              value={searchQuery}
-              onChange={handleInputChange}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-              className="flex-1 dark:bg-slate-700 dark:text-white"
-            />
-            <Button
-              onClick={handleSearch}
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-            >
-              <Search className="mr-2 h-4 w-4" />
-              {loading ? "Searching..." : "Search"}
-            </Button>
-          </div>
-        </div>
+      {error && <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-sm text-red-400">{error}</div>}
 
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
-            {error}
+      {videos.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold text-white">Hottest New Videos</h2>
+            <button className="flex items-center gap-2 text-lg font-medium text-violet-500 hover:text-violet-400">
+              View All
+              <ArrowRight className="h-5 w-5" />
+            </button>
           </div>
-        )}
 
-        {videos.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-6">
             {videos.map((video) => (
-              <div
-                key={video.id}
-                className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
-              >
-                <div className="relative aspect-video overflow-hidden bg-slate-100 dark:bg-slate-900">
-                  <img
-                    src={video.default_thumb.src || "/placeholder.svg"}
-                    alt={video.title}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Play className="h-12 w-12 text-white" />
+              <a key={video.id} href={video.url} target="_blank" rel="noopener noreferrer" className="group block">
+                <div className="space-y-3">
+                  {/* Video Thumbnail */}
+                  <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
+                    <img
+                      src={video.default_thumb.src || "/placeholder.svg"}
+                      alt={video.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
+                        <Play className="h-8 w-8 text-white" fill="white" />
+                      </div>
+                    </div>
+                    {/* Duration Badge */}
+                    <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                      {video.length_min}
+                    </div>
                   </div>
-                  <div className="absolute bottom-2 right-2 rounded bg-black/80 px-2 py-1 text-xs text-white">
-                    {video.length_min}
+
+                  {/* Video Info */}
+                  <div className="space-y-2">
+                    <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
+                      {video.title}
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                      <div className="flex items-center gap-1.5">
+                        <Eye className="h-4 w-4" />
+                        <span>{(video.views / 1000).toFixed(0)}K Views</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <ThumbsUp className="h-4 w-4" />
+                        <span>{Math.round(video.rate * 10)}% Up</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="p-3">
-                  <h3 className="mb-2 line-clamp-2 text-sm font-medium text-slate-900 dark:text-white">
-                    {video.title}
-                  </h3>
-                  <div className="mb-3 flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
-                    <span>{video.views.toLocaleString()} views</span>
-                    <span>★ {video.rate.toFixed(1)}</span>
-                  </div>
-                  <a
-                    href={video.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                  >
-                    Watch Video
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              </div>
+              </a>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {!loading && videos.length === 0 && searchQuery && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-800/50">
-            <p className="text-slate-600 dark:text-slate-400">No videos found. Try a different search term.</p>
-          </div>
-        )}
-      </div>
+      {!loading && videos.length === 0 && searchQuery && (
+        <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-8 text-center">
+          <p className="text-slate-400">No videos found. Try a different search term.</p>
+        </div>
+      )}
     </div>
   )
 }
