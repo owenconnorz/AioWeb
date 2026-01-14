@@ -432,16 +432,18 @@ export function PornVideos() {
                           <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
                             {video.title}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-slate-400">
-                            <div className="flex items-center gap-1.5">
-                              <Eye className="h-4 w-4" />
-                              <span>{video.views ? `${(video.views / 1000).toFixed(0)}K` : "0K"} Views</span>
+                          {apiSource === "eporner" && (
+                            <div className="flex items-center gap-4 text-sm text-slate-400">
+                              <div className="flex items-center gap-1.5">
+                                <Eye className="h-4 w-4" />
+                                <span>{video.views ? `${(video.views / 1000).toFixed(0)}K` : "0K"} Views</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <ThumbsUp className="h-4 w-4" />
+                                <span>{video.rate ? `${Math.round(video.rate * 10)}%` : "0%"} Up</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <ThumbsUp className="h-4 w-4" />
-                              <span>{video.rate ? `${Math.round(video.rate * 10)}%` : "0%"} Up</span>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -612,16 +614,6 @@ export function PornVideos() {
                           <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
                             {video.title}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-slate-400">
-                            <div className="flex items-center gap-1.5">
-                              <Eye className="h-4 w-4" />
-                              <span>{video.views ? `${(video.views / 1000).toFixed(0)}K` : "0K"} Views</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <ThumbsUp className="h-4 w-4" />
-                              <span>{video.rate ? `${Math.round(video.rate * 10)}%` : "0%"} Up</span>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </button>
@@ -679,16 +671,6 @@ export function PornVideos() {
                           <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
                             {video.title}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-slate-400">
-                            <div className="flex items-center gap-1.5">
-                              <Eye className="h-4 w-4" />
-                              <span>{video.views ? `${(video.views / 1000).toFixed(0)}K` : "0K"} Views</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <ThumbsUp className="h-4 w-4" />
-                              <span>{video.rate ? `${Math.round(video.rate * 10)}%` : "0%"} Up</span>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </button>
@@ -790,14 +772,18 @@ export function PornVideos() {
             <div className="mt-4 space-y-2">
               <h3 className="text-xl font-semibold text-white">{selectedVideo.title}</h3>
               <div className="flex items-center gap-4 text-sm text-slate-400">
-                <div className="flex items-center gap-1.5">
-                  <Eye className="h-4 w-4" />
-                  <span>{selectedVideo.views ? `${(selectedVideo.views / 1000).toFixed(0)}K` : "0K"} Views</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <ThumbsUp className="h-4 w-4" />
-                  <span>{selectedVideo.rate ? `${Math.round(selectedVideo.rate * 10)}%` : "0%"} Up</span>
-                </div>
+                {selectedVideo.views && (
+                  <div className="flex items-center gap-1.5">
+                    <Eye className="h-4 w-4" />
+                    <span>{selectedVideo.views ? `${(selectedVideo.views / 1000).toFixed(0)}K` : "0K"} Views</span>
+                  </div>
+                )}
+                {selectedVideo.rate && (
+                  <div className="flex items-center gap-1.5">
+                    <ThumbsUp className="h-4 w-4" />
+                    <span>{selectedVideo.rate ? `${Math.round(selectedVideo.rate * 10)}%` : "0%"} Up</span>
+                  </div>
+                )}
                 {selectedVideo.length_min && <span>{selectedVideo.length_min}</span>}
               </div>
             </div>
