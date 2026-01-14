@@ -1,12 +1,25 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 interface XvidapiVideo {
-  vod_id: number
-  vod_name: string
-  vod_pic: string
-  vod_remarks: string
-  vod_time: string
-  vod_play_url: string
+  id?: number
+  name?: string
+  slug?: string
+  origin_name?: string
+  tag?: string
+  category?: string[]
+  poster?: string
+  episodes?: {
+    server_name?: string
+    server_data?: {
+      [key: string]: {
+        slug?: string
+        title?: string
+        link_embed?: string
+      }
+    }
+  }
+  created_at?: string
+  updated_at?: string
 }
 
 export async function GET(request: NextRequest) {
@@ -77,32 +90,62 @@ async function searchXvidapi(query: string) {
   }
 
   const data = await response.json()
-  console.log("[v0] xvidapi API response:", data)
+  console.log("[v0] xvidapi raw response sample:", JSON.stringify(data.list?.[0] || {}).slice(0, 800))
 
   const transformedVideos = (data.list || []).slice(0, 12).map((video: XvidapiVideo) => {
-    const playUrl = video.vod_play_url ? video.vod_play_url.split("$")[1] || "" : ""
-    const duration = video.vod_remarks || "Unknown"
+    const videoId = video.slug || video.id != null ? String(video.id) : `temp-${Date.now()}-${Math.random()}`
+
+    let embedUrl = ""
+    let duration = "Unknown"
+    let thumbnail = ""
+
+    // Get poster/thumbnail from the poster field
+    if (video.poster) {
+      thumbnail = video.poster
+    }
+
+    // Extract embed URL from episodes data
+    if (video.episodes?.server_data) {
+      const firstServer = Object.values(video.episodes.server_data)[0]
+      if (firstServer?.link_embed) {
+        embedUrl = firstServer.link_embed
+        // Extract duration from title if available (e.g., "Full - Title")
+        const titleText = firstServer.title || ""
+        const parts = titleText.split(" - ")
+        if (parts.length > 0 && parts[0].includes(":")) {
+          duration = parts[0]
+        }
+      }
+    }
+
+    const title = video.name || video.origin_name || "Untitled"
+
+    console.log(`[v0] Transformed video ${videoId}: thumbnail=${thumbnail}, embed=${embedUrl}`)
 
     return {
-      id: video.vod_id.toString(),
-      title: video.vod_name,
-      keywords: "",
-      views: 0,
-      rate: 0,
-      url: playUrl,
-      added: video.vod_time,
+      id: videoId,
+      title: title,
+      keywords: video.tag || "",
+      views: 0, // xvidapi doesn't provide view counts
+      rate: 0, // xvidapi doesn't provide ratings
+      url: embedUrl,
+      added: video.updated_at || video.created_at || "",
       length_sec: 0,
       length_min: duration,
-      embed: playUrl,
-      default_thumb: {
-        src: video.vod_pic || "/placeholder.svg",
-        size: "640x360",
-        width: 640,
-        height: 360,
-      },
+      embed: embedUrl,
+      default_thumb: thumbnail
+        ? {
+            src: thumbnail,
+            size: "640x360",
+            width: 640,
+            height: 360,
+          }
+        : null,
       thumbs: [],
     }
   })
+
+  console.log(`[v0] Returning ${transformedVideos.length} transformed videos`)
 
   return NextResponse.json({
     videos: transformedVideos,

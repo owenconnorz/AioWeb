@@ -415,11 +415,19 @@ export function PornVideos() {
                           </div>
                         )}
 
-                        {apiSource === "xvidapi" && (
+                        {(apiSource === "xvidapi" || !video.default_thumb?.src) && (
                           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
-                              <Play className="h-16 w-16 text-white/60" />
-                            </div>
+                            {video.default_thumb?.src ? (
+                              <img
+                                src={video.default_thumb.src || "/placeholder.svg"}
+                                alt={video.title}
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
+                                <Play className="h-16 w-16 text-white/60" />
+                              </div>
+                            )}
                             {video.length_min && (
                               <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
                                 {video.length_min}
@@ -762,17 +770,30 @@ export function PornVideos() {
               onClick={closeVideo}
               className="absolute -top-12 right-0 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm hover:bg-white/20"
             >
-              <X className="h-6 w-6" />
+              <X className="h-6 w-6 text-white" />
             </button>
+
             <div className="aspect-video w-full overflow-hidden rounded-lg">
-              <iframe
-                src={selectedVideo.embed}
-                className="h-full w-full"
-                frameBorder="0"
-                allowFullScreen
-                title={selectedVideo.title}
-              />
+              {apiSource === "eporner" && (
+                <iframe
+                  src={`https://www.eporner.com/embed/${selectedVideo.id}`}
+                  className="h-full w-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  title={selectedVideo.title}
+                />
+              )}
+              {apiSource === "xvidapi" && selectedVideo.embed && (
+                <iframe
+                  src={selectedVideo.embed}
+                  className="h-full w-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  title={selectedVideo.title}
+                />
+              )}
             </div>
+
             <div className="mt-4 space-y-2">
               <h3 className="text-xl font-semibold text-white">{selectedVideo.title}</h3>
               <div className="flex items-center gap-4 text-sm text-slate-400">
