@@ -140,7 +140,7 @@ async function fetchRedGifs(query: string, page: number) {
       const authData = await authResponse.json()
       cachedToken = {
         token: authData.token,
-        expires: now + 3600000, // Cache for 1 hour
+        expires: now + 3600000,
       }
       console.log("[v0] RedGifs new token obtained successfully")
     } else {
@@ -178,10 +178,17 @@ async function fetchRedGifs(query: string, page: number) {
     const galleries =
       data.gifs?.map((gif: any) => {
         const thumbnail = gif.urls?.poster || gif.urls?.thumbnail || ""
-        const videoUrl = gif.urls?.sd || gif.urls?.hd || ""
+        const videoUrl = gif.urls?.sd || gif.urls?.hd || gif.urls?.mobile || gif.urls?.vthumbnail || ""
         const title = gif.tags && gif.tags.length > 0 ? gif.tags.join(", ") : gif.userName || gif.id || "Untitled"
 
-        console.log("[v0] Processing gif:", gif.id, "thumbnail:", thumbnail?.substring(0, 80))
+        console.log(
+          "[v0] Processing gif:",
+          gif.id,
+          "thumbnail:",
+          thumbnail?.substring(0, 80),
+          "videoUrl:",
+          videoUrl?.substring(0, 80),
+        )
 
         return {
           id: gif.id || Math.random().toString(),
@@ -200,6 +207,8 @@ async function fetchRedGifs(query: string, page: number) {
       galleries.length,
       "first thumbnail:",
       galleries[0]?.thumbnail?.substring(0, 80),
+      "first video:",
+      galleries[0]?.url?.substring(0, 80),
     )
 
     return NextResponse.json({

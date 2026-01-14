@@ -33,9 +33,13 @@ export function PornPictures() {
   const observerTarget = useRef<HTMLDivElement>(null)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
 
+  const getVideoUrl = (url: string) => {
+    return url
+  }
+
   const getProxiedUrl = (url: string) => {
-    if (apiSource === "redgifs" && url && url.includes("redgifs.com")) {
-      return `/api/proxy-media?url=${encodeURIComponent(url)}`
+    if (url.includes("media.redgifs.com") || url.includes("redgifs.com")) {
+      return url
     }
     return url
   }
@@ -54,9 +58,14 @@ export function PornPictures() {
       videoRefs.current.forEach((video, idx) => {
         if (video) {
           if (idx === currentVideoIndex) {
+            video.load()
             video.play().catch(() => {})
+          } else if (idx === currentVideoIndex + 1 || idx === currentVideoIndex - 1) {
+            video.load()
           } else {
             video.pause()
+            video.removeAttribute("src")
+            video.load()
           }
         }
       })
@@ -157,11 +166,12 @@ export function PornPictures() {
                 ref={(el) => {
                   videoRefs.current[index] = el
                 }}
-                src={`/api/proxy-media?url=${encodeURIComponent(gallery.url)}`}
-                poster={`/api/proxy-media?url=${encodeURIComponent(gallery.thumbnail)}`}
+                src={gallery.url}
+                poster={gallery.thumbnail}
                 loop
                 playsInline
                 muted
+                preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
                 className="h-full w-full object-contain bg-black"
               />
 
@@ -304,13 +314,11 @@ export function PornPictures() {
                     <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
                       {gallery.isVideo && apiSource === "redgifs" ? (
                         <div className="relative h-full w-full">
-                          <video
-                            src={`/api/proxy-media?url=${encodeURIComponent(gallery.url)}`}
-                            poster={`/api/proxy-media?url=${encodeURIComponent(gallery.thumbnail)}`}
+                          <img
+                            src={gallery.thumbnail || "/placeholder.svg"}
+                            alt={gallery.title}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            muted
-                            playsInline
-                            preload="metadata"
+                            loading="lazy"
                           />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                             <div className="rounded-full bg-purple-600/90 p-4 backdrop-blur-sm transition-transform group-hover:scale-110">
@@ -360,13 +368,14 @@ export function PornPictures() {
             {selectedGallery.isVideo && selectedGallery.url ? (
               <video
                 key={selectedGallery.id}
-                src={`/api/proxy-media?url=${encodeURIComponent(selectedGallery.url)}`}
-                poster={`/api/proxy-media?url=${encodeURIComponent(selectedGallery.thumbnail)}`}
+                src={selectedGallery.url}
+                poster={selectedGallery.thumbnail}
                 controls
                 autoPlay
                 loop
                 className="max-h-[80vh] w-full rounded-lg bg-black"
                 playsInline
+                preload="auto"
               />
             ) : (
               <img
