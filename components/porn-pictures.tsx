@@ -18,6 +18,8 @@ interface Gallery {
   isVideo?: boolean
 }
 
+const loadingCache = new Map<string, Promise<void>>()
+
 export function PornPictures() {
   const [searchQuery, setSearchQuery] = useState("")
   const [galleries, setGalleries] = useState<Gallery[]>([])
@@ -33,6 +35,7 @@ export function PornPictures() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
+  const playingVideos = useRef<Set<number>>(new Set())
 
   const getVideoUrl = (url: string) => {
     if (apiSource === "redgifs" && url.includes("redgifs.com")) {
@@ -48,6 +51,50 @@ export function PornPictures() {
     return url
   }
 
+  const preloadVideo = (video: HTMLVideoElement, priority: "high" | "medium" | "low") => {
+    const url = video.src
+    if (!url || loadingCache.has(url)) return
+
+    const loadPromise = new Promise<void>((resolve) => {
+      if (video.readyState >= 2) {
+        resolve()
+        return
+      }
+
+      if (priority === "high") {
+        video.preload = "auto"
+      } else if (priority === "medium") {
+        video.preload = "metadata"
+      } else {
+        video.preload = "none"
+        resolve()
+        return
+      }
+
+      const handleCanPlay = () => {
+        video.removeEventListener("canplay", handleCanPlay)
+        video.removeEventListener("error", handleError)
+        loadingCache.delete(url)
+        resolve()
+      }
+
+      const handleError = () => {
+        video.removeEventListener("canplay", handleCanPlay)
+        video.removeEventListener("error", handleError)
+        loadingCache.delete(url)
+        resolve()
+      }
+
+      video.addEventListener("canplay", handleCanPlay, { once: true })
+      video.addEventListener("error", handleError, { once: true })
+
+      video.load()
+    })
+
+    loadingCache.set(url, loadPromise)
+    return loadPromise
+  }
+
   useEffect(() => {
     setGalleries([])
     setError("")
@@ -57,68 +104,77 @@ export function PornPictures() {
   }, [apiSource])
 
   useEffect(() => {
-    if (feedView && videoRefs.current[currentVideoIndex]) {
-      videoRefs.current.forEach((video, idx) => {
-        if (video) {
-          const distance = Math.abs(idx - currentVideoIndex)
+    if (!feedView || apiSource !== "redgifs") return
 
-          if (idx === currentVideoIndex) {
-            // Current video: load and play
-            video.preload = "auto"
-            if (video.readyState < 2) {
-              video.load()
-            }
-            video.play().catch(() => {})
-          } else if (distance === 1) {
-            // Adjacent videos: preload metadata and buffer
-            video.preload = "auto"
-            video.load()
-          } else if (distance === 2) {
-            // Videos 2 positions away: preload metadata only
-            video.preload = "metadata"
-          } else {
-            // Far videos: don't preload, free resources
+    const timeoutId = setTimeout(() => {
+      videoRefs.current.forEach((video, idx) => {
+        if (!video) return
+
+        const distance = Math.abs(idx - currentVideoIndex)
+
+        if (idx === currentVideoIndex) {
+          // Current video: high priority
+          preloadVideo(video, "high")
+          if (!playingVideos.current.has(idx)) {
+            playingVideos.current.add(idx)
+            video.play().catch(() => {
+              playingVideos.current.delete(idx)
+            })
+          }
+        } else if (distance === 1) {
+          // Adjacent videos: medium priority
+          preloadVideo(video, "medium")
+          if (playingVideos.current.has(idx)) {
             video.pause()
-            video.preload = "none"
-            video.currentTime = 0
+            playingVideos.current.delete(idx)
+          }
+        } else {
+          // Far videos: pause and unload
+          if (playingVideos.current.has(idx)) {
+            video.pause()
+            playingVideos.current.delete(idx)
+          }
+          video.preload = "none"
+          if (distance > 3) {
+            video.src = video.src // Reset to free memory
           }
         }
       })
-    }
-  }, [currentVideoIndex, feedView])
+    }, 150) // Debounce to prevent rapid changes
+
+    return () => clearTimeout(timeoutId)
+  }, [currentVideoIndex, feedView, apiSource])
 
   useEffect(() => {
     if (!feedView || apiSource !== "redgifs") return
 
-    const options = {
-      root: null,
-      rootMargin: "0px",
-      threshold: 0.75,
-    }
+    const handleScroll = () => {
+      const container = document.querySelector(".feed-container")
+      if (!container) return
 
-    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach((entry) => {
-        const video = entry.target as HTMLVideoElement
-        if (entry.isIntersecting) {
-          video.play().catch((err) => console.error("[v0] Video play failed:", err))
-        } else {
-          video.pause()
+      const containerRect = container.getBoundingClientRect()
+      const containerHeight = containerRect.height
+
+      videoRefs.current.forEach((video, idx) => {
+        if (!video) return
+
+        const videoRect = video.getBoundingClientRect()
+        const videoCenter = videoRect.top + videoRect.height / 2
+        const isInView = videoCenter >= 0 && videoCenter <= containerHeight
+
+        if (isInView && idx !== currentVideoIndex) {
+          setCurrentVideoIndex(idx)
         }
       })
     }
 
-    const observer = new IntersectionObserver(handleIntersection, options)
-
-    videoRefs.current.forEach((video) => {
-      if (video) {
-        observer.observe(video)
-      }
-    })
+    const container = document.querySelector(".feed-container")
+    container?.addEventListener("scroll", handleScroll, { passive: true })
 
     return () => {
-      observer.disconnect()
+      container?.removeEventListener("scroll", handleScroll)
     }
-  }, [feedView, apiSource, galleries])
+  }, [feedView, apiSource, currentVideoIndex])
 
   useEffect(() => {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
@@ -211,17 +267,6 @@ export function PornPictures() {
     setSelectedGallery(null)
   }
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget
-    const scrollPosition = container.scrollTop
-    const windowHeight = window.innerHeight
-    const newIndex = Math.round(scrollPosition / windowHeight)
-
-    if (newIndex !== currentVideoIndex && newIndex >= 0 && newIndex < galleries.length) {
-      setCurrentVideoIndex(newIndex)
-    }
-  }
-
   const handleRefresh = () => {
     setRefreshKey((prev) => prev + 1)
     loadGalleries()
@@ -246,7 +291,7 @@ export function PornPictures() {
           <ArrowRight className="h-6 w-6 rotate-90 text-white" />
         </button>
 
-        <div className="h-screen w-full snap-y snap-mandatory overflow-y-scroll" onScroll={handleScroll}>
+        <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
           {galleries.map((gallery, index) => (
             <div key={gallery.id} className="relative h-screen w-full snap-start snap-always">
               <video
@@ -258,8 +303,6 @@ export function PornPictures() {
                 loop
                 playsInline
                 muted
-                autoPlay={index === 0}
-                preload={index === 0 ? "auto" : Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
                 className="h-full w-full object-contain bg-black"
                 crossOrigin="anonymous"
               />
