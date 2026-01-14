@@ -120,6 +120,30 @@ export function PornPictures() {
     }
   }, [feedView, apiSource, galleries])
 
+  useEffect(() => {
+    const mainNav = document.querySelector("nav.fixed.bottom-4")
+    const topNav = document.querySelector(".glass-nav-pill")
+
+    if (feedView && apiSource === "redgifs") {
+      if (mainNav) (mainNav as HTMLElement).style.display = "none"
+      if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
+        ;(topNav.parentElement as HTMLElement).style.display = "none"
+      }
+    } else {
+      if (mainNav) (mainNav as HTMLElement).style.display = ""
+      if (topNav && topNav.parentElement) {
+        ;(topNav.parentElement as HTMLElement).style.display = ""
+      }
+    }
+
+    return () => {
+      if (mainNav) (mainNav as HTMLElement).style.display = ""
+      if (topNav && topNav.parentElement) {
+        ;(topNav.parentElement as HTMLElement).style.display = ""
+      }
+    }
+  }, [feedView, apiSource])
+
   const loadGalleries = async () => {
     try {
       setLoading(true)
