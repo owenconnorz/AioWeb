@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
-import { Sparkles, ImageIcon, Users, Settings, Video } from "lucide-react"
+import { PornVideos } from "@/components/porn-videos"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("image")
@@ -81,6 +82,14 @@ export default function Home() {
             </Card>
           )}
 
+          {activeTab === "porn" && (
+            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+              <CardContent className="p-4 sm:p-6">
+                <PornVideos />
+              </CardContent>
+            </Card>
+          )}
+
           {activeTab === "settings" && (
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
@@ -109,6 +118,15 @@ export default function Home() {
           >
             <Video className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="nav-label">Video</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("porn")}
+            className={`nav-item ${activeTab === "porn" ? "active" : ""}`}
+            aria-label="Porn Videos"
+          >
+            <Film className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Porn</span>
           </button>
 
           <button
