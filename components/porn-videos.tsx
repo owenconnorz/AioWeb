@@ -394,7 +394,7 @@ export function PornVideos() {
                   <div key={video.id} className="group relative">
                     <button onClick={() => openVideo(video)} className="block w-full text-left">
                       <div className="space-y-3">
-                        {apiSource === "eporner" && video.default_thumb && (
+                        {apiSource === "eporner" && video.default_thumb?.src && (
                           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
                             <img
                               src={video.default_thumb.src || "/placeholder.svg"}
@@ -407,9 +407,11 @@ export function PornVideos() {
                                 <Play className="h-8 w-8 text-white" fill="white" />
                               </div>
                             </div>
-                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                              {video.length_min}
-                            </div>
+                            {video.length_min && (
+                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                                {video.length_min}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -418,9 +420,11 @@ export function PornVideos() {
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
                               <Play className="h-16 w-16 text-white/60" />
                             </div>
-                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                              {video.length_min}
-                            </div>
+                            {video.length_min && (
+                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                                {video.length_min}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -431,11 +435,11 @@ export function PornVideos() {
                           <div className="flex items-center gap-4 text-sm text-slate-400">
                             <div className="flex items-center gap-1.5">
                               <Eye className="h-4 w-4" />
-                              <span>{(video.views / 1000).toFixed(0)}K Views</span>
+                              <span>{video.views ? `${(video.views / 1000).toFixed(0)}K` : "0K"} Views</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <ThumbsUp className="h-4 w-4" />
-                              <span>{Math.round(video.rate * 10)}% Up</span>
+                              <span>{video.rate ? `${Math.round(video.rate * 10)}%` : "0%"} Up</span>
                             </div>
                           </div>
                         </div>
@@ -572,7 +576,7 @@ export function PornVideos() {
                   {getPlaylistVideos().map((video) => (
                     <button key={video.id} onClick={() => openVideo(video)} className="group block w-full text-left">
                       <div className="space-y-3">
-                        {apiSource === "eporner" && video.default_thumb && (
+                        {video.default_thumb?.src ? (
                           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
                             <img
                               src={video.default_thumb.src || "/placeholder.svg"}
@@ -585,20 +589,22 @@ export function PornVideos() {
                                 <Play className="h-8 w-8 text-white" fill="white" />
                               </div>
                             </div>
-                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                              {video.length_min}
-                            </div>
+                            {video.length_min && (
+                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                                {video.length_min}
+                              </div>
+                            )}
                           </div>
-                        )}
-
-                        {apiSource === "xvidapi" && (
+                        ) : (
                           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
                               <Play className="h-16 w-16 text-white/60" />
                             </div>
-                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                              {video.length_min}
-                            </div>
+                            {video.length_min && (
+                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                                {video.length_min}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -609,11 +615,11 @@ export function PornVideos() {
                           <div className="flex items-center gap-4 text-sm text-slate-400">
                             <div className="flex items-center gap-1.5">
                               <Eye className="h-4 w-4" />
-                              <span>{(video.views / 1000).toFixed(0)}K Views</span>
+                              <span>{video.views ? `${(video.views / 1000).toFixed(0)}K` : "0K"} Views</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <ThumbsUp className="h-4 w-4" />
-                              <span>{Math.round(video.rate * 10)}% Up</span>
+                              <span>{video.rate ? `${Math.round(video.rate * 10)}%` : "0%"} Up</span>
                             </div>
                           </div>
                         </div>
@@ -637,7 +643,7 @@ export function PornVideos() {
                   <div key={video.id} className="group relative">
                     <button onClick={() => openVideo(video)} className="block w-full text-left">
                       <div className="space-y-3">
-                        {apiSource === "eporner" && video.default_thumb && (
+                        {video.default_thumb?.src ? (
                           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
                             <img
                               src={video.default_thumb.src || "/placeholder.svg"}
@@ -650,20 +656,22 @@ export function PornVideos() {
                                 <Play className="h-8 w-8 text-white" fill="white" />
                               </div>
                             </div>
-                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                              {video.length_min}
-                            </div>
+                            {video.length_min && (
+                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                                {video.length_min}
+                              </div>
+                            )}
                           </div>
-                        )}
-
-                        {apiSource === "xvidapi" && (
+                        ) : (
                           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
                               <Play className="h-16 w-16 text-white/60" />
                             </div>
-                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                              {video.length_min}
-                            </div>
+                            {video.length_min && (
+                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                                {video.length_min}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -674,11 +682,11 @@ export function PornVideos() {
                           <div className="flex items-center gap-4 text-sm text-slate-400">
                             <div className="flex items-center gap-1.5">
                               <Eye className="h-4 w-4" />
-                              <span>{(video.views / 1000).toFixed(0)}K Views</span>
+                              <span>{video.views ? `${(video.views / 1000).toFixed(0)}K` : "0K"} Views</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <ThumbsUp className="h-4 w-4" />
-                              <span>{Math.round(video.rate * 10)}% Up</span>
+                              <span>{video.rate ? `${Math.round(video.rate * 10)}%` : "0%"} Up</span>
                             </div>
                           </div>
                         </div>
@@ -784,13 +792,13 @@ export function PornVideos() {
               <div className="flex items-center gap-4 text-sm text-slate-400">
                 <div className="flex items-center gap-1.5">
                   <Eye className="h-4 w-4" />
-                  <span>{(selectedVideo.views / 1000).toFixed(0)}K Views</span>
+                  <span>{selectedVideo.views ? `${(selectedVideo.views / 1000).toFixed(0)}K` : "0K"} Views</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <ThumbsUp className="h-4 w-4" />
-                  <span>{Math.round(selectedVideo.rate * 10)}% Up</span>
+                  <span>{selectedVideo.rate ? `${Math.round(selectedVideo.rate * 10)}%` : "0%"} Up</span>
                 </div>
-                <span>{selectedVideo.length_min}</span>
+                {selectedVideo.length_min && <span>{selectedVideo.length_min}</span>}
               </div>
             </div>
           </div>
