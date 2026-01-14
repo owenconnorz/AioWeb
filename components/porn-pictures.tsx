@@ -1,10 +1,11 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import type React from "react"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, ExternalLink, Loader2, ArrowRight } from "lucide-react"
+import { Search, ExternalLink, Loader2, ArrowRight, X, Play } from "lucide-react"
 
 interface Gallery {
   id: string
@@ -14,6 +15,7 @@ interface Gallery {
   preview: string
   tags: string[]
   photos?: string[]
+  isVideo?: boolean
 }
 
 export function PornPictures() {
@@ -25,7 +27,15 @@ export function PornPictures() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [apiSource, setApiSource] = useState<"pornpics" | "redgifs">("pornpics")
+  const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null)
   const observerTarget = useRef<HTMLDivElement>(null)
+
+  const getProxiedUrl = (url: string) => {
+    if (apiSource === "redgifs" && url && url.includes("redgifs.com")) {
+      return `/api/proxy-media?url=${encodeURIComponent(url)}`
+    }
+    return url
+  }
 
   useEffect(() => {
     setGalleries([])
@@ -87,7 +97,15 @@ export function PornPictures() {
   }
 
   const handleCategoryClick = (gallery: Gallery) => {
-    window.open(gallery.url, "_blank", "noopener,noreferrer")
+    if (apiSource === "redgifs") {
+      setSelectedGallery(gallery)
+    } else {
+      window.open(gallery.url, "_blank", "noopener,noreferrer")
+    }
+  }
+
+  const closeModal = () => {
+    setSelectedGallery(null)
   }
 
   return (
@@ -179,21 +197,32 @@ export function PornPictures() {
                       )}
                     </div>
 
-                    <div className="aspect-video w-full overflow-hidden bg-slate-900">
-                      {gallery.thumbnail ? (
-                        <img
+                    <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
+                      {gallery.isVideo && apiSource === "redgifs" ? (
+                        <div className="relative h-full w-full">
+                          <video
+                            src={`/api/proxy-media?url=${encodeURIComponent(gallery.url)}`}
+                            poster={`/api/proxy-media?url=${encodeURIComponent(gallery.thumbnail)}`}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <div className="rounded-full bg-purple-600/90 p-4 backdrop-blur-sm transition-transform group-hover:scale-110">
+                              <Play className="h-8 w-8 text-white" fill="white" />
+                            </div>
+                          </div>
+                        </div>
+                      ) : gallery.thumbnail ? (
+                        <Image
                           src={gallery.thumbnail || "/placeholder.svg"}
                           alt={gallery.title}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
                           loading="lazy"
-                          onError={(e) => {
-                            console.log("[v0] Image failed to load:", gallery.thumbnail)
-                            e.currentTarget.style.display = "none"
-                            const parent = e.currentTarget.parentElement
-                            if (parent) {
-                              parent.innerHTML = `<div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900"><svg class="h-16 w-16 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg></div>`
-                            }
-                          }}
+                          unoptimized
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
@@ -211,6 +240,39 @@ export function PornPictures() {
             <p className="text-center text-sm text-slate-500 dark:text-slate-400">No categories found</p>
           )}
         </>
+      )}
+
+      {selectedGallery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4" onClick={closeModal}>
+          <button
+            onClick={closeModal}
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-3 backdrop-blur-sm transition-colors hover:bg-white/20"
+            aria-label="Close modal"
+          >
+            <X className="h-6 w-6 text-white" />
+          </button>
+          <div className="max-h-[90vh] w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-4 text-center text-2xl font-bold text-white">{selectedGallery.title}</h3>
+            {selectedGallery.isVideo && selectedGallery.url ? (
+              <video
+                key={selectedGallery.id}
+                src={`/api/proxy-media?url=${encodeURIComponent(selectedGallery.url)}`}
+                poster={`/api/proxy-media?url=${encodeURIComponent(selectedGallery.thumbnail)}`}
+                controls
+                autoPlay
+                loop
+                className="max-h-[80vh] w-full rounded-lg bg-black"
+                playsInline
+              />
+            ) : (
+              <img
+                src={selectedGallery.url || "/placeholder.svg"}
+                alt={selectedGallery.title}
+                className="max-h-[80vh] w-full rounded-lg object-contain"
+              />
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

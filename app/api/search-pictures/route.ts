@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+let cachedToken: { token: string; expires: number } | null = null
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -119,21 +121,33 @@ async function fetchPornPics({
 
 async function fetchRedGifs(query: string, page: number) {
   try {
-    const authResponse = await fetch("https://api.redgifs.com/v2/auth/temporary", {
-      method: "GET",
-      headers: {
-        "User-Agent": "NaughtyAI/1.0",
-      },
-    })
+    const now = Date.now()
+    if (!cachedToken || cachedToken.expires < now) {
+      const authResponse = await fetch("https://api.redgifs.com/v2/auth/temporary", {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          Accept: "application/json",
+        },
+      })
 
-    if (!authResponse.ok) {
-      throw new Error(`RedGifs auth failed: ${authResponse.status}`)
+      if (!authResponse.ok) {
+        const errorText = await authResponse.text()
+        console.error("[v0] RedGifs auth failed:", authResponse.status, errorText)
+        throw new Error(`RedGifs auth failed: ${authResponse.status}`)
+      }
+
+      const authData = await authResponse.json()
+      cachedToken = {
+        token: authData.token,
+        expires: now + 3600000, // Cache for 1 hour
+      }
+      console.log("[v0] RedGifs new token obtained successfully")
+    } else {
+      console.log("[v0] RedGifs using cached token")
     }
 
-    const authData = await authResponse.json()
-    const accessToken = authData.token
-
-    console.log("[v0] RedGifs token obtained successfully")
+    const accessToken = cachedToken.token
 
     const endpoint = query
       ? `https://api.redgifs.com/v2/gifs/search?search_text=${encodeURIComponent(query)}&order=trending&count=40&page=${page}`
@@ -141,7 +155,8 @@ async function fetchRedGifs(query: string, page: number) {
 
     const response = await fetch(endpoint, {
       headers: {
-        "User-Agent": "NaughtyAI/1.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
     })
@@ -149,6 +164,11 @@ async function fetchRedGifs(query: string, page: number) {
     if (!response.ok) {
       const errorBody = await response.text()
       console.error("[v0] RedGifs API error:", response.status, errorBody)
+      if (response.status === 401) {
+        cachedToken = null
+        console.log("[v0] Token invalid, retrying with fresh token...")
+        return fetchRedGifs(query, page)
+      }
       throw new Error(`RedGifs API returned ${response.status}`)
     }
 
@@ -157,23 +177,30 @@ async function fetchRedGifs(query: string, page: number) {
 
     const galleries =
       data.gifs?.map((gif: any) => {
-        const thumbnail = gif.urls?.poster || gif.urls?.thumbnail || gif.urls?.vthumbnail || gif.urls?.sd || ""
+        const thumbnail = gif.urls?.poster || gif.urls?.thumbnail || ""
+        const videoUrl = gif.urls?.sd || gif.urls?.hd || ""
         const title = gif.tags && gif.tags.length > 0 ? gif.tags.join(", ") : gif.userName || gif.id || "Untitled"
 
-        console.log("[v0] Processing gif:", gif.id, "thumbnail:", thumbnail)
+        console.log("[v0] Processing gif:", gif.id, "thumbnail:", thumbnail?.substring(0, 80))
 
         return {
           id: gif.id || Math.random().toString(),
           title: title,
-          url: `https://redgifs.com/watch/${gif.id}`,
+          url: videoUrl,
           thumbnail: thumbnail,
           preview: thumbnail,
           tags: gif.tags || [],
           photoCount: 1,
+          isVideo: true,
         }
       }) || []
 
-    console.log("[v0] Processed galleries:", galleries.length, "first thumbnail:", galleries[0]?.thumbnail)
+    console.log(
+      "[v0] Processed galleries:",
+      galleries.length,
+      "first thumbnail:",
+      galleries[0]?.thumbnail?.substring(0, 80),
+    )
 
     return NextResponse.json({
       galleries,
