@@ -15,6 +15,7 @@ import {
   List,
   Trash2,
   Grid,
+  Menu,
 } from "lucide-react"
 
 interface Video {
@@ -52,6 +53,39 @@ interface Playlist {
 type ViewMode = "browse" | "library"
 type ApiSource = "eporner" | "xvidapi"
 
+const XVIDAPI_CATEGORIES = [
+  "xvidapi",
+  "AI",
+  "Amateur",
+  "Anal",
+  "Arab",
+  "Asian Woman",
+  "ASMR",
+  "Ass",
+  "Ass to Mouth",
+  "BBW",
+  "BDSM",
+  "Big Ass",
+  "Big Tits",
+  "Blonde",
+  "Blowjob",
+  "Brunette",
+  "Compilation",
+  "Creampie",
+  "Cumshot",
+  "Ebony",
+  "Fetish",
+  "Hardcore",
+  "Hentai",
+  "Latina",
+  "Lesbian",
+  "MILF",
+  "POV",
+  "Public",
+  "Teen",
+  "Threesome",
+]
+
 export function PornVideos() {
   const [searchQuery, setSearchQuery] = useState("")
   const [videos, setVideos] = useState<Video[]>([])
@@ -66,6 +100,8 @@ export function PornVideos() {
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState("")
   const [showAddToPlaylist, setShowAddToPlaylist] = useState<string | null>(null)
+  const [showCategories, setShowCategories] = useState(false) // Added state for categories menu
+  const [selectedCategory, setSelectedCategory] = useState<string>("") // Track selected category
 
   useEffect(() => {
     loadVideos()
@@ -174,12 +210,12 @@ export function PornVideos() {
     }
   }
 
-  const loadVideos = async (query = "") => {
+  const loadVideos = async (query = "", category = "") => {
     setLoading(true)
     setError("")
 
     try {
-      const searchParam = query || "popular"
+      const searchParam = category || query || "popular"
       const response = await fetch(`/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}`)
       const data = await response.json()
 
@@ -228,6 +264,12 @@ export function PornVideos() {
     return savedVideos.filter((v) => playlist.videoIds.includes(v.id))
   }
 
+  const handleCategorySelect = async (category: string) => {
+    setSelectedCategory(category)
+    setShowCategories(false)
+    await loadVideos("", category)
+  }
+
   return (
     <div className="space-y-6 pb-24">
       <div className="flex flex-wrap items-center gap-2">
@@ -259,33 +301,46 @@ export function PornVideos() {
         </div>
 
         {viewMode === "browse" && (
-          <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
-            <span className="px-2 text-xs text-slate-400">API:</span>
-            <Button
-              onClick={() => setApiSource("eporner")}
-              size="sm"
-              variant="ghost"
-              className={
-                apiSource === "eporner"
-                  ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
-                  : "text-slate-400 hover:bg-slate-700 hover:text-white"
-              }
-            >
-              EPorner
-            </Button>
-            <Button
-              onClick={() => setApiSource("xvidapi")}
-              size="sm"
-              variant="ghost"
-              className={
-                apiSource === "xvidapi"
-                  ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
-                  : "text-slate-400 hover:bg-slate-700 hover:text-white"
-              }
-            >
-              XvidAPI
-            </Button>
-          </div>
+          <>
+            {apiSource === "xvidapi" && (
+              <Button
+                onClick={() => setShowCategories(true)}
+                variant="outline"
+                className="border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
+              >
+                <Menu className="mr-2 h-4 w-4" />
+                Categories
+              </Button>
+            )}
+
+            <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
+              <span className="px-2 text-xs text-slate-400">API:</span>
+              <Button
+                onClick={() => setApiSource("eporner")}
+                size="sm"
+                variant="ghost"
+                className={
+                  apiSource === "eporner"
+                    ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
+                    : "text-slate-400 hover:bg-slate-700 hover:text-white"
+                }
+              >
+                EPorner
+              </Button>
+              <Button
+                onClick={() => setApiSource("xvidapi")}
+                size="sm"
+                variant="ghost"
+                className={
+                  apiSource === "xvidapi"
+                    ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
+                    : "text-slate-400 hover:bg-slate-700 hover:text-white"
+                }
+              >
+                XvidAPI
+              </Button>
+            </div>
+          </>
         )}
       </div>
 
@@ -322,7 +377,11 @@ export function PornVideos() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold text-white">
-                  {searchQuery ? "Search Results" : "Hottest New Videos"}
+                  {selectedCategory
+                    ? `${selectedCategory} Videos`
+                    : searchQuery
+                      ? "Search Results"
+                      : "Hottest New Videos"}
                 </h2>
                 <button className="flex items-center gap-2 text-lg font-medium text-violet-500 hover:text-violet-400">
                   View All
@@ -335,22 +394,35 @@ export function PornVideos() {
                   <div key={video.id} className="group relative">
                     <button onClick={() => openVideo(video)} className="block w-full text-left">
                       <div className="space-y-3">
-                        <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                          <img
-                            src={video.default_thumb.src || "/placeholder.svg"}
-                            alt={video.title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                            <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
-                              <Play className="h-8 w-8 text-white" fill="white" />
+                        {apiSource === "eporner" && video.default_thumb && (
+                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
+                            <img
+                              src={video.default_thumb.src || "/placeholder.svg"}
+                              alt={video.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                              <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
+                                <Play className="h-8 w-8 text-white" fill="white" />
+                              </div>
+                            </div>
+                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                              {video.length_min}
                             </div>
                           </div>
-                          <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                            {video.length_min}
+                        )}
+
+                        {apiSource === "xvidapi" && (
+                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
+                              <Play className="h-16 w-16 text-white/60" />
+                            </div>
+                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                              {video.length_min}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="space-y-2">
                           <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
@@ -500,22 +572,35 @@ export function PornVideos() {
                   {getPlaylistVideos().map((video) => (
                     <button key={video.id} onClick={() => openVideo(video)} className="group block w-full text-left">
                       <div className="space-y-3">
-                        <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                          <img
-                            src={video.default_thumb.src || "/placeholder.svg"}
-                            alt={video.title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                            <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
-                              <Play className="h-8 w-8 text-white" fill="white" />
+                        {apiSource === "eporner" && video.default_thumb && (
+                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
+                            <img
+                              src={video.default_thumb.src || "/placeholder.svg"}
+                              alt={video.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                              <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
+                                <Play className="h-8 w-8 text-white" fill="white" />
+                              </div>
+                            </div>
+                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                              {video.length_min}
                             </div>
                           </div>
-                          <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                            {video.length_min}
+                        )}
+
+                        {apiSource === "xvidapi" && (
+                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
+                              <Play className="h-16 w-16 text-white/60" />
+                            </div>
+                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                              {video.length_min}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="space-y-2">
                           <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
@@ -552,22 +637,35 @@ export function PornVideos() {
                   <div key={video.id} className="group relative">
                     <button onClick={() => openVideo(video)} className="block w-full text-left">
                       <div className="space-y-3">
-                        <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                          <img
-                            src={video.default_thumb.src || "/placeholder.svg"}
-                            alt={video.title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                            <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
-                              <Play className="h-8 w-8 text-white" fill="white" />
+                        {apiSource === "eporner" && video.default_thumb && (
+                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
+                            <img
+                              src={video.default_thumb.src || "/placeholder.svg"}
+                              alt={video.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                              <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
+                                <Play className="h-8 w-8 text-white" fill="white" />
+                              </div>
+                            </div>
+                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                              {video.length_min}
                             </div>
                           </div>
-                          <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                            {video.length_min}
+                        )}
+
+                        {apiSource === "xvidapi" && (
+                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
+                              <Play className="h-16 w-16 text-white/60" />
+                            </div>
+                            <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+                              {video.length_min}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="space-y-2">
                           <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
@@ -600,6 +698,37 @@ export function PornVideos() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showCategories && (
+        <div className="fixed inset-0 z-50 bg-black/95 p-4">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-4xl font-bold text-violet-400">Menu</h2>
+              <button
+                onClick={() => setShowCategories(false)}
+                className="rounded-full p-2 text-white hover:bg-white/10"
+              >
+                <X className="h-8 w-8" />
+              </button>
+            </div>
+
+            <div className="border-t border-slate-800 pt-6">
+              <h3 className="mb-4 text-2xl font-semibold text-cyan-400">VIDEO CATEGORIES</h3>
+              <div className="space-y-1">
+                {XVIDAPI_CATEGORIES.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => handleCategorySelect(category)}
+                    className="block w-full rounded-lg px-4 py-3 text-left text-xl text-white transition-colors hover:bg-slate-800"
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
