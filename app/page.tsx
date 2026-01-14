@@ -5,7 +5,7 @@ import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos } from "@/components/porn-videos"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film } from "lucide-react"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("image")
@@ -159,6 +159,9 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
   const [showWatermark, setShowWatermark] = useState(false)
   const [darkMode, setDarkMode] = useState(true)
   const [mounted, setMounted] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [isInstallable, setIsInstallable] = useState(false)
+  const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -184,12 +187,54 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     } catch (error) {
       console.error("Error loading settings:", error)
     }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+      setIsInstallable(true)
+    }
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true)
+      setIsInstallable(false)
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    window.addEventListener("appinstalled", handleAppInstalled)
+
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true)
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      window.removeEventListener("appinstalled", handleAppInstalled)
+    }
   }, [])
 
   const handleDarkModeToggle = (checked: boolean) => {
     setDarkMode(checked)
     onDarkModeChange(checked)
     handleSaveSettings({ darkMode: checked })
+  }
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) {
+      alert("App is already installed or installation is not available")
+      return
+    }
+
+    deferredPrompt.prompt()
+    const { outcome } = await deferredPrompt.userChoice
+
+    if (outcome === "accepted") {
+      console.log("User accepted the install prompt")
+    } else {
+      console.log("User dismissed the install prompt")
+    }
+
+    setDeferredPrompt(null)
+    setIsInstallable(false)
   }
 
   const handleSaveSettings = (overrides = {}) => {
@@ -304,6 +349,36 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
                 />
                 <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
               </label>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Install App</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {isInstalled
+                    ? "App is installed"
+                    : isInstallable
+                      ? "Add Naughty AI to your home screen"
+                      : "Install option not available"}
+                </p>
+              </div>
+              {isInstalled ? (
+                <div className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  Installed
+                </div>
+              ) : isInstallable ? (
+                <button
+                  onClick={handleInstallApp}
+                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                >
+                  <Download className="h-4 w-4" />
+                  Install
+                </button>
+              ) : (
+                <div className="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+                  Not Available
+                </div>
+              )}
             </div>
           </div>
         </div>
