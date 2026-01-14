@@ -50,6 +50,7 @@ interface Playlist {
 }
 
 type ViewMode = "browse" | "library"
+type ApiSource = "eporner" | "xvidapi"
 
 export function PornVideos() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -58,6 +59,7 @@ export function PornVideos() {
   const [error, setError] = useState("")
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>("browse")
+  const [apiSource, setApiSource] = useState<ApiSource>("eporner")
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [savedVideos, setSavedVideos] = useState<Video[]>([])
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
@@ -68,7 +70,7 @@ export function PornVideos() {
   useEffect(() => {
     loadVideos()
     loadLibraryData()
-  }, [])
+  }, [apiSource])
 
   const loadLibraryData = () => {
     try {
@@ -127,6 +129,17 @@ export function PornVideos() {
 
   const addToPlaylist = (playlistId: string, videoId: string) => {
     try {
+      const videoToAdd = videos.find((v) => v.id === videoId)
+
+      const playlist = playlists.find((p) => p.id === playlistId)
+      if (videoToAdd && playlist && !playlist.videoIds.includes(videoId)) {
+        if (!savedVideos.some((v) => v.id === videoId)) {
+          const updatedSavedVideos = [videoToAdd, ...savedVideos]
+          setSavedVideos(updatedSavedVideos)
+          localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
+        }
+      }
+
       const updatedPlaylists = playlists.map((playlist) => {
         if (playlist.id === playlistId) {
           const isAlreadyAdded = playlist.videoIds.includes(videoId)
@@ -167,7 +180,7 @@ export function PornVideos() {
 
     try {
       const searchParam = query || "popular"
-      const response = await fetch(`/api/search-videos?query=${encodeURIComponent(searchParam)}`)
+      const response = await fetch(`/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -217,31 +230,63 @@ export function PornVideos() {
 
   return (
     <div className="space-y-6 pb-24">
-      <div className="flex gap-2">
-        <Button
-          onClick={() => setViewMode("browse")}
-          variant={viewMode === "browse" ? "default" : "outline"}
-          className={
-            viewMode === "browse"
-              ? "bg-violet-600 hover:bg-violet-700"
-              : "border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
-          }
-        >
-          <Grid className="mr-2 h-4 w-4" />
-          Browse
-        </Button>
-        <Button
-          onClick={() => setViewMode("library")}
-          variant={viewMode === "library" ? "default" : "outline"}
-          className={
-            viewMode === "library"
-              ? "bg-violet-600 hover:bg-violet-700"
-              : "border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
-          }
-        >
-          <List className="mr-2 h-4 w-4" />
-          Library ({savedVideos.length})
-        </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setViewMode("browse")}
+            variant={viewMode === "browse" ? "default" : "outline"}
+            className={
+              viewMode === "browse"
+                ? "bg-violet-600 hover:bg-violet-700"
+                : "border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
+            }
+          >
+            <Grid className="mr-2 h-4 w-4" />
+            Browse
+          </Button>
+          <Button
+            onClick={() => setViewMode("library")}
+            variant={viewMode === "library" ? "default" : "outline"}
+            className={
+              viewMode === "library"
+                ? "bg-violet-600 hover:bg-violet-700"
+                : "border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
+            }
+          >
+            <List className="mr-2 h-4 w-4" />
+            Library ({savedVideos.length})
+          </Button>
+        </div>
+
+        {viewMode === "browse" && (
+          <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
+            <span className="px-2 text-xs text-slate-400">API:</span>
+            <Button
+              onClick={() => setApiSource("eporner")}
+              size="sm"
+              variant="ghost"
+              className={
+                apiSource === "eporner"
+                  ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
+                  : "text-slate-400 hover:bg-slate-700 hover:text-white"
+              }
+            >
+              EPorner
+            </Button>
+            <Button
+              onClick={() => setApiSource("xvidapi")}
+              size="sm"
+              variant="ghost"
+              className={
+                apiSource === "xvidapi"
+                  ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
+                  : "text-slate-400 hover:bg-slate-700 hover:text-white"
+              }
+            >
+              XvidAPI
+            </Button>
+          </div>
+        )}
       </div>
 
       {viewMode === "browse" ? (

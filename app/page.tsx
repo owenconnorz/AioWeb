@@ -42,20 +42,22 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12">
-        <div className="mb-8 text-center sm:mb-12">
-          <div className="mb-4 flex flex-col items-center justify-center gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm">
-              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-              Powered by AI
+        {activeTab !== "porn" && (
+          <div className="mb-8 text-center sm:mb-12">
+            <div className="mb-4 flex flex-col items-center justify-center gap-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm">
+                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+                Powered by AI
+              </div>
             </div>
+            <h1 className="mb-3 text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:mb-4 sm:text-5xl">
+              Naughty AI
+            </h1>
+            <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
+              Generate stunning images, craft compelling text, create videos, and transform faces with cutting-edge AI
+            </p>
           </div>
-          <h1 className="mb-3 text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:mb-4 sm:text-5xl">
-            Naughty AI
-          </h1>
-          <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
-            Generate stunning images, craft compelling text, create videos, and transform faces with cutting-edge AI
-          </p>
-        </div>
+        )}
 
         <div className="w-full">
           {activeTab === "image" && (
