@@ -8,7 +8,7 @@ import { PornVideos } from "@/components/porn-videos"
 import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download } from "lucide-react"
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("image")
+  const [activeTab, setActiveTab] = useState("porn")
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [mounted, setMounted] = useState(false)
 
@@ -60,6 +60,14 @@ export default function Home() {
         )}
 
         <div className="w-full">
+          {activeTab === "porn" && (
+            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+              <CardContent className="p-4 sm:p-6">
+                <PornVideos />
+              </CardContent>
+            </Card>
+          )}
+
           {activeTab === "image" && (
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
@@ -84,14 +92,6 @@ export default function Home() {
             </Card>
           )}
 
-          {activeTab === "porn" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-              <CardContent className="p-4 sm:p-6">
-                <PornVideos />
-              </CardContent>
-            </Card>
-          )}
-
           {activeTab === "settings" && (
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
@@ -104,6 +104,15 @@ export default function Home() {
 
       <nav className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
         <div className="glass-nav-pill flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80 sm:gap-2 sm:p-2.5">
+          <button
+            onClick={() => setActiveTab("porn")}
+            className={`nav-item ${activeTab === "porn" ? "active" : ""}`}
+            aria-label="Porn Videos"
+          >
+            <Film className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Porn</span>
+          </button>
+
           <button
             onClick={() => setActiveTab("image")}
             className={`nav-item ${activeTab === "image" ? "active" : ""}`}
@@ -120,15 +129,6 @@ export default function Home() {
           >
             <Video className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="nav-label">Video</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("porn")}
-            className={`nav-item ${activeTab === "porn" ? "active" : ""}`}
-            aria-label="Porn Videos"
-          >
-            <Film className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Porn</span>
           </button>
 
           <button
