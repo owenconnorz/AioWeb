@@ -5,7 +5,8 @@ import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos } from "@/components/porn-videos"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download } from "lucide-react"
+import { PornPictures } from "@/components/porn-pictures"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download, ImageIcon as ImageIconAlt } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("porn")
@@ -42,7 +43,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12">
-        {activeTab !== "porn" && (
+        {activeTab !== "porn" && activeTab !== "pictures" && (
           <div className="mb-8 text-center sm:mb-12">
             <div className="mb-4 flex flex-col items-center justify-center gap-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm">
@@ -64,6 +65,14 @@ export default function Home() {
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
                 <PornVideos />
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === "pictures" && (
+            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+              <CardContent className="p-4 sm:p-6">
+                <PornPictures />
               </CardContent>
             </Card>
           )}
@@ -111,6 +120,15 @@ export default function Home() {
           >
             <Film className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="nav-label">Porn</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("pictures")}
+            className={`nav-item ${activeTab === "pictures" ? "active" : ""}`}
+            aria-label="Porn Pictures"
+          >
+            <ImageIconAlt className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Pics</span>
           </button>
 
           <button
