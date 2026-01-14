@@ -8,6 +8,7 @@ interface XvidapiVideo {
   tag?: string
   category?: string[]
   poster?: string
+  poster_url?: string
   episodes?: {
     server_name?: string
     server_data?: {
@@ -27,17 +28,18 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const query = searchParams.get("query")
     const source = searchParams.get("source") || "eporner" // Get API source parameter
+    const page = Number.parseInt(searchParams.get("page") || "1", 10) // Added page parameter for pagination
 
     if (!query) {
       return NextResponse.json({ error: "Search query is required" }, { status: 400 })
     }
 
-    console.log(`[v0] Searching ${source} API for:`, query)
+    console.log(`[v0] Searching ${source} API for:`, query, `page:`, page)
 
     if (source === "xvidapi") {
-      return await searchXvidapi(query)
+      return await searchXvidapi(query, page)
     } else {
-      return await searchEporner(query)
+      return await searchEporner(query, page)
     }
   } catch (error) {
     console.error("[v0] Error searching videos:", error)
@@ -48,9 +50,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function searchEporner(query: string) {
+async function searchEporner(query: string, page = 1) {
   const response = await fetch(
-    `https://www.eporner.com/api/v2/video/search/?query=${encodeURIComponent(query)}&per_page=12&format=json`,
+    `https://www.eporner.com/api/v2/video/search/?query=${encodeURIComponent(query)}&per_page=12&page=${page}&format=json`,
     {
       method: "GET",
       headers: {
@@ -64,7 +66,7 @@ async function searchEporner(query: string) {
   }
 
   const data = await response.json()
-  console.log("[v0] eporner API response:", data)
+  console.log(`[v0] eporner API response page ${page}:`, data.count, "videos")
 
   return NextResponse.json({
     videos: data.videos || [],
@@ -72,11 +74,11 @@ async function searchEporner(query: string) {
   })
 }
 
-async function searchXvidapi(query: string) {
+async function searchXvidapi(query: string, page = 1) {
   const isPopular = query === "popular"
   const apiUrl = isPopular
-    ? "https://xvidapi.com/api.php/provide/vod?ac=detail&at=json&pg=1"
-    : `https://xvidapi.com/api.php/provide/vod?ac=detail&at=json&wd=${encodeURIComponent(query)}`
+    ? `https://xvidapi.com/api.php/provide/vod?ac=detail&at=json&pg=${page}`
+    : `https://xvidapi.com/api.php/provide/vod?ac=detail&at=json&wd=${encodeURIComponent(query)}&pg=${page}`
 
   const response = await fetch(apiUrl, {
     method: "GET",
@@ -90,7 +92,7 @@ async function searchXvidapi(query: string) {
   }
 
   const data = await response.json()
-  console.log("[v0] xvidapi raw response sample:", JSON.stringify(data.list?.[0] || {}).slice(0, 800))
+  console.log(`[v0] xvidapi page ${page}:`, (data.list || []).length, "videos")
 
   const transformedVideos = (data.list || []).slice(0, 12).map((video: XvidapiVideo) => {
     const videoId = video.slug || video.id != null ? String(video.id) : `temp-${Date.now()}-${Math.random()}`
@@ -99,17 +101,16 @@ async function searchXvidapi(query: string) {
     let duration = "Unknown"
     let thumbnail = ""
 
-    // Get poster/thumbnail from the poster field
-    if (video.poster) {
+    if (video.poster_url) {
+      thumbnail = video.poster_url
+    } else if (video.poster) {
       thumbnail = video.poster
     }
 
-    // Extract embed URL from episodes data
     if (video.episodes?.server_data) {
       const firstServer = Object.values(video.episodes.server_data)[0]
       if (firstServer?.link_embed) {
         embedUrl = firstServer.link_embed
-        // Extract duration from title if available (e.g., "Full - Title")
         const titleText = firstServer.title || ""
         const parts = titleText.split(" - ")
         if (parts.length > 0 && parts[0].includes(":")) {
@@ -126,8 +127,8 @@ async function searchXvidapi(query: string) {
       id: videoId,
       title: title,
       keywords: video.tag || "",
-      views: 0, // xvidapi doesn't provide view counts
-      rate: 0, // xvidapi doesn't provide ratings
+      views: 0,
+      rate: 0,
       url: embedUrl,
       added: video.updated_at || video.created_at || "",
       length_sec: 0,

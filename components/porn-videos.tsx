@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, type ChangeEvent } from "react"
+import { useState, useEffect, useRef, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -100,13 +100,41 @@ export function PornVideos() {
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState("")
   const [showAddToPlaylist, setShowAddToPlaylist] = useState<string | null>(null)
-  const [showCategories, setShowCategories] = useState(false) // Added state for categories menu
-  const [selectedCategory, setSelectedCategory] = useState<string>("") // Track selected category
+  const [showCategories, setShowCategories] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<string>("")
+  // Added state for categories menu
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const observerTarget = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadVideos()
     loadLibraryData()
   }, [apiSource])
+
+  useEffect(() => {
+    if (viewMode !== "browse") return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMoreVideos()
+        }
+      },
+      { threshold: 0.1 },
+    )
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current)
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current)
+      }
+    }
+  }, [hasMore, loading, loadingMore, page, viewMode, searchQuery, selectedCategory, apiSource])
 
   const loadLibraryData = () => {
     try {
@@ -213,10 +241,14 @@ export function PornVideos() {
   const loadVideos = async (query = "", category = "") => {
     setLoading(true)
     setError("")
+    setPage(1)
+    setHasMore(true)
 
     try {
       const searchParam = category || query || "popular"
-      const response = await fetch(`/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}`)
+      const response = await fetch(
+        `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=1`,
+      )
       const data = await response.json()
 
       if (!response.ok) {
@@ -224,11 +256,45 @@ export function PornVideos() {
       }
 
       setVideos(data.videos || [])
+      setHasMore((data.videos || []).length >= 12)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load videos")
       console.error("Video load error:", err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMoreVideos = async () => {
+    if (loadingMore || !hasMore) return
+
+    setLoadingMore(true)
+    const nextPage = page + 1
+
+    try {
+      const searchParam = selectedCategory || searchQuery || "popular"
+      const response = await fetch(
+        `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=${nextPage}`,
+      )
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load more videos")
+      }
+
+      const newVideos = data.videos || []
+      if (newVideos.length > 0) {
+        setVideos((prev) => [...prev, ...newVideos])
+        setPage(nextPage)
+        setHasMore(newVideos.length >= 12)
+      } else {
+        setHasMore(false)
+      }
+    } catch (err) {
+      console.error("Load more error:", err)
+      setHasMore(false)
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -521,6 +587,17 @@ export function PornVideos() {
                     )}
                   </div>
                 ))}
+              </div>
+
+              <div ref={observerTarget} className="py-4">
+                {loadingMore && (
+                  <div className="flex items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+                  </div>
+                )}
+                {!hasMore && videos.length > 0 && (
+                  <p className="text-center text-sm text-slate-400">No more videos to load</p>
+                )}
               </div>
             </div>
           )}
