@@ -6,7 +6,7 @@ import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos } from "@/components/porn-videos"
 import { PornPictures } from "@/components/porn-pictures"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download, ImageIcon as ImageIconAlt } from "lucide-react"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("porn")
@@ -43,6 +43,30 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12">
+        {(activeTab === "porn" || activeTab === "pictures") && (
+          <div className="mb-6 flex justify-center">
+            <div className="glass-nav-pill inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80 sm:gap-2 sm:p-2.5">
+              <button
+                onClick={() => setActiveTab("porn")}
+                className={`nav-item ${activeTab === "porn" ? "active" : ""}`}
+                aria-label="Porn Videos"
+              >
+                <Film className="h-5 w-5 sm:h-6 sm:w-6" />
+                <span className="nav-label">Videos</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("pictures")}
+                className={`nav-item ${activeTab === "pictures" ? "active" : ""}`}
+                aria-label="Porn Pictures"
+              >
+                <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                <span className="nav-label">Pictures</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeTab !== "porn" && activeTab !== "pictures" && (
           <div className="mb-8 text-center sm:mb-12">
             <div className="mb-4 flex flex-col items-center justify-center gap-3">
@@ -120,15 +144,6 @@ export default function Home() {
           >
             <Film className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="nav-label">Porn</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("pictures")}
-            className={`nav-item ${activeTab === "pictures" ? "active" : ""}`}
-            aria-label="Porn Pictures"
-          >
-            <ImageIconAlt className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Pics</span>
           </button>
 
           <button
