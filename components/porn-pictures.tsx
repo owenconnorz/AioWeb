@@ -27,6 +27,7 @@ export function PornPictures() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [apiSource, setApiSource] = useState<"pornpics" | "redgifs">("pornpics")
+  const [refreshKey, setRefreshKey] = useState(0)
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null)
   const [feedView, setFeedView] = useState(false)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
@@ -34,12 +35,15 @@ export function PornPictures() {
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
 
   const getVideoUrl = (url: string) => {
+    if (apiSource === "redgifs" && url.includes("redgifs.com")) {
+      return `/api/proxy-media?url=${encodeURIComponent(url)}`
+    }
     return url
   }
 
   const getProxiedUrl = (url: string) => {
-    if (url.includes("media.redgifs.com") || url.includes("redgifs.com")) {
-      return url
+    if (apiSource === "redgifs" && url.includes("redgifs.com")) {
+      return `/api/proxy-media?url=${encodeURIComponent(url)}`
     }
     return url
   }
@@ -48,7 +52,6 @@ export function PornPictures() {
     setGalleries([])
     setError("")
     setSearchQuery("")
-    // Start in feed view immediately for RedGifs
     setFeedView(apiSource === "redgifs")
     loadGalleries()
   }, [apiSource])
@@ -57,27 +60,72 @@ export function PornPictures() {
     if (feedView && videoRefs.current[currentVideoIndex]) {
       videoRefs.current.forEach((video, idx) => {
         if (video) {
+          const distance = Math.abs(idx - currentVideoIndex)
+
           if (idx === currentVideoIndex) {
-            video.load()
+            // Current video: load and play
+            video.preload = "auto"
+            if (video.readyState < 2) {
+              video.load()
+            }
             video.play().catch(() => {})
-          } else if (idx === currentVideoIndex + 1 || idx === currentVideoIndex - 1) {
+          } else if (distance === 1) {
+            // Adjacent videos: preload metadata and buffer
+            video.preload = "auto"
             video.load()
+          } else if (distance === 2) {
+            // Videos 2 positions away: preload metadata only
+            video.preload = "metadata"
           } else {
+            // Far videos: don't preload, free resources
             video.pause()
-            video.removeAttribute("src")
-            video.load()
+            video.preload = "none"
+            video.currentTime = 0
           }
         }
       })
     }
   }, [currentVideoIndex, feedView])
 
+  useEffect(() => {
+    if (!feedView || apiSource !== "redgifs") return
+
+    const options = {
+      root: null,
+      rootMargin: "0px",
+      threshold: 0.75,
+    }
+
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        const video = entry.target as HTMLVideoElement
+        if (entry.isIntersecting) {
+          video.play().catch((err) => console.error("[v0] Video play failed:", err))
+        } else {
+          video.pause()
+        }
+      })
+    }
+
+    const observer = new IntersectionObserver(handleIntersection, options)
+
+    videoRefs.current.forEach((video) => {
+      if (video) {
+        observer.observe(video)
+      }
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [feedView, apiSource, galleries])
+
   const loadGalleries = async () => {
     try {
       setLoading(true)
       setError("")
 
-      const response = await fetch(`/api/search-pictures?page=1&api=${apiSource}`)
+      const response = await fetch(`/api/search-pictures?page=1&api=${apiSource}&refresh=${refreshKey}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -107,7 +155,9 @@ export function PornPictures() {
       setLoading(true)
       setError("")
 
-      const response = await fetch(`/api/search-pictures?query=${encodeURIComponent(searchQuery)}&api=${apiSource}`)
+      const response = await fetch(
+        `/api/search-pictures?query=${encodeURIComponent(searchQuery)}&api=${apiSource}&refresh=${refreshKey}`,
+      )
       const data = await response.json()
 
       if (!response.ok) {
@@ -148,6 +198,11 @@ export function PornPictures() {
     }
   }
 
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1)
+    loadGalleries()
+  }
+
   if (feedView && apiSource === "redgifs") {
     return (
       <div className="fixed inset-0 z-50 bg-black">
@@ -159,6 +214,14 @@ export function PornPictures() {
           <X className="h-6 w-6 text-white" />
         </button>
 
+        <button
+          onClick={handleRefresh}
+          className="absolute right-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+          aria-label="Refresh"
+        >
+          <ArrowRight className="h-6 w-6 rotate-90 text-white" />
+        </button>
+
         <div className="h-screen w-full snap-y snap-mandatory overflow-y-scroll" onScroll={handleScroll}>
           {galleries.map((gallery, index) => (
             <div key={gallery.id} className="relative h-screen w-full snap-start snap-always">
@@ -166,16 +229,17 @@ export function PornPictures() {
                 ref={(el) => {
                   videoRefs.current[index] = el
                 }}
-                src={gallery.url}
-                poster={gallery.thumbnail}
+                src={getVideoUrl(gallery.url)}
+                poster={getVideoUrl(gallery.thumbnail)}
                 loop
                 playsInline
                 muted
-                preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
+                autoPlay={index === 0}
+                preload={index === 0 ? "auto" : Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
                 className="h-full w-full object-contain bg-black"
+                crossOrigin="anonymous"
               />
 
-              {/* Video Info Overlay */}
               <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                 <h3 className="mb-2 text-xl font-bold text-white">{gallery.title}</h3>
                 {gallery.tags && gallery.tags.length > 0 && (
@@ -192,7 +256,6 @@ export function PornPictures() {
                 )}
               </div>
 
-              {/* Side Action Buttons */}
               <div className="absolute bottom-32 right-4 flex flex-col gap-6">
                 <button className="flex flex-col items-center gap-1">
                   <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
@@ -285,9 +348,12 @@ export function PornPictures() {
                       ? "Trending on RedGifs"
                       : "Popular Categories"}
                 </h2>
-                <button className="flex items-center gap-2 text-purple-500 hover:text-purple-400">
-                  <span className="text-sm font-medium sm:text-base">View All</span>
-                  <ArrowRight className="h-4 w-4" />
+                <button
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2 text-purple-500 hover:text-purple-400"
+                >
+                  <span className="text-sm font-medium sm:text-base">Refresh</span>
+                  <ArrowRight className="h-4 w-4 rotate-90" />
                 </button>
               </div>
 
@@ -315,7 +381,7 @@ export function PornPictures() {
                       {gallery.isVideo && apiSource === "redgifs" ? (
                         <div className="relative h-full w-full">
                           <img
-                            src={gallery.thumbnail || "/placeholder.svg"}
+                            src={getVideoUrl(gallery.thumbnail) || "/placeholder.svg"}
                             alt={gallery.title}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             loading="lazy"
@@ -328,7 +394,7 @@ export function PornPictures() {
                         </div>
                       ) : gallery.thumbnail ? (
                         <Image
-                          src={gallery.thumbnail || "/placeholder.svg"}
+                          src={getProxiedUrl(gallery.thumbnail) || "/placeholder.svg"}
                           alt={gallery.title}
                           fill
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
