@@ -1,5 +1,5 @@
 "use client"
-import { useState, type ChangeEvent } from "react"
+import { useState, useEffect, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Play, Eye, ThumbsUp, ArrowRight } from "lucide-react"
@@ -35,30 +35,39 @@ export function PornVideos() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  useEffect(() => {
+    loadVideos()
+  }, [])
+
+  const loadVideos = async (query = "") => {
+    setLoading(true)
+    setError("")
+
+    try {
+      const searchParam = query || "popular"
+      const response = await fetch(`/api/search-videos?query=${encodeURIComponent(searchParam)}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load videos")
+      }
+
+      setVideos(data.videos || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load videos")
+      console.error("Video load error:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       setError("Please enter a search term")
       return
     }
 
-    setLoading(true)
-    setError("")
-
-    try {
-      const response = await fetch(`/api/search-videos?query=${encodeURIComponent(searchQuery)}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to search videos")
-      }
-
-      setVideos(data.videos || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to search videos")
-      console.error("Video search error:", err)
-    } finally {
-      setLoading(false)
-    }
+    await loadVideos(searchQuery)
   }
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -86,10 +95,16 @@ export function PornVideos() {
 
       {error && <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-sm text-red-400">{error}</div>}
 
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+        </div>
+      )}
+
       {videos.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold text-white">Hottest New Videos</h2>
+            <h2 className="text-3xl font-bold text-white">{searchQuery ? "Search Results" : "Hottest New Videos"}</h2>
             <button className="flex items-center gap-2 text-lg font-medium text-violet-500 hover:text-violet-400">
               View All
               <ArrowRight className="h-5 w-5" />
@@ -142,7 +157,7 @@ export function PornVideos() {
         </div>
       )}
 
-      {!loading && videos.length === 0 && searchQuery && (
+      {!loading && videos.length === 0 && !error && (
         <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-8 text-center">
           <p className="text-slate-400">No videos found. Try a different search term.</p>
         </div>
