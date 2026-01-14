@@ -5,7 +5,7 @@ import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, ExternalLink, Loader2, ArrowRight, X, Play } from "lucide-react"
+import { Search, ExternalLink, Loader2, ArrowRight, X, Play, Heart, Share2, MessageCircle } from "lucide-react"
 
 interface Gallery {
   id: string
@@ -28,7 +28,10 @@ export function PornPictures() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [apiSource, setApiSource] = useState<"pornpics" | "redgifs">("pornpics")
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null)
+  const [feedView, setFeedView] = useState(false)
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
 
   const getProxiedUrl = (url: string) => {
     if (apiSource === "redgifs" && url && url.includes("redgifs.com")) {
@@ -41,8 +44,24 @@ export function PornPictures() {
     setGalleries([])
     setError("")
     setSearchQuery("")
+    // Start in feed view immediately for RedGifs
+    setFeedView(apiSource === "redgifs")
     loadGalleries()
   }, [apiSource])
+
+  useEffect(() => {
+    if (feedView && videoRefs.current[currentVideoIndex]) {
+      videoRefs.current.forEach((video, idx) => {
+        if (video) {
+          if (idx === currentVideoIndex) {
+            video.play().catch(() => {})
+          } else {
+            video.pause()
+          }
+        }
+      })
+    }
+  }, [currentVideoIndex, feedView])
 
   const loadGalleries = async () => {
     try {
@@ -96,9 +115,10 @@ export function PornPictures() {
     }
   }
 
-  const handleCategoryClick = (gallery: Gallery) => {
+  const handleCategoryClick = (gallery: Gallery, index: number) => {
     if (apiSource === "redgifs") {
-      setSelectedGallery(gallery)
+      setCurrentVideoIndex(index)
+      setFeedView(true)
     } else {
       window.open(gallery.url, "_blank", "noopener,noreferrer")
     }
@@ -106,6 +126,90 @@ export function PornPictures() {
 
   const closeModal = () => {
     setSelectedGallery(null)
+  }
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget
+    const scrollPosition = container.scrollTop
+    const windowHeight = window.innerHeight
+    const newIndex = Math.round(scrollPosition / windowHeight)
+
+    if (newIndex !== currentVideoIndex && newIndex >= 0 && newIndex < galleries.length) {
+      setCurrentVideoIndex(newIndex)
+    }
+  }
+
+  if (feedView && apiSource === "redgifs") {
+    return (
+      <div className="fixed inset-0 z-50 bg-black">
+        <button
+          onClick={() => setFeedView(false)}
+          className="absolute left-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+          aria-label="Back"
+        >
+          <X className="h-6 w-6 text-white" />
+        </button>
+
+        <div className="h-screen w-full snap-y snap-mandatory overflow-y-scroll" onScroll={handleScroll}>
+          {galleries.map((gallery, index) => (
+            <div key={gallery.id} className="relative h-screen w-full snap-start snap-always">
+              <video
+                ref={(el) => {
+                  videoRefs.current[index] = el
+                }}
+                src={`/api/proxy-media?url=${encodeURIComponent(gallery.url)}`}
+                poster={`/api/proxy-media?url=${encodeURIComponent(gallery.thumbnail)}`}
+                loop
+                playsInline
+                muted
+                className="h-full w-full object-contain bg-black"
+              />
+
+              {/* Video Info Overlay */}
+              <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                <h3 className="mb-2 text-xl font-bold text-white">{gallery.title}</h3>
+                {gallery.tags && gallery.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {gallery.tags.slice(0, 3).map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="rounded-full bg-white/20 px-3 py-1 text-xs text-white backdrop-blur-sm"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Side Action Buttons */}
+              <div className="absolute bottom-32 right-4 flex flex-col gap-6">
+                <button className="flex flex-col items-center gap-1">
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    <Heart className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs text-white">Like</span>
+                </button>
+
+                <button className="flex flex-col items-center gap-1">
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    <MessageCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs text-white">Comment</span>
+                </button>
+
+                <button className="flex flex-col items-center gap-1">
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    <Share2 className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs text-white">Share</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -178,10 +282,10 @@ export function PornPictures() {
               </div>
 
               <div className="space-y-4">
-                {galleries.map((gallery) => (
+                {galleries.map((gallery, index) => (
                   <div
                     key={gallery.id}
-                    onClick={() => handleCategoryClick(gallery)}
+                    onClick={() => handleCategoryClick(gallery, index)}
                     className="group cursor-pointer overflow-hidden rounded-2xl bg-slate-800/50 transition-all hover:bg-slate-800"
                   >
                     <div className="p-4 pb-3">
