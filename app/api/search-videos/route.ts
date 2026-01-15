@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
 
     console.log(`[v0] Searching ${source} API for:`, query, `page:`, page)
 
-    if (source === "xvidapi") {
+    if (source === "cam4") {
+      return await searchCam4(page)
+    } else if (source === "xvidapi") {
       return await searchXvidapi(query, page)
     } else {
       return await searchEporner(query, page)
@@ -151,5 +153,54 @@ async function searchXvidapi(query: string, page = 1) {
   return NextResponse.json({
     videos: transformedVideos,
     total: data.total || 0,
+  })
+}
+
+async function searchCam4(page = 1) {
+  const apiUrl = `https://api.cam4pays.com/api/v1/cams/online.json?aff_id=66db08bf0f40da23bf28e055&prog=rs&gender=female&limit=50&order_by=viewers_desc`
+  console.log(`[v0] Fetching Cam4 API:`, apiUrl)
+
+  const response = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    console.log(`[v0] Cam4 API error status:`, response.status)
+    throw new Error(`Cam4 API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log(`[v0] Cam4 API response:`, Array.isArray(data) ? data.length : 0, "cams")
+
+  const transformedVideos = (Array.isArray(data) ? data : []).map((cam: any) => {
+    return {
+      id: cam.nickname || `cam-${cam.id || Date.now()}-${Math.random()}`,
+      title: cam.nickname || "Live Cam",
+      keywords: cam.show_tags?.join(", ") || cam.status || "",
+      views: cam.viewers || 0,
+      rate: 0,
+      url: cam.link || "",
+      added: new Date().toISOString(),
+      length_sec: 0,
+      length_min: "LIVE",
+      embed: cam.preview_url || cam.link || "",
+      default_thumb: {
+        src: cam.thumb_big || cam.thumb || cam.profile_thumb || "/placeholder.svg",
+        size: "640x360",
+        width: 640,
+        height: 360,
+      },
+      thumbs: [],
+    }
+  })
+
+  console.log(`[v0] Returning ${transformedVideos.length} live cams`)
+
+  return NextResponse.json({
+    videos: transformedVideos,
+    total: transformedVideos.length,
   })
 }

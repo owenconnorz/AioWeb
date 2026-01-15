@@ -51,7 +51,7 @@ interface Playlist {
 }
 
 type ViewMode = "browse" | "library"
-type ApiSource = "eporner" | "xvidapi"
+type ApiSource = "eporner" | "xvidapi" | "cam4"
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -106,12 +106,84 @@ export function PornVideos() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [feedView, setFeedView] = useState(false)
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
+  const iframeRefs = useRef<(HTMLIFrameElement | null)[]>([])
+  const [loadedIframes, setLoadedIframes] = useState<Set<number>>(new Set([0])) // Track which iframes are loaded, start with first one
 
   useEffect(() => {
+    setFeedView(apiSource === "cam4")
     loadVideos()
     loadLibraryData()
+    setLoadedIframes(new Set([0])) // Reset loaded iframes when changing API
   }, [apiSource])
+
+  useEffect(() => {
+    if (!feedView || apiSource !== "cam4") return
+
+    const handleScroll = () => {
+      const container = document.querySelector(".feed-container")
+      if (!container) return
+
+      const containerRect = container.getBoundingClientRect()
+      const containerHeight = containerRect.height
+
+      iframeRefs.current.forEach((iframe, idx) => {
+        if (!iframe) return
+
+        const iframeRect = iframe.getBoundingClientRect()
+        const iframeCenter = iframeRect.top + iframeRect.height / 2
+        const isInView = iframeCenter >= 0 && iframeCenter <= containerHeight
+
+        // Load iframe if it's within viewport or one video away
+        const distanceFromView = Math.abs(iframeCenter - containerHeight / 2)
+        const shouldLoad = distanceFromView < containerHeight * 1.5
+
+        if (shouldLoad && !loadedIframes.has(idx)) {
+          setLoadedIframes((prev) => new Set(prev).add(idx))
+        }
+
+        if (isInView && idx !== currentVideoIndex) {
+          setCurrentVideoIndex(idx)
+        }
+      })
+    }
+
+    const container = document.querySelector(".feed-container")
+    container?.addEventListener("scroll", handleScroll, { passive: true })
+
+    // Trigger initial check
+    handleScroll()
+
+    return () => {
+      container?.removeEventListener("scroll", handleScroll)
+    }
+  }, [feedView, apiSource, currentVideoIndex, loadedIframes])
+
+  useEffect(() => {
+    const mainNav = document.querySelector("nav.fixed.bottom-4")
+    const topNav = document.querySelector(".glass-nav-pill")
+
+    if (feedView && apiSource === "cam4") {
+      if (mainNav) (mainNav as HTMLElement).style.display = "none"
+      if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
+        ;(topNav.parentElement as HTMLElement).style.display = "none"
+      }
+    } else {
+      if (mainNav) (mainNav as HTMLElement).style.display = ""
+      if (topNav && topNav.parentElement) {
+        ;(topNav.parentElement as HTMLElement).style.display = ""
+      }
+    }
+
+    return () => {
+      if (mainNav) (mainNav as HTMLElement).style.display = ""
+      if (topNav && topNav.parentElement) {
+        ;(topNav.parentElement as HTMLElement).style.display = ""
+      }
+    }
+  }, [feedView, apiSource])
 
   const loadLibraryData = () => {
     try {
@@ -318,6 +390,90 @@ export function PornVideos() {
     loadVideos()
   }
 
+  if (feedView && apiSource === "cam4") {
+    return (
+      <div className="fixed inset-0 z-50 bg-black">
+        <button
+          onClick={() => setFeedView(false)}
+          className="absolute left-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+          aria-label="Back"
+        >
+          <X className="h-6 w-6 text-white" />
+        </button>
+
+        <button
+          onClick={handleRefresh}
+          className="absolute right-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+          aria-label="Refresh"
+        >
+          <ArrowRight className="h-6 w-6 rotate-90 text-white" />
+        </button>
+
+        <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
+          {videos.map((video, index) => (
+            <div key={video.id} className="relative h-screen w-full snap-start snap-always">
+              {loadedIframes.has(index) ? (
+                <iframe
+                  ref={(el) => {
+                    iframeRefs.current[index] = el
+                  }}
+                  src={video.embed}
+                  className="h-full w-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay"
+                  title={video.title}
+                />
+              ) : (
+                <div
+                  ref={(el) => {
+                    iframeRefs.current[index] = el as any
+                  }}
+                  className="flex h-full w-full items-center justify-center bg-slate-900"
+                >
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+                </div>
+              )}
+
+              <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none">
+                <h3 className="mb-2 text-xl font-bold text-white">{video.title}</h3>
+                {video.views > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-white/80">
+                    <Eye className="h-4 w-4" />
+                    <span>{Math.floor(video.views / 1000)}K viewers</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="absolute bottom-32 right-4 flex flex-col gap-6 pointer-events-auto">
+                <button className="flex flex-col items-center gap-1">
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    <Play className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs text-white">Like</span>
+                </button>
+
+                <button className="flex flex-col items-center gap-1">
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    <Bookmark className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs text-white">Save</span>
+                </button>
+
+                <button className="flex flex-col items-center gap-1">
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    <Play className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs text-white">Share</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 pb-24">
       <div className="flex flex-wrap items-center gap-2">
@@ -386,6 +542,18 @@ export function PornVideos() {
                 }
               >
                 XvidAPI
+              </Button>
+              <Button
+                onClick={() => setApiSource("cam4")}
+                size="sm"
+                variant="ghost"
+                className={
+                  apiSource === "cam4"
+                    ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
+                    : "text-slate-400 hover:bg-slate-700 hover:text-white"
+                }
+              >
+                Cam4
               </Button>
             </div>
           </>
@@ -843,6 +1011,15 @@ export function PornVideos() {
                 />
               )}
               {apiSource === "xvidapi" && selectedVideo.embed && (
+                <iframe
+                  src={selectedVideo.embed}
+                  className="h-full w-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  title={selectedVideo.title}
+                />
+              )}
+              {apiSource === "cam4" && selectedVideo.embed && (
                 <iframe
                   src={selectedVideo.embed}
                   className="h-full w-full"
