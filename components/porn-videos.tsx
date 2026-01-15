@@ -102,39 +102,16 @@ export function PornVideos() {
   const [showAddToPlaylist, setShowAddToPlaylist] = useState<string | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>("")
-  // Added state for categories menu
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadVideos()
     loadLibraryData()
   }, [apiSource])
-
-  useEffect(() => {
-    if (viewMode !== "browse") return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
-          loadMoreVideos()
-        }
-      },
-      { threshold: 0.1 },
-    )
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current)
-    }
-
-    return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current)
-      }
-    }
-  }, [hasMore, loading, loadingMore, page, viewMode, searchQuery, selectedCategory, apiSource])
 
   const loadLibraryData = () => {
     try {
@@ -247,7 +224,7 @@ export function PornVideos() {
     try {
       const searchParam = category || query || "popular"
       const response = await fetch(
-        `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=1`,
+        `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=1&refresh=${refreshKey}`,
       )
       const data = await response.json()
 
@@ -334,6 +311,11 @@ export function PornVideos() {
     setSelectedCategory(category)
     setShowCategories(false)
     await loadVideos("", category)
+  }
+
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1)
+    loadVideos()
   }
 
   return (

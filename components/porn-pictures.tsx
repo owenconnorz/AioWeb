@@ -28,7 +28,7 @@ export function PornPictures() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [apiSource, setApiSource] = useState<"pornpics" | "redgifs">("pornpics")
+  const [apiSource, setApiSource] = useState<"pornpics" | "redgifs">("redgifs")
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null)
   const [feedView, setFeedView] = useState(false)
@@ -356,16 +356,6 @@ export function PornPictures() {
     <div className="space-y-6">
       <div className="flex items-center gap-2 rounded-xl bg-slate-800/50 p-1 backdrop-blur-md">
         <button
-          onClick={() => setApiSource("pornpics")}
-          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-            apiSource === "pornpics"
-              ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
-              : "text-slate-400 hover:text-white"
-          }`}
-        >
-          PornPics
-        </button>
-        <button
           onClick={() => setApiSource("redgifs")}
           className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
             apiSource === "redgifs"
@@ -374,6 +364,16 @@ export function PornPictures() {
           }`}
         >
           RedGifs
+        </button>
+        <button
+          onClick={() => setApiSource("pornpics")}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+            apiSource === "pornpics"
+              ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          PornPics
         </button>
       </div>
 
