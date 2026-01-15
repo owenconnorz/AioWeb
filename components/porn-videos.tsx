@@ -51,7 +51,7 @@ interface Playlist {
 }
 
 type ViewMode = "browse" | "library"
-type ApiSource = "eporner" | "xvidapi" | "cam4" | "redgifs" // Added redgifs to API sources
+type ApiSource = "eporner" | "xvidapi" | "cam4"
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -93,7 +93,7 @@ export function PornVideos() {
   const [error, setError] = useState("")
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>("browse")
-  const [apiSource, setApiSource] = useState<ApiSource>("redgifs") // Set redgifs as default
+  const [apiSource, setApiSource] = useState<ApiSource>("eporner")
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [savedVideos, setSavedVideos] = useState<Video[]>([])
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
@@ -110,90 +110,17 @@ export function PornVideos() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
   const iframeRefs = useRef<(HTMLIFrameElement | null)[]>([])
-  const loadedIframes = useRef<Set<number>>(new Set([0])) // Track which iframes are loaded, start with first one
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
-  const playingVideos = useRef<Set<number>>(new Set())
-
-  const getVideoUrl = (url: string) => {
-    if (apiSource === "redgifs" && url.includes("redgifs.com")) {
-      return `/api/proxy-media?url=${encodeURIComponent(url)}`
-    }
-    return url
-  }
-
-  const getProxiedUrl = (url: string) => {
-    if (apiSource === "redgifs" && url.includes("redgifs.com")) {
-      return `/api/proxy-media?url=${encodeURIComponent(url)}`
-    }
-    return url
-  }
-
-  const preloadVideo = (video: HTMLVideoElement, priority: "high" | "medium" | "low") => {
-    const url = video.src
-    if (!url) return
-
-    if (video.readyState >= 2) return
-
-    if (priority === "high") {
-      video.preload = "auto"
-    } else if (priority === "medium") {
-      video.preload = "metadata"
-    } else {
-      video.preload = "none"
-      return
-    }
-
-    video.load()
-  }
+  const [loadedIframes, setLoadedIframes] = useState<Set<number>>(new Set([0])) // Track which iframes are loaded, start with first one
 
   useEffect(() => {
-    setFeedView(apiSource === "cam4" || apiSource === "redgifs") // Show feed for both cam4 and redgifs
+    setFeedView(apiSource === "cam4")
     loadVideos()
     loadLibraryData()
     setLoadedIframes(new Set([0])) // Reset loaded iframes when changing API
   }, [apiSource])
 
   useEffect(() => {
-    if (!feedView || apiSource !== "redgifs") return
-
-    const timeoutId = setTimeout(() => {
-      videoRefs.current.forEach((video, idx) => {
-        if (!video) return
-
-        const distance = Math.abs(idx - currentVideoIndex)
-
-        if (idx === currentVideoIndex) {
-          preloadVideo(video, "high")
-          if (!playingVideos.current.has(idx)) {
-            playingVideos.current.add(idx)
-            video.play().catch(() => {
-              playingVideos.current.delete(idx)
-            })
-          }
-        } else if (distance === 1) {
-          preloadVideo(video, "medium")
-          if (playingVideos.current.has(idx)) {
-            video.pause()
-            playingVideos.current.delete(idx)
-          }
-        } else {
-          if (playingVideos.current.has(idx)) {
-            video.pause()
-            playingVideos.current.delete(idx)
-          }
-          video.preload = "none"
-          if (distance > 3) {
-            video.src = video.src
-          }
-        }
-      })
-    }, 150)
-
-    return () => clearTimeout(timeoutId)
-  }, [currentVideoIndex, feedView, apiSource])
-
-  useEffect(() => {
-    if (!feedView) return
+    if (!feedView || apiSource !== "cam4") return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -202,46 +129,32 @@ export function PornVideos() {
       const containerRect = container.getBoundingClientRect()
       const containerHeight = containerRect.height
 
-      if (apiSource === "cam4") {
-        iframeRefs.current.forEach((iframe, idx) => {
-          if (!iframe) return
+      iframeRefs.current.forEach((iframe, idx) => {
+        if (!iframe) return
 
-          const iframeRect = iframe.getBoundingClientRect()
-          const iframeCenter = iframeRect.top + iframeRect.height / 2
-          const isInView = iframeCenter >= 0 && iframeCenter <= containerHeight
+        const iframeRect = iframe.getBoundingClientRect()
+        const iframeCenter = iframeRect.top + iframeRect.height / 2
+        const isInView = iframeCenter >= 0 && iframeCenter <= containerHeight
 
-          const distanceFromView = Math.abs(iframeCenter - containerHeight / 2)
-          const shouldLoad = distanceFromView < containerHeight * 1.5
+        // Load iframe if it's within viewport or one video away
+        const distanceFromView = Math.abs(iframeCenter - containerHeight / 2)
+        const shouldLoad = distanceFromView < containerHeight * 1.5
 
-          if (shouldLoad && !loadedIframes.current.has(idx)) {
-            setLoadedIframes((prev) => new Set(prev).add(idx))
-          }
+        if (shouldLoad && !loadedIframes.has(idx)) {
+          setLoadedIframes((prev) => new Set(prev).add(idx))
+        }
 
-          if (isInView && idx !== currentVideoIndex) {
-            setCurrentVideoIndex(idx)
-          }
-        })
-      } else if (apiSource === "redgifs") {
-        videoRefs.current.forEach((video, idx) => {
-          if (!video) return
-
-          const videoRect = video.getBoundingClientRect()
-          const videoCenter = videoRect.top + videoRect.height / 2
-          const isInView = videoCenter >= 0 && videoCenter <= containerHeight
-
-          if (isInView && idx !== currentVideoIndex) {
-            setCurrentVideoIndex(idx)
-          }
-        })
-      }
+        if (isInView && idx !== currentVideoIndex) {
+          setCurrentVideoIndex(idx)
+        }
+      })
     }
 
     const container = document.querySelector(".feed-container")
     container?.addEventListener("scroll", handleScroll, { passive: true })
 
-    if (apiSource === "cam4") {
-      handleScroll()
-    }
+    // Trigger initial check
+    handleScroll()
 
     return () => {
       container?.removeEventListener("scroll", handleScroll)
@@ -252,8 +165,7 @@ export function PornVideos() {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-    if (feedView && (apiSource === "cam4" || apiSource === "redgifs")) {
-      // Hide nav for both feed types
+    if (feedView && apiSource === "cam4") {
       if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
@@ -478,8 +390,7 @@ export function PornVideos() {
     loadVideos()
   }
 
-  if (feedView && (apiSource === "cam4" || apiSource === "redgifs")) {
-    // Updated feed view to support both cam4 and redgifs
+  if (feedView && apiSource === "cam4") {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <button
@@ -501,45 +412,27 @@ export function PornVideos() {
         <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
           {videos.map((video, index) => (
             <div key={video.id} className="relative h-screen w-full snap-start snap-always">
-              {apiSource === "cam4" ? (
-                // Cam4 iframe rendering
-                <>
-                  {loadedIframes.current.has(index) ? (
-                    <iframe
-                      ref={(el) => {
-                        iframeRefs.current[index] = el
-                      }}
-                      src={video.embed}
-                      className="h-full w-full"
-                      frameBorder="0"
-                      allowFullScreen
-                      allow="autoplay"
-                      title={video.title}
-                    />
-                  ) : (
-                    <div
-                      ref={(el) => {
-                        iframeRefs.current[index] = el as any
-                      }}
-                      className="flex h-full w-full items-center justify-center bg-slate-900"
-                    >
-                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
-                    </div>
-                  )}
-                </>
-              ) : (
-                // RedGifs video rendering
-                <video
+              {loadedIframes.has(index) ? (
+                <iframe
                   ref={(el) => {
-                    videoRefs.current[index] = el
+                    iframeRefs.current[index] = el
                   }}
-                  src={getVideoUrl(video.url || video.embed)}
-                  poster={getVideoUrl(video.default_thumb?.src || "")}
-                  loop
-                  playsInline
-                  muted
-                  className="h-full w-full object-contain bg-black"
+                  src={video.embed}
+                  className="h-full w-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay"
+                  title={video.title}
                 />
+              ) : (
+                <div
+                  ref={(el) => {
+                    iframeRefs.current[index] = el as any
+                  }}
+                  className="flex h-full w-full items-center justify-center bg-slate-900"
+                >
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+                </div>
               )}
 
               <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none">
@@ -547,11 +440,7 @@ export function PornVideos() {
                 {video.views > 0 && (
                   <div className="flex items-center gap-2 text-sm text-white/80">
                     <Eye className="h-4 w-4" />
-                    <span>
-                      {apiSource === "cam4"
-                        ? `${Math.floor(video.views / 1000)}K viewers`
-                        : `${(video.views / 1000000).toFixed(1)}M views`}
-                    </span>
+                    <span>{Math.floor(video.views / 1000)}K viewers</span>
                   </div>
                 )}
               </div>
@@ -559,11 +448,7 @@ export function PornVideos() {
               <div className="absolute bottom-32 right-4 flex flex-col gap-6 pointer-events-auto">
                 <button className="flex flex-col items-center gap-1">
                   <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    {apiSource === "redgifs" ? (
-                      <Play className="h-6 w-6 text-white" />
-                    ) : (
-                      <Play className="h-6 w-6 text-white" />
-                    )}
+                    <Play className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-xs text-white">Like</span>
                 </button>
@@ -634,18 +519,6 @@ export function PornVideos() {
 
             <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
               <span className="px-2 text-xs text-slate-400">API:</span>
-              <Button
-                onClick={() => setApiSource("redgifs")}
-                size="sm"
-                variant="ghost"
-                className={
-                  apiSource === "redgifs"
-                    ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
-                    : "text-slate-400 hover:bg-slate-700 hover:text-white"
-                }
-              >
-                RedGifs
-              </Button>
               <Button
                 onClick={() => setApiSource("eporner")}
                 size="sm"
@@ -1147,16 +1020,6 @@ export function PornVideos() {
                 />
               )}
               {apiSource === "cam4" && selectedVideo.embed && (
-                <iframe
-                  src={selectedVideo.embed}
-                  className="h-full w-full"
-                  frameBorder="0"
-                  allowFullScreen
-                  title={selectedVideo.title}
-                />
-              )}
-              {/* Add RedGifs embed handling here if necessary */}
-              {apiSource === "redgifs" && selectedVideo.embed && (
                 <iframe
                   src={selectedVideo.embed}
                   className="h-full w-full"
