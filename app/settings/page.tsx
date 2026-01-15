@@ -14,17 +14,17 @@ export default function SettingsPage() {
   const [autoSave, setAutoSave] = useState(false)
   const [highQuality, setHighQuality] = useState(true)
   const [showWatermark, setShowWatermark] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
 
   useEffect(() => {
     const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
     if (savedSettings) {
       const settings = JSON.parse(savedSettings)
       setNsfwFilter(settings.nsfwFilter ?? true)
-      setAutoSave(settings.autoSave ?? false)
+      setAutoSave(settings.autoSave ?? true)
       setHighQuality(settings.highQuality ?? true)
       setShowWatermark(settings.showWatermark ?? false)
-      setDarkMode(settings.darkMode ?? false)
+      setDarkMode(settings.darkMode ?? true)
     }
   }, [])
 
