@@ -481,7 +481,6 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400">
               An AIO website for all your porn and ai needs this is just the start!
-              artificial intelligence.
             </p>
           </div>
         </div>
