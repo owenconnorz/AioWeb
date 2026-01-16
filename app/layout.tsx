@@ -8,14 +8,14 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Naughty AI - AI Image & Text Generator",
+  title: "AioWeb - AI Image & Text Generator",
   description: "Generate stunning images, craft compelling text, and transform faces with cutting-edge AI technology",
   generator: "v0.app",
-  applicationName: "Naughty AI",
+  applicationName: "AioWeb",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Naughty AI",
+    title: "AioWeb",
   },
   formatDetection: {
     telephone: false,

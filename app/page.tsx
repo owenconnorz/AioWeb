@@ -1,12 +1,14 @@
 "use client"
 import { useState, useEffect } from "react"
+import type React from "react"
+import Image from "next/image"
+
 import { Card, CardContent } from "@/components/ui/card"
 import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos } from "@/components/porn-videos"
-import { PornPictures } from "@/components/porn-pictures"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download } from "lucide-react"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download, GripVertical } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("porn")
@@ -43,31 +45,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12">
-        {(activeTab === "porn" || activeTab === "pictures") && (
-          <div className="mb-6 flex justify-center">
-            <div className="glass-nav-pill inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80 sm:gap-2 sm:p-2.5">
-              <button
-                onClick={() => setActiveTab("porn")}
-                className={`nav-item ${activeTab === "porn" ? "active" : ""}`}
-                aria-label="Porn Videos"
-              >
-                <Film className="h-5 w-5 sm:h-6 sm:w-6" />
-                <span className="nav-label">Videos</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("pictures")}
-                className={`nav-item ${activeTab === "pictures" ? "active" : ""}`}
-                aria-label="Porn Pictures"
-              >
-                <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                <span className="nav-label">Pictures</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab !== "porn" && activeTab !== "pictures" && (
+        {activeTab !== "porn" && (
           <div className="mb-8 text-center sm:mb-12">
             <div className="mb-4 flex flex-col items-center justify-center gap-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm">
@@ -75,9 +53,12 @@ export default function Home() {
                 Powered by AI
               </div>
             </div>
-            <h1 className="mb-3 text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:mb-4 sm:text-5xl">
-              Naughty AI
-            </h1>
+            <div className="mb-4 flex items-center justify-center gap-3">
+              <Image src="/logo.png" alt="AioWeb Logo" width={60} height={60} className="h-12 w-12 sm:h-16 sm:w-16" />
+              <h1 className="text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+                AioWeb
+              </h1>
+            </div>
             <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
               Generate stunning images, craft compelling text, create videos, and transform faces with cutting-edge AI
             </p>
@@ -89,14 +70,6 @@ export default function Home() {
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
                 <PornVideos />
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === "pictures" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-              <CardContent className="p-4 sm:p-6">
-                <PornPictures />
               </CardContent>
             </Card>
           )}
@@ -197,6 +170,8 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [apiOrder, setApiOrder] = useState<string[]>(["xvidapi", "eporner", "redgifs", "cam4", "pornpics"])
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -218,6 +193,11 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
           darkMode: true,
         }
         localStorage.setItem("aiCreativeSuiteSettings", JSON.stringify(defaultSettings))
+      }
+
+      const savedApiOrder = localStorage.getItem("porn_api_order")
+      if (savedApiOrder) {
+        setApiOrder(JSON.parse(savedApiOrder))
       }
     } catch (error) {
       console.error("Error loading settings:", error)
@@ -290,6 +270,50 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     }
   }
 
+  const handleDragStart = (api: string) => {
+    setDraggedItem(api)
+  }
+
+  const handleDragOver = (e: React.DragEvent, api: string) => {
+    e.preventDefault()
+    if (!draggedItem || draggedItem === api) return
+
+    const newOrder = [...apiOrder]
+    const draggedIndex = newOrder.indexOf(draggedItem)
+    const targetIndex = newOrder.indexOf(api)
+
+    newOrder.splice(draggedIndex, 1)
+    newOrder.splice(targetIndex, 0, draggedItem)
+
+    setApiOrder(newOrder)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedItem(null)
+    try {
+      localStorage.setItem("porn_api_order", JSON.stringify(apiOrder))
+    } catch (error) {
+      console.error("Error saving API order:", error)
+    }
+  }
+
+  const getApiDisplayName = (api: string) => {
+    switch (api) {
+      case "redgifs":
+        return "RedGifs"
+      case "eporner":
+        return "EPorner"
+      case "xvidapi":
+        return "XvidAPI"
+      case "cam4":
+        return "Cam4"
+      case "pornpics":
+        return "PornPics"
+      default:
+        return api
+    }
+  }
+
   if (!mounted) {
     return <div className="p-8 text-center text-slate-600 dark:text-slate-400">Loading settings...</div>
   }
@@ -298,7 +322,33 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     <div className="space-y-6">
       <div>
         <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Settings</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-300">Customize your Naughty AI experience</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Customize your AioWeb experience</p>
+      </div>
+
+      <div>
+        <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">API Bar Order</h3>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+          Drag and drop to reorder the API buttons in the Porn section
+        </p>
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+          {apiOrder.map((api) => (
+            <div
+              key={api}
+              draggable
+              onDragStart={() => handleDragStart(api)}
+              onDragOver={(e) => handleDragOver(e, api)}
+              onDragEnd={handleDragEnd}
+              className={`flex cursor-move items-center gap-3 rounded-lg border p-3 transition-all ${
+                draggedItem === api
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                  : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
+              }`}
+            >
+              <GripVertical className="h-5 w-5 text-slate-400" />
+              <span className="font-medium text-slate-900 dark:text-white">{getApiDisplayName(api)}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -393,7 +443,7 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
                   {isInstalled
                     ? "App is installed"
                     : isInstallable
-                      ? "Add Naughty AI to your home screen"
+                      ? "Add AioWeb to your home screen"
                       : "Install option not available"}
                 </p>
               </div>
@@ -422,7 +472,7 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
           <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">About</h3>
           <div className="space-y-3 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 p-4 dark:from-indigo-950/30 dark:to-purple-950/30">
             <div>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">Naughty AI</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">AioWeb</p>
               <p className="text-xs text-slate-600 dark:text-slate-400">Version 1.0.0</p>
             </div>
             <div className="border-t border-slate-200 pt-3 dark:border-slate-700">

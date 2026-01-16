@@ -1,6 +1,6 @@
 {
-  "name": "Naughty AI - AI Image & Text Generator",
-  "short_name": "Naughty AI",
+  "name": "AioWeb - AI Image & Text Generator",
+  "short_name": "AioWeb",
   "description": "Generate stunning images, craft compelling text, and transform faces with cutting-edge AI technology",
   "start_url": "/",
   "display": "standalone",

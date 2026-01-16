@@ -163,4 +163,14 @@
   .nav-item.active .nav-label {
     font-weight: 600;
   }
+
+  /* Added scrollbar-hide utility for horizontal scrolling API bar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

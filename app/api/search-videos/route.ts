@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
 
     console.log(`[v0] Searching ${source} API for:`, query, `page:`, page)
 
-    if (source === "cam4") {
+    if (source === "camsoda") {
+      return await searchCamSoda(page)
+    } else if (source === "cam4") {
       return await searchCam4(page)
     } else if (source === "xvidapi") {
       return await searchXvidapi(query, page)
@@ -198,6 +200,59 @@ async function searchCam4(page = 1) {
   })
 
   console.log(`[v0] Returning ${transformedVideos.length} live cams`)
+
+  return NextResponse.json({
+    videos: transformedVideos,
+    total: transformedVideos.length,
+  })
+}
+
+async function searchCamSoda(page = 1) {
+  const apiUrl = `https://www.camsoda.com/api/v1/browse/online?limit=50&offset=${(page - 1) * 50}`
+  console.log(`[v0] Fetching CamSoda API:`, apiUrl)
+
+  const response = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    },
+  })
+
+  if (!response.ok) {
+    console.log(`[v0] CamSoda API error status:`, response.status)
+    throw new Error(`CamSoda API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log(`[v0] CamSoda API response:`, data.results?.length || 0, "cams")
+
+  const transformedVideos = (data.results || []).map((cam: any) => {
+    const username = cam.username || cam.user?.username || `cam-${Date.now()}`
+    const thumbUrl = cam.thumb || cam.thumbnail || `/placeholder.svg?height=360&width=640`
+
+    return {
+      id: username,
+      title: username,
+      keywords: cam.tags?.join(", ") || cam.status || "Live",
+      views: cam.num_users || cam.viewers || 0,
+      rate: 0,
+      url: `https://www.camsoda.com/${username}`,
+      added: new Date().toISOString(),
+      length_sec: 0,
+      length_min: "LIVE",
+      embed: `https://www.camsoda.com/${username}`,
+      default_thumb: {
+        src: thumbUrl,
+        size: "640x360",
+        width: 640,
+        height: 360,
+      },
+      thumbs: [],
+    }
+  })
+
+  console.log(`[v0] Returning ${transformedVideos.length} CamSoda live cams`)
 
   return NextResponse.json({
     videos: transformedVideos,

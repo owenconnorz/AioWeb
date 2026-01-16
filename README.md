@@ -1,10 +1,30 @@
-#nsfw videos and AI image and text generator
+# AioWeb
 
- aio app contains so much in just one website.
+*Automatically synced with your [v0.app](https://v0.app) deployments*
 
-bugs still need to be fixed cam4 pause videos when scrolled down.
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/owencz1998s-projects/v0-ai-image-and-text-generator)
+[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/nxjMKgLzFO6)
 
-move the pictures tab all into videos for one page use
+## Overview
 
-ui adjuments
+This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
+Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
 
+## Deployment
+
+Your project is live at:
+
+**[https://vercel.com/owencz1998s-projects/v0-ai-image-and-text-generator](https://vercel.com/owencz1998s-projects/v0-ai-image-and-text-generator)**
+
+## Build your app
+
+Continue building your app on:
+
+**[https://v0.app/chat/nxjMKgLzFO6](https://v0.app/chat/nxjMKgLzFO6)**
+
+## How It Works
+
+1. Create and modify your project using [v0.app](https://v0.app)
+2. Deploy your chats from the v0 interface
+3. Changes are automatically pushed to this repository
+4. Vercel deploys the latest version from this repository

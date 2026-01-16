@@ -52,19 +52,23 @@ async function fetchPornPics({
   } else if (category) {
     const categorySlug = category.toLowerCase().replace(/\s+/g, "-")
     apiUrl = `${baseUrl}/gallery/${categorySlug}`
-  } else if (query) {
+  } else if (query && query !== "popular") {
     apiUrl = `${baseUrl}/gallery/${encodeURIComponent(query)}`
   } else {
+    // Default to home page for popular/empty queries
     apiUrl = `${baseUrl}/home`
   }
 
+  console.log("[v0] Fetching PornPics from:", apiUrl)
+
   const response = await fetch(apiUrl, {
     headers: {
-      "User-Agent": "NaughtyAI/1.0",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     },
   })
 
   if (!response.ok) {
+    console.error("[v0] PornPics API error:", response.status, await response.text())
     throw new Error(`API returned ${response.status}`)
   }
 
