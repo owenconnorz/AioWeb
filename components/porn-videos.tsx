@@ -115,6 +115,7 @@ export function PornVideos() {
   const iframeRefs = useRef<(HTMLIFrameElement | HTMLVideoElement | null)[]>([])
   const [loadedIframes, setLoadedIframes] = useState<Set<number>>(new Set([0]))
   const [apiOrder, setApiOrder] = useState<ApiSource[]>(DEFAULT_API_ORDER)
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0)
 
   useEffect(() => {
     try {
@@ -142,12 +143,25 @@ export function PornVideos() {
       const containerRect = container.getBoundingClientRect()
       const containerHeight = containerRect.height
 
+      let mostVisibleIndex = 0
+      let maxVisibility = 0
+
       iframeRefs.current.forEach((element, idx) => {
         if (!element) return
 
         const elementRect = element.getBoundingClientRect()
         const elementCenter = elementRect.top + elementRect.height / 2
-        const isInView = elementCenter >= 0 && elementCenter <= containerHeight
+
+        // Calculate how much of the element is visible
+        const visibleTop = Math.max(0, elementRect.top)
+        const visibleBottom = Math.min(containerHeight, elementRect.bottom)
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop)
+        const visibility = visibleHeight / elementRect.height
+
+        if (visibility > maxVisibility) {
+          maxVisibility = visibility
+          mostVisibleIndex = idx
+        }
 
         // Load iframe if it's within viewport or one video away
         const distanceFromView = Math.abs(elementCenter - containerHeight / 2)
@@ -156,11 +170,38 @@ export function PornVideos() {
         if (shouldLoad && !loadedIframes.has(idx)) {
           setLoadedIframes((prev) => new Set(prev).add(idx))
         }
-
-        if (isInView && idx !== currentVideoIndex) {
-          setCurrentVideoIndex(idx)
-        }
       })
+
+      if (mostVisibleIndex !== activeVideoIndex) {
+        setActiveVideoIndex(mostVisibleIndex)
+        setCurrentVideoIndex(mostVisibleIndex)
+
+        // Handle RedGifs video play/pause
+        if (apiSource === "redgifs") {
+          iframeRefs.current.forEach((element, idx) => {
+            if (element && element instanceof HTMLVideoElement) {
+              if (idx === mostVisibleIndex) {
+                element.play().catch(() => {})
+              } else {
+                element.pause()
+              }
+            }
+          })
+        }
+
+        if (apiSource === "cam4" || apiSource === "camsoda") {
+          setLoadedIframes((prev) => {
+            const newLoaded = new Set<number>()
+            // Only keep current and adjacent iframes loaded
+            for (let i = mostVisibleIndex - 1; i <= mostVisibleIndex + 1; i++) {
+              if (i >= 0 && i < videos.length) {
+                newLoaded.add(i)
+              }
+            }
+            return newLoaded
+          })
+        }
+      }
     }
 
     const container = document.querySelector(".feed-container")
@@ -172,7 +213,7 @@ export function PornVideos() {
     return () => {
       container?.removeEventListener("scroll", handleScroll)
     }
-  }, [feedView, apiSource, currentVideoIndex, loadedIframes])
+  }, [feedView, apiSource, activeVideoIndex, loadedIframes, videos.length])
 
   useEffect(() => {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
@@ -448,7 +489,7 @@ export function PornVideos() {
                   loop
                   playsInline
                   muted
-                  autoPlay={index === 0}
+                  autoPlay={index === activeVideoIndex}
                   className="h-full w-full object-contain bg-black"
                 />
               ) : loadedIframes.has(index) ? (
@@ -469,6 +510,11 @@ export function PornVideos() {
                     iframeRefs.current[index] = el as any
                   }}
                   className="flex h-full w-full items-center justify-center bg-slate-900"
+                  style={{
+                    backgroundImage: video.default_thumb?.src ? `url(${video.default_thumb.src})` : undefined,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
                 >
                   <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
                 </div>

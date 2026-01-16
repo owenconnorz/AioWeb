@@ -216,6 +216,7 @@ async function searchCamSoda(page = 1) {
     headers: {
       "Content-Type": "application/json",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Referer: "https://www.camsoda.com/",
     },
   })
 
@@ -227,21 +228,34 @@ async function searchCamSoda(page = 1) {
   const data = await response.json()
   console.log(`[v0] CamSoda API response:`, data.results?.length || 0, "cams")
 
+  if (data.results?.length > 0) {
+    console.log(`[v0] CamSoda first result keys:`, Object.keys(data.results[0]))
+    console.log(`[v0] CamSoda first result sample:`, JSON.stringify(data.results[0]).slice(0, 500))
+  }
+
   const transformedVideos = (data.results || []).map((cam: any) => {
-    const username = cam.username || cam.user?.username || `cam-${Date.now()}`
-    const thumbUrl = cam.thumb || cam.thumbnail || `/placeholder.svg?height=360&width=640`
+    const username = cam.username || cam.display_name || cam.tpl?.username || `cam-${Date.now()}`
+    const displayName = cam.display_name || cam.username || username
+
+    const thumbUrl =
+      cam.tpl?.thumb || cam.thumb || cam.thumbnail || cam.profile_picture || `/placeholder.svg?height=360&width=640`
+
+    // We'll use their direct page URL which can work in an iframe with sandbox
+    const embedUrl = `https://www.camsoda.com/${username}`
+
+    console.log(`[v0] CamSoda cam: username=${username}, thumb=${thumbUrl}`)
 
     return {
       id: username,
-      title: username,
+      title: displayName,
       keywords: cam.tags?.join(", ") || cam.status || "Live",
-      views: cam.num_users || cam.viewers || 0,
+      views: cam.num_users || cam.online_users || cam.viewers || 0,
       rate: 0,
       url: `https://www.camsoda.com/${username}`,
       added: new Date().toISOString(),
       length_sec: 0,
       length_min: "LIVE",
-      embed: `https://www.camsoda.com/${username}`,
+      embed: embedUrl,
       default_thumb: {
         src: thumbUrl,
         size: "640x360",
