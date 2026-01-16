@@ -127,14 +127,14 @@ export function PornVideos() {
       console.error("Error loading API order:", err)
     }
 
-    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "stripchat") // Added stripchat to feed view
+    setFeedView(apiSource === "cam4" || apiSource === "redgifs")
     loadVideos()
     loadLibraryData()
     setLoadedIframes(new Set([0])) // Reset loaded iframes when changing API
   }, [apiSource])
 
   useEffect(() => {
-    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "stripchat")) return // Added stripchat to feed view condition
+    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs")) return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -189,7 +189,7 @@ export function PornVideos() {
           })
         }
 
-        if (apiSource === "cam4" || apiSource === "stripchat") {
+        if (apiSource === "cam4") {
           setLoadedIframes((prev) => {
             const newLoaded = new Set<number>()
             // Only keep current and adjacent iframes loaded
@@ -219,7 +219,7 @@ export function PornVideos() {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-    if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "stripchat")) {
+    if (feedView && (apiSource === "cam4" || apiSource === "redgifs")) {
       if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
@@ -457,7 +457,7 @@ export function PornVideos() {
     return url
   }
 
-  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "stripchat")) {
+  if (feedView && (apiSource === "cam4" || apiSource === "redgifs")) {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <button
@@ -666,77 +666,66 @@ export function PornVideos() {
 
           {videos.length > 0 ? (
             <>
-              {apiSource === "pornpics" ? (
-                // PornPics - Display as image galleries
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {videos.map((gallery: any) => (
-                    <div
-                      key={gallery.id}
+              {apiSource === "pornpics" || apiSource === "stripchat" ? (
+                // PornPics & StripChat - Display as image galleries / live cam thumbnails
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                  {videos.map((item: any) => (
+                    <a
+                      key={item.id}
+                      href={item.url || item.embed}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="group relative overflow-hidden rounded-lg bg-slate-800/50 backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-slate-700/50"
                     >
-                      <div className="relative aspect-[4/3]">
+                      <div className="relative aspect-[3/4]">
                         <img
-                          src={gallery.thumbnail || gallery.default_thumb?.src}
-                          alt={gallery.title}
+                          src={item.thumbnail || item.default_thumb?.src}
+                          alt={item.title}
                           className="h-full w-full object-cover"
+                          loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                      </div>
-                      <div className="p-4">
-                        <h3 className="mb-2 line-clamp-2 text-sm font-medium text-white">{gallery.title}</h3>
-                        {gallery.photos && (
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <span>{gallery.photos} photos</span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                        {/* Live indicator for StripChat */}
+                        {apiSource === "stripchat" && (
+                          <div className="absolute left-2 top-2 flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white">
+                            <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                            LIVE
+                          </div>
+                        )}
+                        {/* Viewer count */}
+                        {item.views > 0 && (
+                          <div className="absolute right-2 top-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs text-white">
+                            <Eye className="h-3 w-3" />
+                            {item.views.toLocaleString()}
                           </div>
                         )}
                       </div>
-                      <div className="absolute right-2 top-2 flex gap-2">
+                      <div className="p-3">
+                        <h3 className="line-clamp-1 text-sm font-medium text-white">{item.title}</h3>
+                        {apiSource === "pornpics" && item.photos && (
+                          <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                            <span>{item.photos} photos</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="absolute right-2 bottom-14 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                         <button
                           onClick={(e) => {
+                            e.preventDefault()
                             e.stopPropagation()
-                            saveVideo(gallery)
+                            saveVideo(item)
                           }}
                           className="rounded-full bg-black/50 p-2 backdrop-blur-sm transition-colors hover:bg-black/70"
-                          aria-label={isVideoSaved(gallery.id) ? "Remove from saved" : "Save"}
+                          aria-label={isVideoSaved(item.id) ? "Remove from saved" : "Save"}
                         >
-                          {isVideoSaved(gallery.id) ? (
+                          {isVideoSaved(item.id) ? (
                             <BookmarkCheck className="h-4 w-4 text-violet-400" />
                           ) : (
                             <Bookmark className="h-4 w-4 text-white" />
                           )}
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setShowAddToPlaylist(showAddToPlaylist === gallery.id ? null : gallery.id)
-                          }}
-                          className="rounded-full bg-black/50 p-2 backdrop-blur-sm transition-colors hover:bg-black/70"
-                          aria-label="Add to playlist"
-                        >
-                          <Plus className="h-4 w-4 text-white" />
-                        </button>
                       </div>
-                      {showAddToPlaylist === gallery.id && (
-                        <div className="absolute right-2 top-16 z-10 w-48 rounded-lg border border-slate-700 bg-slate-800 p-2 shadow-xl">
-                          {playlists.length === 0 ? (
-                            <p className="p-2 text-xs text-slate-400">No playlists yet</p>
-                          ) : (
-                            playlists.map((playlist) => (
-                              <button
-                                key={playlist.id}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  addToPlaylist(playlist.id, gallery.id)
-                                }}
-                                className="w-full rounded p-2 text-left text-sm text-white hover:bg-slate-700"
-                              >
-                                {playlist.name}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    </a>
                   ))}
                 </div>
               ) : (
