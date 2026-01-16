@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
     console.log(`[v0] Searching ${source} API for:`, query, `page:`, page)
 
-    if (source === "camsoda") {
-      return await searchCamSoda(page)
+    if (source === "stripchat") {
+      return await searchStripChat(page)
     } else if (source === "cam4") {
       return await searchCam4(page)
     } else if (source === "xvidapi") {
@@ -207,51 +207,47 @@ async function searchCam4(page = 1) {
   })
 }
 
-async function searchCamSoda(page = 1) {
-  const apiUrl = `https://www.camsoda.com/api/v1/browse/online?limit=50&offset=${(page - 1) * 50}`
-  console.log(`[v0] Fetching CamSoda API:`, apiUrl)
+async function searchStripChat(page = 1) {
+  const apiUrl = `https://go.xlviiirdr.com/api/models?limit=50&offset=${(page - 1) * 50}&primaryTag=girls`
+  console.log(`[v0] Fetching StripChat API:`, apiUrl)
 
   const response = await fetch(apiUrl, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      Referer: "https://www.camsoda.com/",
     },
   })
 
   if (!response.ok) {
-    console.log(`[v0] CamSoda API error status:`, response.status)
-    throw new Error(`CamSoda API error: ${response.status}`)
+    console.log(`[v0] StripChat API error status:`, response.status)
+    throw new Error(`StripChat API error: ${response.status}`)
   }
 
   const data = await response.json()
-  console.log(`[v0] CamSoda API response:`, data.results?.length || 0, "cams")
+  console.log(`[v0] StripChat API response:`, data.models?.length || 0, "models")
 
-  if (data.results?.length > 0) {
-    console.log(`[v0] CamSoda first result keys:`, Object.keys(data.results[0]))
-    console.log(`[v0] CamSoda first result sample:`, JSON.stringify(data.results[0]).slice(0, 500))
+  if (data.models?.length > 0) {
+    console.log(`[v0] StripChat first model keys:`, Object.keys(data.models[0]))
   }
 
-  const transformedVideos = (data.results || []).map((cam: any) => {
-    const username = cam.username || cam.display_name || cam.tpl?.username || `cam-${Date.now()}`
-    const displayName = cam.display_name || cam.username || username
+  const transformedVideos = (data.models || []).map((model: any) => {
+    const username = model.username || model.displayName || `model-${Date.now()}`
+    const displayName = model.displayName || model.username || username
 
-    const thumbUrl =
-      cam.tpl?.thumb || cam.thumb || cam.thumbnail || cam.profile_picture || `/placeholder.svg?height=360&width=640`
+    // StripChat provides thumbnail URLs
+    const thumbUrl = model.previewUrl || model.avatarUrl || model.snapshotUrl || `/placeholder.svg?height=360&width=640`
 
-    // We'll use their direct page URL which can work in an iframe with sandbox
-    const embedUrl = `https://www.camsoda.com/${username}`
-
-    console.log(`[v0] CamSoda cam: username=${username}, thumb=${thumbUrl}`)
+    // StripChat lite iframe embed URL
+    const embedUrl = `https://lite-iframe.stripcdn.com/${username}`
 
     return {
       id: username,
       title: displayName,
-      keywords: cam.tags?.join(", ") || cam.status || "Live",
-      views: cam.num_users || cam.online_users || cam.viewers || 0,
+      keywords: model.tags?.join(", ") || model.status || "Live",
+      views: model.viewersCount || model.viewers || 0,
       rate: 0,
-      url: `https://www.camsoda.com/${username}`,
+      url: `https://stripchat.com/${username}`,
       added: new Date().toISOString(),
       length_sec: 0,
       length_min: "LIVE",
@@ -266,7 +262,7 @@ async function searchCamSoda(page = 1) {
     }
   })
 
-  console.log(`[v0] Returning ${transformedVideos.length} CamSoda live cams`)
+  console.log(`[v0] Returning ${transformedVideos.length} StripChat live models`)
 
   return NextResponse.json({
     videos: transformedVideos,

@@ -52,9 +52,9 @@ interface Playlist {
 }
 
 type ViewMode = "browse" | "library"
-type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "camsoda" // Added camsoda
+type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "stripchat" // Added stripchat
 
-const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "camsoda"] // Added camsoda to default order
+const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "stripchat"] // Added stripchat to default order
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -127,14 +127,14 @@ export function PornVideos() {
       console.error("Error loading API order:", err)
     }
 
-    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "camsoda")
+    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "stripchat") // Added stripchat to feed view
     loadVideos()
     loadLibraryData()
     setLoadedIframes(new Set([0])) // Reset loaded iframes when changing API
   }, [apiSource])
 
   useEffect(() => {
-    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "camsoda")) return
+    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "stripchat")) return // Added stripchat to feed view condition
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -189,7 +189,7 @@ export function PornVideos() {
           })
         }
 
-        if (apiSource === "cam4" || apiSource === "camsoda") {
+        if (apiSource === "cam4" || apiSource === "stripchat") {
           setLoadedIframes((prev) => {
             const newLoaded = new Set<number>()
             // Only keep current and adjacent iframes loaded
@@ -219,7 +219,7 @@ export function PornVideos() {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-    if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "camsoda")) {
+    if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "stripchat")) {
       if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
@@ -286,7 +286,7 @@ export function PornVideos() {
 
       const updatedPlaylists = [...playlists, newPlaylist]
       setPlaylists(updatedPlaylists)
-      localStorage.setItem("porn_playlists", JSON.JSON.stringify(updatedPlaylists))
+      localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
       setNewPlaylistName("")
       setShowCreatePlaylist(false)
     } catch (err) {
@@ -457,7 +457,7 @@ export function PornVideos() {
     return url
   }
 
-  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "camsoda")) {
+  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "stripchat")) {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <button
@@ -525,7 +525,7 @@ export function PornVideos() {
                 {video.views > 0 && (
                   <div className="flex items-center gap-2 text-sm text-white/80">
                     <Eye className="h-4 w-4" />
-                    <span>{Math.floor(video.views / 1000)}K viewers</span>
+                    <span>{video.views.toLocaleString()} viewers</span>
                   </div>
                 )}
               </div>
@@ -603,26 +603,31 @@ export function PornVideos() {
             )}
 
             <div className="w-full overflow-x-auto scrollbar-hide">
-              <div className="flex min-w-min items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-lg backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80 sm:gap-2 sm:p-2.5">
+              <div className="flex min-w-min items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-lg backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-900/80">
+                <span className="px-3 text-sm font-medium text-slate-600 dark:text-slate-400">API:</span>
                 {apiOrder.map((api) => (
                   <button
                     key={api}
                     onClick={() => setApiSource(api)}
-                    className={`nav-item ${apiSource === api ? "active" : ""}`}
+                    className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                      apiSource === api
+                        ? "bg-violet-600 text-white shadow-md"
+                        : "text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700"
+                    }`}
                   >
-                    <span className="whitespace-nowrap text-sm sm:text-base">
-                      {api === "redgifs"
-                        ? "RedGifs"
-                        : api === "eporner"
-                          ? "EPorner"
-                          : api === "xvidapi"
-                            ? "XvidAPI"
-                            : api === "cam4"
-                              ? "Cam4"
-                              : api === "camsoda"
-                                ? "CamSoda"
-                                : "PornPics"}
-                    </span>
+                    {api === "eporner"
+                      ? "EPorner"
+                      : api === "xvidapi"
+                        ? "XvidAPI"
+                        : api === "cam4"
+                          ? "Cam4"
+                          : api === "redgifs"
+                            ? "RedGifs"
+                            : api === "pornpics"
+                              ? "PornPics"
+                              : api === "stripchat" // Update label from CamSoda to StripChat
+                                ? "StripChat"
+                                : api}
                   </button>
                 ))}
               </div>
