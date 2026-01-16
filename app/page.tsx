@@ -480,7 +480,7 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
               <p className="mt-1 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Owen Connor Z</p>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              An AI-powered creative suite for generating images, text, videos, and face swaps using cutting-edge
+              An AIO website for all your porn and ai needs this is just the start!
               artificial intelligence.
             </p>
           </div>
