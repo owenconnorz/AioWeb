@@ -204,6 +204,10 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     "chaturbate",
     "pornpics",
     "redtube",
+    "youporn",
+    "tube8",
+    "xhamster",
+    "spankbang",
   ])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [touchStartY, setTouchStartY] = useState<number | null>(null)
@@ -235,11 +239,11 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
       const savedApiOrder = localStorage.getItem("porn_api_order")
       if (savedApiOrder) {
         const parsed = JSON.parse(savedApiOrder)
-        if (!parsed.includes("chaturbate")) {
-          parsed.push("chaturbate")
-        }
-        if (!parsed.includes("redtube")) {
-          parsed.push("redtube")
+        const newApis = ["chaturbate", "redtube", "youporn", "tube8", "xhamster", "spankbang"]
+        for (const api of newApis) {
+          if (!parsed.includes(api)) {
+            parsed.push(api)
+          }
         }
         setApiOrder(parsed)
       }
@@ -440,6 +444,14 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
         return "Chaturbate"
       case "redtube":
         return "RedTube"
+      case "youporn":
+        return "YouPorn"
+      case "tube8":
+        return "Tube8"
+      case "xhamster":
+        return "xHamster"
+      case "spankbang":
+        return "SpankBang"
       default:
         return api
     }

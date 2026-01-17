@@ -61,9 +61,32 @@ interface HistoryItem {
   apiSource: string
 }
 
-type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube"
+type ApiSource =
+  | "redgifs"
+  | "eporner"
+  | "xvidapi"
+  | "cam4"
+  | "pornpics"
+  | "chaturbate"
+  | "redtube"
+  | "youporn"
+  | "tube8"
+  | "xhamster"
+  | "spankbang"
 
-const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube"]
+const DEFAULT_API_ORDER: ApiSource[] = [
+  "xvidapi",
+  "eporner",
+  "redgifs",
+  "cam4",
+  "pornpics",
+  "chaturbate",
+  "redtube",
+  "youporn",
+  "tube8",
+  "xhamster",
+  "spankbang",
+]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -726,7 +749,16 @@ export function PornVideos() {
                             ? "Chaturbate"
                             : api === "redtube"
                               ? "Redtube"
-                              : api}
+                              : // Added new API source labels
+                                api === "youporn"
+                                ? "YouPorn"
+                                : api === "tube8"
+                                  ? "Tube8"
+                                  : api === "xhamster"
+                                    ? "XHamster"
+                                    : api === "spankbang"
+                                      ? "SpankBang"
+                                      : api}
               </span>
             </button>
           ))}

@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const query = searchParams.get("query")
-    const source = searchParams.get("source") || "eporner" // Get API source parameter
-    const page = Number.parseInt(searchParams.get("page") || "1", 10) // Added page parameter for pagination
+    const source = searchParams.get("source") || "eporner"
+    const page = Number.parseInt(searchParams.get("page") || "1", 10)
 
     if (!query) {
       return NextResponse.json({ error: "Search query is required" }, { status: 400 })
@@ -44,6 +44,14 @@ export async function GET(request: NextRequest) {
       return await searchXvidapi(query, page)
     } else if (source === "redtube") {
       return await searchRedTube(query, page)
+    } else if (source === "youporn") {
+      return await searchYouPorn(query, page)
+    } else if (source === "tube8") {
+      return await searchTube8(query, page)
+    } else if (source === "xhamster") {
+      return await searchXHamster(query, page)
+    } else if (source === "spankbang") {
+      return await searchSpankBang(query, page)
     } else {
       return await searchEporner(query, page)
     }
@@ -349,4 +357,283 @@ async function searchRedTube(query: string, page = 1) {
     videos: transformedVideos,
     total: data.count || transformedVideos.length,
   })
+}
+
+async function searchYouPorn(query: string, page = 1) {
+  const isPopular = query === "popular"
+
+  let apiUrl = `https://www.youporn.com/api/webmasters/search/?output=json&thumbsize=big&page=${page}`
+
+  if (!isPopular && query) {
+    apiUrl += `&search=${encodeURIComponent(query)}`
+  }
+  if (isPopular) {
+    apiUrl += `&ordering=mostviewed&period=weekly`
+  }
+
+  console.log(`[v0] Fetching YouPorn API:`, apiUrl)
+
+  const response = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    },
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.log(`[v0] YouPorn API error:`, response.status, errorText.substring(0, 200))
+    throw new Error(`YouPorn API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log(`[v0] YouPorn API response:`, data.videos?.length || 0, "videos")
+
+  const videos = data.videos || []
+
+  const transformedVideos = videos.map((video: any) => {
+    const embedUrl = video.embed_url || `https://www.youporn.com/embed/${video.video_id}`
+
+    return {
+      id: video.video_id || `yp-${Date.now()}-${Math.random()}`,
+      title: video.title || "Untitled",
+      keywords: video.tags?.map((t: any) => t.tag_name).join(", ") || "",
+      views: Number.parseInt(video.views || "0", 10),
+      rate: Number.parseFloat(video.rating || "0"),
+      url: video.url || `https://www.youporn.com/watch/${video.video_id}`,
+      added: video.publish_date || "",
+      length_sec: Number.parseInt(video.duration || "0", 10),
+      length_min: video.duration || "0:00",
+      embed: embedUrl,
+      default_thumb: {
+        src: video.default_thumb || video.thumb || "/placeholder.svg",
+        size: "640x360",
+        width: 640,
+        height: 360,
+      },
+      thumbs: video.thumbs || [],
+    }
+  })
+
+  console.log(`[v0] Returning ${transformedVideos.length} YouPorn videos`)
+
+  return NextResponse.json({
+    videos: transformedVideos,
+    total: data.count || transformedVideos.length,
+  })
+}
+
+async function searchTube8(query: string, page = 1) {
+  const isPopular = query === "popular"
+
+  let apiUrl = `https://api.tube8.com/api.php?data=tube8.Videos.searchVideos&output=json&thumbsize=big&page=${page}`
+
+  if (!isPopular && query) {
+    apiUrl += `&search=${encodeURIComponent(query)}`
+  }
+  if (isPopular) {
+    apiUrl += `&ordering=mostviewed&period=weekly`
+  }
+
+  console.log(`[v0] Fetching Tube8 API:`, apiUrl)
+
+  const response = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    },
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.log(`[v0] Tube8 API error:`, response.status, errorText.substring(0, 200))
+    throw new Error(`Tube8 API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log(`[v0] Tube8 API response:`, data.videos?.length || 0, "videos")
+
+  const videos = data.videos || []
+
+  const transformedVideos = videos.map((item: any) => {
+    const video = item.video || item
+    const embedUrl = video.embed_url || `https://www.tube8.com/embed/${video.video_id}`
+
+    return {
+      id: video.video_id || `t8-${Date.now()}-${Math.random()}`,
+      title: video.title || "Untitled",
+      keywords: video.tags?.map((t: any) => t.tag_name).join(", ") || "",
+      views: Number.parseInt(video.views || "0", 10),
+      rate: Number.parseFloat(video.rating || "0"),
+      url: video.url || `https://www.tube8.com/video/${video.video_id}`,
+      added: video.publish_date || "",
+      length_sec: Number.parseInt(video.duration || "0", 10),
+      length_min: video.duration || "0:00",
+      embed: embedUrl,
+      default_thumb: {
+        src: video.default_thumb || video.thumb || video.preview || "/placeholder.svg",
+        size: "640x360",
+        width: 640,
+        height: 360,
+      },
+      thumbs: [],
+    }
+  })
+
+  console.log(`[v0] Returning ${transformedVideos.length} Tube8 videos`)
+
+  return NextResponse.json({
+    videos: transformedVideos,
+    total: data.count || transformedVideos.length,
+  })
+}
+
+async function searchXHamster(query: string, page = 1) {
+  const isPopular = query === "popular"
+
+  // xHamster uses a different API structure
+  let apiUrl = `https://xhamster.com/api/front/content?page=${page}&categories[]=all`
+
+  if (!isPopular && query) {
+    apiUrl = `https://xhamster.com/api/front/search?q=${encodeURIComponent(query)}&page=${page}`
+  }
+
+  console.log(`[v0] Fetching xHamster API:`, apiUrl)
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Accept: "application/json",
+      },
+    })
+
+    if (!response.ok) {
+      // Fall back to a simpler endpoint if the main one fails
+      console.log(`[v0] xHamster API primary endpoint failed, status:`, response.status)
+      throw new Error(`xHamster API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log(`[v0] xHamster API response:`, data.videos?.length || data.data?.length || 0, "videos")
+
+    const videos = data.videos || data.data || []
+
+    const transformedVideos = videos.slice(0, 20).map((video: any) => {
+      const videoId = video.id || video.video_id || `xh-${Date.now()}-${Math.random()}`
+      const embedUrl = `https://xhamster.com/embed/${videoId}`
+
+      return {
+        id: videoId,
+        title: video.title || video.name || "Untitled",
+        keywords: video.categories?.join(", ") || video.tags?.join(", ") || "",
+        views: video.views || 0,
+        rate: video.rating || 0,
+        url: video.pageURL || video.url || `https://xhamster.com/videos/${videoId}`,
+        added: video.created || "",
+        length_sec: video.duration || 0,
+        length_min: video.durationFormatted || "0:00",
+        embed: embedUrl,
+        default_thumb: {
+          src: video.thumbURL || video.thumb || video.preview || "/placeholder.svg",
+          size: "640x360",
+          width: 640,
+          height: 360,
+        },
+        thumbs: [],
+      }
+    })
+
+    console.log(`[v0] Returning ${transformedVideos.length} xHamster videos`)
+
+    return NextResponse.json({
+      videos: transformedVideos,
+      total: data.total || transformedVideos.length,
+    })
+  } catch (error) {
+    console.error("[v0] xHamster API error:", error)
+    // Return empty result instead of throwing
+    return NextResponse.json({
+      videos: [],
+      total: 0,
+      error: "xHamster API temporarily unavailable",
+    })
+  }
+}
+
+async function searchSpankBang(query: string, page = 1) {
+  const isPopular = query === "popular"
+
+  // SpankBang has a simple search endpoint
+  const apiUrl = isPopular
+    ? `https://spankbang.com/api/videos/trending?page=${page}`
+    : `https://spankbang.com/s/${encodeURIComponent(query)}/${page}/`
+
+  console.log(`[v0] Fetching SpankBang:`, apiUrl)
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Accept: "text/html,application/json",
+      },
+    })
+
+    if (!response.ok) {
+      console.log(`[v0] SpankBang error:`, response.status)
+      throw new Error(`SpankBang error: ${response.status}`)
+    }
+
+    // SpankBang doesn't have a proper JSON API, so we parse HTML or use fallback
+    const contentType = response.headers.get("content-type")
+
+    if (contentType?.includes("application/json")) {
+      const data = await response.json()
+      const videos = data.videos || data.data || []
+
+      const transformedVideos = videos.map((video: any) => ({
+        id: video.id || `sb-${Date.now()}-${Math.random()}`,
+        title: video.title || "Untitled",
+        keywords: video.tags?.join(", ") || "",
+        views: video.views || 0,
+        rate: video.rating || 0,
+        url: video.url || `https://spankbang.com/${video.id}/video/`,
+        added: video.uploaded || "",
+        length_sec: video.duration || 0,
+        length_min: video.length || "0:00",
+        embed: `https://spankbang.com/${video.id}/embed/`,
+        default_thumb: {
+          src: video.thumb || video.preview || "/placeholder.svg",
+          size: "640x360",
+          width: 640,
+          height: 360,
+        },
+        thumbs: [],
+      }))
+
+      return NextResponse.json({
+        videos: transformedVideos,
+        total: data.total || transformedVideos.length,
+      })
+    }
+
+    // Return empty if no JSON API available
+    return NextResponse.json({
+      videos: [],
+      total: 0,
+      error: "SpankBang API requires scraping - limited functionality",
+    })
+  } catch (error) {
+    console.error("[v0] SpankBang error:", error)
+    return NextResponse.json({
+      videos: [],
+      total: 0,
+      error: "SpankBang temporarily unavailable",
+    })
+  }
 }
