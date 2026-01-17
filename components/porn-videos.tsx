@@ -443,7 +443,7 @@ export function PornVideos() {
         if (!savedVideos.some((v) => v.id === videoId)) {
           const updatedSavedVideos = [videoToAdd, ...savedVideos]
           setSavedVideos(updatedSavedVideos)
-          localStorage.setItem("porn_saved_videos", JSON.JSON.stringify(updatedSavedVideos))
+          localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
         }
       }
 
@@ -558,7 +558,9 @@ export function PornVideos() {
     addToHistory(video)
 
     if (apiSource === "pornpics") {
-      loadGalleryImages(video)
+      // Open on pornpics.com - the id contains the href path like "/milf/"
+      const href = video.id || video.url || ""
+      window.open(`https://www.pornpics.com${href}`, "_blank")
       return
     }
 

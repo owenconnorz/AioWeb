@@ -51,11 +51,12 @@ async function fetchPornPics({
   let apiUrl = ""
 
   if (galleryId) {
-    const cleanGalleryId = galleryId.replace(/^\/+|\/+$/g, "")
+    const cleanPath = galleryId.replace(/^\/+/, "").replace(/\/+$/, "")
+
     if (endpointType === "images") {
-      apiUrl = `${baseUrl}/tag/${cleanGalleryId}`
+      apiUrl = `${baseUrl}/tag/${cleanPath}`
     } else {
-      apiUrl = `${baseUrl}/gallery/${cleanGalleryId}`
+      apiUrl = `${baseUrl}/gallery/${cleanPath}${page > 1 ? `?page=${page}` : ""}`
     }
   } else if (category) {
     const categorySlug = category.toLowerCase().replace(/\s+/g, "-")
@@ -74,6 +75,47 @@ async function fetchPornPics({
     },
   })
 
+  if (!response.ok && galleryId && endpointType !== "images") {
+    const cleanPath = galleryId.replace(/^\/+/, "").replace(/\/+$/, "")
+    const fallbackUrl = `${baseUrl}/tag/${cleanPath}`
+    console.log("[v0] Gallery endpoint failed, trying tag endpoint:", fallbackUrl)
+
+    const fallbackResponse = await fetch(fallbackUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    })
+
+    if (fallbackResponse.ok) {
+      const fallbackData = await fallbackResponse.json()
+      console.log("[v0] Fallback tag response:", JSON.stringify(fallbackData).substring(0, 500))
+
+      if (fallbackData.images && Array.isArray(fallbackData.images)) {
+        const photos = fallbackData.images.map((url: string, index: number) => ({
+          id: index.toString(),
+          url: url,
+          thumbnail: url,
+        }))
+
+        return NextResponse.json({
+          photos,
+          galleries: [],
+          page: 1,
+          total: photos.length,
+        })
+      }
+    }
+
+    console.error("[v0] PornPics API error:", response.status)
+    return NextResponse.json({
+      error: `API returned ${response.status}`,
+      galleries: [],
+      photos: [],
+      page: 1,
+      total: 0,
+    })
+  }
+
   if (!response.ok) {
     console.error("[v0] PornPics API error:", response.status, await response.text())
     throw new Error(`API returned ${response.status}`)
@@ -85,11 +127,26 @@ async function fetchPornPics({
   let galleries = []
   let photos = []
 
+  if (Array.isArray(data) && data.length > 0 && typeof data[0] === "string") {
+    photos = data.map((url: string, index: number) => ({
+      id: index.toString(),
+      url: url,
+      thumbnail: url,
+    }))
+
+    return NextResponse.json({
+      photos,
+      galleries: [],
+      page: 1,
+      total: photos.length,
+    })
+  }
+
   if (data.images && Array.isArray(data.images)) {
     photos = data.images.map((item: any, index: number) => ({
       id: index.toString(),
-      url: item.url || item.src || item.image || item || "",
-      thumbnail: item.thumbnail || item.thumb || item.url || item || "",
+      url: typeof item === "string" ? item : item.url || item.src || item.image || "",
+      thumbnail: typeof item === "string" ? item : item.thumbnail || item.thumb || item.url || "",
     }))
 
     return NextResponse.json({

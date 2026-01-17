@@ -319,6 +319,9 @@ async function searchRedTube(query: string, page = 1) {
 
   const transformedVideos = videos.map((item: any) => {
     const video = item.video
+    // The API response includes embed_url field which is the official embed URL
+    const embedUrl = video.embed_url || `https://embed.redtube.com/?id=${video.video_id}`
+
     return {
       id: video.video_id || `rt-${Date.now()}-${Math.random()}`,
       title: video.title || "Untitled",
@@ -329,7 +332,7 @@ async function searchRedTube(query: string, page = 1) {
       added: video.publish_date || "",
       length_sec: Number.parseInt(video.duration || "0", 10),
       length_min: video.duration || "0:00",
-      embed: `https://embed.redtube.com/?id=${video.video_id}`,
+      embed: embedUrl,
       default_thumb: {
         src: video.default_thumb || video.thumb || "/placeholder.svg",
         size: "640x360",
