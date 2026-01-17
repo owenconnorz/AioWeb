@@ -60,7 +60,7 @@ export default function Home() {
               </h1>
             </div>
             <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
-              Generate stunning images, craft compelling text, create videos, and transform faces with cutting-edge AI
+              Watch porn or generate stunning images,create videos and more!
             </p>
           </div>
         )}
