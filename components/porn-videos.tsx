@@ -16,6 +16,8 @@ import {
   Share2,
   History,
   Clock,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 
 interface Video {
@@ -42,6 +44,8 @@ interface Video {
     height: number
   }>
   thumbnail?: string
+  isGallery?: boolean
+  isCategory?: boolean
 }
 
 interface Playlist {
@@ -121,6 +125,13 @@ export function PornVideos() {
   const [apiOrder, setApiOrder] = useState<ApiSource[]>(DEFAULT_API_ORDER)
   const [activeVideoIndex, setActiveVideoIndex] = useState(0)
   const [watchHistory, setWatchHistory] = useState<HistoryItem[]>([])
+
+  const [selectedGallery, setSelectedGallery] = useState<Video | null>(null)
+  const [galleryImages, setGalleryImages] = useState<
+    { id: string; url: string; thumbnail: string; title?: string; isGallery?: boolean; isCategory?: boolean }[]
+  >([])
+  const [galleryLoading, setGalleryLoading] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   const loadVideos = async (query = "", category = "") => {
     setLoading(true)
@@ -205,7 +216,7 @@ export function PornVideos() {
   }, [apiSource])
 
   useEffect(() => {
-    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "chaturbate")) return
+    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource === "chaturbate")) return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -432,7 +443,7 @@ export function PornVideos() {
         if (!savedVideos.some((v) => v.id === videoId)) {
           const updatedSavedVideos = [videoToAdd, ...savedVideos]
           setSavedVideos(updatedSavedVideos)
-          localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
+          localStorage.setItem("porn_saved_videos", JSON.JSON.stringify(updatedSavedVideos))
         }
       }
 
@@ -478,11 +489,76 @@ export function PornVideos() {
     await loadVideos(searchQuery)
   }
 
+  const loadGalleryImages = async (gallery: Video) => {
+    setSelectedGallery(gallery)
+    setGalleryLoading(true)
+    setCurrentImageIndex(0)
+
+    try {
+      const galleryId = gallery.id || ""
+      const cleanId = galleryId.replace(/^\/+|\/+$/g, "")
+
+      // Check if this is a category (from home) or a gallery (from category page)
+      const isCategory = (gallery as any).isCategory
+      const isGallery = (gallery as any).isGallery
+
+      let endpointType = ""
+      if (isGallery) {
+        // This is a gallery within a category - fetch actual images
+        endpointType = "images"
+      }
+      // If isCategory, we fetch sub-galleries (default behavior)
+
+      const response = await fetch(
+        `/api/search-pictures?gallery=${encodeURIComponent(cleanId)}&api=pornpics&endpointType=${endpointType}`,
+      )
+      const data = await response.json()
+
+      if (data.photos && data.photos.length > 0) {
+        // We have actual images
+        setGalleryImages(data.photos)
+      } else if (data.galleries && data.galleries.length > 0) {
+        // We have sub-galleries - show them as clickable items
+        setGalleryImages(
+          data.galleries.map((g: any) => ({
+            id: g.id || g.url,
+            url: g.thumbnail || g.preview,
+            thumbnail: g.thumbnail || g.preview,
+            title: g.title,
+            isGallery: g.isGallery,
+            isCategory: g.isCategory,
+          })),
+        )
+      } else {
+        setGalleryImages([])
+      }
+    } catch (err) {
+      console.error("[v0] Error loading gallery images:", err)
+      setGalleryImages([])
+    } finally {
+      setGalleryLoading(false)
+    }
+  }
+
+  const closeGallery = () => {
+    setSelectedGallery(null)
+    setGalleryImages([])
+    setCurrentImageIndex(0)
+  }
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % galleryImages.length)
+  }
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length)
+  }
+
   const openVideo = (video: Video) => {
     addToHistory(video)
 
     if (apiSource === "pornpics") {
-      window.open(video.url, "_blank", "noopener,noreferrer")
+      loadGalleryImages(video)
       return
     }
 
@@ -783,66 +859,6 @@ export function PornVideos() {
         </>
       )}
 
-      {/* Video Modal */}
-      {selectedVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
-          <div className="w-full max-w-4xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white line-clamp-1">{selectedVideo.title}</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleShare(selectedVideo)}
-                  className="rounded-full bg-white/10 p-2 hover:bg-white/20"
-                >
-                  <Share2 className="h-5 w-5 text-white" />
-                </button>
-                <button onClick={closeVideo} className="rounded-full bg-white/10 p-2 hover:bg-white/20">
-                  <X className="h-6 w-6 text-white" />
-                </button>
-              </div>
-            </div>
-            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-              <iframe
-                src={getEmbedUrl(selectedVideo)}
-                className="h-full w-full"
-                frameBorder="0"
-                allowFullScreen
-                allow="autoplay; encrypted-media"
-                title={selectedVideo.title}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Categories Modal */}
-      {showCategories && (
-        <div className="fixed inset-0 z-50 bg-black/95 p-4 overflow-y-auto">
-          <div className="mx-auto max-w-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-4xl font-bold text-violet-400">Categories</h2>
-              <button
-                onClick={() => setShowCategories(false)}
-                className="rounded-full p-2 text-white hover:bg-white/10"
-              >
-                <X className="h-8 w-8" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {XVIDAPI_CATEGORIES.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => handleCategorySelect(category)}
-                  className="rounded-lg px-4 py-3 text-left text-lg text-white transition-colors hover:bg-slate-800"
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Add to Playlist Modal */}
       {showAddToPlaylist && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
@@ -898,6 +914,193 @@ export function PornVideos() {
               <Button onClick={createPlaylist} className="flex-1 bg-violet-600 hover:bg-violet-700">
                 Create
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PornPics Gallery Viewer */}
+      {selectedGallery && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black">
+          {/* Close button */}
+          <button
+            onClick={closeGallery}
+            className="absolute right-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+            aria-label="Close gallery"
+          >
+            <X className="h-6 w-6 text-white" />
+          </button>
+
+          {/* Gallery title */}
+          <div className="absolute left-4 top-4 z-50 max-w-[60%]">
+            <h3 className="truncate text-lg font-bold text-white">{selectedGallery.title}</h3>
+            {galleryImages.length > 0 && !galleryImages[0]?.isGallery && !galleryImages[0]?.isCategory && (
+              <p className="text-sm text-white/70">
+                {currentImageIndex + 1} / {galleryImages.length}
+              </p>
+            )}
+          </div>
+
+          {galleryLoading ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+              <p className="text-white">Loading...</p>
+            </div>
+          ) : galleryImages.length > 0 ? (
+            galleryImages[0]?.isGallery || galleryImages[0]?.isCategory ? (
+              // Grid view for sub-galleries
+              <div className="flex-1 overflow-y-auto p-4 pt-16">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {galleryImages.map((item, idx) => (
+                    <button
+                      key={item.id || idx}
+                      onClick={() => {
+                        // Load this sub-gallery's images
+                        loadGalleryImages({
+                          id: item.id,
+                          title: item.title || "Gallery",
+                          url: item.url || "",
+                          isGallery: true,
+                        } as Video)
+                      }}
+                      className="group relative aspect-[3/4] overflow-hidden rounded-lg"
+                    >
+                      <img
+                        src={item.thumbnail || item.url}
+                        alt={item.title || `Gallery ${idx + 1}`}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <p className="truncate text-sm font-medium text-white">{item.title || `Gallery ${idx + 1}`}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              // Full-screen image viewer for actual images
+              <>
+                <div className="relative flex-1 flex items-center justify-center p-4 pt-16">
+                  <img
+                    src={galleryImages[currentImageIndex]?.url || galleryImages[currentImageIndex]?.thumbnail}
+                    alt={`Image ${currentImageIndex + 1}`}
+                    className="max-h-full max-w-full object-contain"
+                    onClick={nextImage}
+                  />
+                </div>
+
+                {/* Navigation buttons */}
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-white" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="h-6 w-6 text-white" />
+                    </button>
+                  </>
+                )}
+
+                {/* Thumbnail strip at bottom */}
+                <div className="flex justify-center gap-2 overflow-x-auto px-4 py-3 bg-black/50">
+                  {galleryImages.slice(0, 10).map((img, idx) => (
+                    <button
+                      key={img.id || idx}
+                      onClick={() => setCurrentImageIndex(idx)}
+                      className={`h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                        idx === currentImageIndex
+                          ? "border-purple-500 scale-110"
+                          : "border-transparent opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      <img src={img.thumbnail || img.url} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                  {galleryImages.length > 10 && (
+                    <span className="flex items-center text-sm text-white/70">+{galleryImages.length - 10}</span>
+                  )}
+                </div>
+              </>
+            )
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 text-white">
+              <p>No images found in this gallery</p>
+              <button
+                onClick={() => window.open(selectedGallery.url, "_blank")}
+                className="rounded-lg bg-purple-600 px-4 py-2 hover:bg-purple-700"
+              >
+                Open on PornPics
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Video Modal */}
+      {selectedVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
+          <div className="w-full max-w-4xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white line-clamp-1">{selectedVideo.title}</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleShare(selectedVideo)}
+                  className="rounded-full bg-white/10 p-2 hover:bg-white/20"
+                >
+                  <Share2 className="h-5 w-5 text-white" />
+                </button>
+                <button onClick={closeVideo} className="rounded-full bg-white/10 p-2 hover:bg-white/20">
+                  <X className="h-6 w-6 text-white" />
+                </button>
+              </div>
+            </div>
+            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+              <iframe
+                src={getEmbedUrl(selectedVideo)}
+                className="h-full w-full"
+                frameBorder="0"
+                allowFullScreen
+                allow="autoplay; encrypted-media"
+                title={selectedVideo.title}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Categories Modal */}
+      {showCategories && (
+        <div className="fixed inset-0 z-50 bg-black/95 p-4 overflow-y-auto">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-4xl font-bold text-violet-400">Categories</h2>
+              <button
+                onClick={() => setShowCategories(false)}
+                className="rounded-full p-2 text-white hover:bg-white/10"
+              >
+                <X className="h-8 w-8" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {XVIDAPI_CATEGORIES.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => handleCategorySelect(category)}
+                  className="rounded-lg px-4 py-3 text-left text-lg text-white transition-colors hover:bg-slate-800"
+                >
+                  {category}
+                </button>
+              ))}
             </div>
           </div>
         </div>

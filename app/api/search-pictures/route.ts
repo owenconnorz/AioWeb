@@ -10,14 +10,15 @@ export async function GET(request: NextRequest) {
     const galleryId = searchParams.get("gallery") || ""
     const page = Number.parseInt(searchParams.get("page") || "1")
     const api = searchParams.get("api") || "pornpics"
+    const endpointType = searchParams.get("endpointType") || ""
 
-    console.log("[v0] Fetching pictures:", { query, category, galleryId, page, api })
+    console.log("[v0] Fetching pictures:", { query, category, galleryId, page, api, endpointType })
 
     if (api === "redgifs") {
       return await fetchRedGifs(query, page)
     }
 
-    return await fetchPornPics({ query, category, galleryId, page })
+    return await fetchPornPics({ query, category, galleryId, page, endpointType })
   } catch (error) {
     console.error("[v0] Error fetching pictures:", error)
     return NextResponse.json(
@@ -38,24 +39,30 @@ async function fetchPornPics({
   category,
   galleryId,
   page,
+  endpointType,
 }: {
   query: string
   category: string
   galleryId: string
   page: number
+  endpointType: string
 }) {
   const baseUrl = "https://ppics-api.vercel.app/api"
   let apiUrl = ""
 
   if (galleryId) {
-    apiUrl = `${baseUrl}/tag/${galleryId}`
+    const cleanGalleryId = galleryId.replace(/^\/+|\/+$/g, "")
+    if (endpointType === "images") {
+      apiUrl = `${baseUrl}/tag/${cleanGalleryId}`
+    } else {
+      apiUrl = `${baseUrl}/gallery/${cleanGalleryId}`
+    }
   } else if (category) {
     const categorySlug = category.toLowerCase().replace(/\s+/g, "-")
     apiUrl = `${baseUrl}/gallery/${categorySlug}`
   } else if (query && query !== "popular") {
     apiUrl = `${baseUrl}/gallery/${encodeURIComponent(query)}`
   } else {
-    // Default to home page for popular/empty queries
     apiUrl = `${baseUrl}/home`
   }
 
@@ -81,8 +88,8 @@ async function fetchPornPics({
   if (data.images && Array.isArray(data.images)) {
     photos = data.images.map((item: any, index: number) => ({
       id: index.toString(),
-      url: item.url || item.src || item.image || "",
-      thumbnail: item.thumbnail || item.thumb || item.url || "",
+      url: item.url || item.src || item.image || item || "",
+      thumbnail: item.thumbnail || item.thumb || item.url || item || "",
     }))
 
     return NextResponse.json({
@@ -93,23 +100,25 @@ async function fetchPornPics({
     })
   } else if (data.galleries && Array.isArray(data.galleries)) {
     galleries = data.galleries.map((item: any) => ({
-      id: item.id || item.url || item.href || Math.random().toString(),
+      id: item.url || item.href || item.id || Math.random().toString(),
       title: item.title || item.name || "Untitled Gallery",
-      url: `https://www.pornpics.com${item.url || item.href || ""}`,
+      url: item.url || item.href || "",
       thumbnail: item.thumbnail || item.thumb || item.cover_image || item.preview || "",
       preview: item.preview || item.thumbnail || item.thumb || item.cover_image || "",
       tags: item.tags || [],
       photoCount: item.photos || item.count || 0,
+      isGallery: true,
     }))
   } else if (data.categories && Array.isArray(data.categories)) {
     galleries = data.categories.map((item: any) => ({
       id: item.href || Math.random().toString(),
       title: item.title || "Untitled Category",
-      url: `https://www.pornpics.com${item.href || ""}`,
+      url: item.href || "",
       thumbnail: item.cover_image || "",
       preview: item.cover_image || "",
       tags: [item.title],
       photoCount: 0,
+      isCategory: true,
     }))
   }
 
