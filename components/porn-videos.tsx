@@ -1,22 +1,8 @@
 "use client"
-import { useState, useEffect, useRef, type ChangeEvent } from "react"
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Search,
-  Play,
-  Eye,
-  ThumbsUp,
-  ArrowRight,
-  X,
-  Bookmark,
-  BookmarkCheck,
-  Plus,
-  List,
-  Trash2,
-  Grid,
-  Menu,
-} from "lucide-react"
+import { Search, Play, Eye, ThumbsUp, X, Bookmark, BookmarkCheck, Plus, Trash2, Menu, RefreshCw } from "lucide-react"
 
 interface Video {
   id: string
@@ -52,9 +38,9 @@ interface Playlist {
 }
 
 type ViewMode = "browse" | "library"
-type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "stripchat" // Added stripchat
+type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" // Replaced stripchat with chaturbate
 
-const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "stripchat"] // Added stripchat to default order
+const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate"] // Replaced stripchat with chaturbate
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -95,7 +81,6 @@ export function PornVideos() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
-  const [viewMode, setViewMode] = useState<ViewMode>("browse")
   const [apiSource, setApiSource] = useState<ApiSource>("xvidapi")
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [savedVideos, setSavedVideos] = useState<Video[]>([])
@@ -111,7 +96,8 @@ export function PornVideos() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [feedView, setFeedView] = useState(false)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
-  const observerTarget = useRef<HTMLDivElement>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   const iframeRefs = useRef<(HTMLIFrameElement | HTMLVideoElement | null)[]>([])
   const [loadedIframes, setLoadedIframes] = useState<Set<number>>(new Set([0]))
   const [apiOrder, setApiOrder] = useState<ApiSource[]>(DEFAULT_API_ORDER)
@@ -127,14 +113,16 @@ export function PornVideos() {
       console.error("Error loading API order:", err)
     }
 
-    setFeedView(apiSource === "cam4" || apiSource === "redgifs")
+    // Replaced stripchat with chaturbate in feedView condition
+    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")
     loadVideos()
     loadLibraryData()
     setLoadedIframes(new Set([0])) // Reset loaded iframes when changing API
   }, [apiSource])
 
   useEffect(() => {
-    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs")) return
+    // Added chaturbate to feedView scroll handler condition
+    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "chaturbate")) return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -189,7 +177,8 @@ export function PornVideos() {
           })
         }
 
-        if (apiSource === "cam4") {
+        // Added chaturbate to iframe loading logic alongside cam4
+        if (apiSource === "cam4" || apiSource === "chaturbate") {
           setLoadedIframes((prev) => {
             const newLoaded = new Set<number>()
             // Only keep current and adjacent iframes loaded
@@ -219,7 +208,8 @@ export function PornVideos() {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-    if (feedView && (apiSource === "cam4" || apiSource === "redgifs")) {
+    // Added chaturbate to nav hide condition
+    if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")) {
       if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
@@ -238,6 +228,50 @@ export function PornVideos() {
       }
     }
   }, [feedView, apiSource])
+
+  const lastVideoElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loadingMore) return
+      if (observerRef.current) observerRef.current.disconnect()
+
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasMore && !loadingMore) {
+            loadMoreVideos()
+          }
+        },
+        { threshold: 0.1 },
+      )
+
+      if (node) observerRef.current.observe(node)
+    },
+    [loadingMore, hasMore],
+  )
+
+  useEffect(() => {
+    if (!feedView) return
+
+    const handleFeedScroll = () => {
+      const container = document.querySelector(".feed-container")
+      if (!container) return
+
+      const scrollHeight = container.scrollHeight
+      const scrollTop = container.scrollTop
+      const clientHeight = container.clientHeight
+
+      // Load more when near the bottom
+      if (scrollHeight - scrollTop - clientHeight < 500 && hasMore && !loadingMore) {
+        loadMoreVideos()
+      }
+    }
+
+    const container = document.querySelector(".feed-container")
+    container?.addEventListener("scroll", handleFeedScroll, { passive: true })
+
+    return () => {
+      container?.removeEventListener("scroll", handleFeedScroll)
+    }
+  }, [feedView, hasMore, loadingMore])
 
   const loadLibraryData = () => {
     try {
@@ -303,7 +337,7 @@ export function PornVideos() {
         if (!savedVideos.some((v) => v.id === videoId)) {
           const updatedSavedVideos = [videoToAdd, ...savedVideos]
           setSavedVideos(updatedSavedVideos)
-          localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
+          localStorage.setItem("porn_saved_videos", JSON.JSON.stringify(updatedSavedVideos))
         }
       }
 
@@ -395,13 +429,13 @@ export function PornVideos() {
       if (newVideos.length > 0) {
         setVideos((prev) => [...prev, ...newVideos])
         setPage(nextPage)
-        setHasMore(newVideos.length >= 12)
+        setHasMore(newVideos.length >= 10)
       } else {
         setHasMore(false)
       }
     } catch (err) {
       console.error("Load more error:", err)
-      setHasMore(false)
+      setHasMore(true)
     } finally {
       setLoadingMore(false)
     }
@@ -457,7 +491,8 @@ export function PornVideos() {
     return url
   }
 
-  if (feedView && (apiSource === "cam4" || apiSource === "redgifs")) {
+  // Added chaturbate to feedView render condition
+  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")) {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <button
@@ -473,12 +508,12 @@ export function PornVideos() {
           className="absolute right-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
           aria-label="Refresh"
         >
-          <ArrowRight className="h-6 w-6 rotate-90 text-white" />
+          <RefreshCw className="h-6 w-6 text-white" />
         </button>
 
         <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
           {videos.map((video, index) => (
-            <div key={video.id} className="relative h-screen w-full snap-start snap-always">
+            <div key={`${video.id}-${index}`} className="relative h-screen w-full snap-start snap-always">
               {apiSource === "redgifs" ? (
                 <video
                   ref={(el) => {
@@ -531,18 +566,22 @@ export function PornVideos() {
               </div>
 
               <div className="absolute bottom-32 right-4 flex flex-col gap-6 pointer-events-auto">
+                <button className="flex flex-col items-center gap-1" onClick={() => saveVideo(video)}>
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    {isVideoSaved(video.id) ? (
+                      <BookmarkCheck className="h-6 w-6 text-violet-400" />
+                    ) : (
+                      <Bookmark className="h-6 w-6 text-white" />
+                    )}
+                  </div>
+                  <span className="text-xs text-white">Save</span>
+                </button>
+
                 <button className="flex flex-col items-center gap-1">
                   <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
                     <ThumbsUp className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-xs text-white">Like</span>
-                </button>
-
-                <button className="flex flex-col items-center gap-1">
-                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    <Bookmark className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-xs text-white">Save</span>
                 </button>
 
                 <button className="flex flex-col items-center gap-1">
@@ -554,6 +593,16 @@ export function PornVideos() {
               </div>
             </div>
           ))}
+
+          {hasMore && (
+            <div className="flex h-20 w-full items-center justify-center">
+              {loadingMore ? (
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+              ) : (
+                <div className="h-1 w-1" />
+              )}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -562,510 +611,240 @@ export function PornVideos() {
   return (
     <div className="space-y-6 pb-24">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-2">
+        {apiSource === "xvidapi" && (
           <Button
-            onClick={() => setViewMode("browse")}
-            variant={viewMode === "browse" ? "default" : "outline"}
-            className={
-              viewMode === "browse"
-                ? "bg-violet-600 hover:bg-violet-700"
-                : "border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
-            }
+            onClick={() => setShowCategories(true)}
+            variant="outline"
+            className="border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
           >
-            <Grid className="mr-2 h-4 w-4" />
-            Browse
+            <Menu className="mr-2 h-4 w-4" />
+            Categories
           </Button>
-          <Button
-            onClick={() => setViewMode("library")}
-            variant={viewMode === "library" ? "default" : "outline"}
-            className={
-              viewMode === "library"
-                ? "bg-violet-600 hover:bg-violet-700"
-                : "border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
-            }
-          >
-            <List className="mr-2 h-4 w-4" />
-            Library ({savedVideos.length})
-          </Button>
-        </div>
-
-        {viewMode === "browse" && (
-          <>
-            {apiSource === "xvidapi" && (
-              <Button
-                onClick={() => setShowCategories(true)}
-                variant="outline"
-                className="border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700"
-              >
-                <Menu className="mr-2 h-4 w-4" />
-                Categories
-              </Button>
-            )}
-
-            <div className="w-full overflow-x-auto scrollbar-hide">
-              <div className="flex min-w-min items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-lg backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-900/80">
-                <span className="px-3 text-sm font-medium text-slate-600 dark:text-slate-400">API:</span>
-                {apiOrder.map((api) => (
-                  <button
-                    key={api}
-                    onClick={() => setApiSource(api)}
-                    className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                      apiSource === api
-                        ? "bg-violet-600 text-white shadow-md"
-                        : "text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {api === "eporner"
-                      ? "EPorner"
-                      : api === "xvidapi"
-                        ? "XvidAPI"
-                        : api === "cam4"
-                          ? "Cam4"
-                          : api === "redgifs"
-                            ? "RedGifs"
-                            : api === "pornpics"
-                              ? "PornPics"
-                              : api === "stripchat" // Update label from CamSoda to StripChat
-                                ? "StripChat"
-                                : api}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
         )}
       </div>
 
-      {viewMode === "browse" ? (
+      {/* API Source Selector - scrollable */}
+      <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+        <div className="glass-nav-pill inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-1.5 shadow-lg backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80">
+          {apiOrder.map((api) => (
+            <button
+              key={api}
+              onClick={() => setApiSource(api)}
+              className={`nav-item whitespace-nowrap ${apiSource === api ? "active" : ""}`}
+            >
+              <span className="nav-label">
+                {api === "redgifs"
+                  ? "RedGifs"
+                  : api === "eporner"
+                    ? "EPorner"
+                    : api === "xvidapi"
+                      ? "XvidAPI"
+                      : api === "cam4"
+                        ? "Cam4"
+                        : api === "pornpics"
+                          ? "PornPics"
+                          : api === "chaturbate"
+                            ? "Chaturbate"
+                            : api}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="flex gap-2">
+        <Input
+          type="text"
+          placeholder="Search videos..."
+          value={searchQuery}
+          onChange={handleInputChange}
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          className="flex-1 border-slate-700 bg-slate-800/50 text-white placeholder:text-slate-400"
+        />
+        <Button onClick={handleSearch} className="bg-violet-600 hover:bg-violet-700">
+          <Search className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* ... existing code for categories modal, error display, etc ... */}
+
+      {/* Video Grid with infinite scroll */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+        </div>
+      ) : error ? (
+        <div className="rounded-lg bg-red-500/10 p-4 text-center text-red-500">{error}</div>
+      ) : videos.length === 0 ? (
+        <div className="rounded-lg bg-slate-800/50 p-8 text-center text-slate-400">
+          No videos found. Try a different search term.
+        </div>
+      ) : (
         <>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Input
-                id="search"
-                type="text"
-                placeholder="Search videos..."
-                value={searchQuery}
-                onChange={handleInputChange}
-                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                className="flex-1 border-slate-700 bg-slate-800/50 text-white placeholder:text-slate-400 focus:border-violet-500 focus:ring-violet-500"
-              />
-              <Button onClick={handleSearch} className="bg-violet-600 hover:bg-violet-700" disabled={loading}>
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-            {error && (
-              <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-400">{error}</div>
-            )}
+          {/* Section Header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-white sm:text-3xl">
+              {selectedCategory || searchQuery || "Hottest New Videos"}
+            </h2>
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              <RefreshCw className="h-5 w-5" />
+              <span>Refresh</span>
+            </button>
           </div>
 
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
-            </div>
-          )}
+          {/* Grid */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {videos.map((video, index) => {
+              const isLast = index === videos.length - 1
 
-          {videos.length > 0 ? (
-            <>
-              {apiSource === "pornpics" || apiSource === "stripchat" ? (
-                // PornPics & StripChat - Display as image galleries / live cam thumbnails
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                  {videos.map((item: any) => (
-                    <a
-                      key={item.id}
-                      href={item.url || item.embed}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative overflow-hidden rounded-lg bg-slate-800/50 backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-slate-700/50"
-                    >
-                      <div className="relative aspect-[3/4]">
-                        <img
-                          src={item.thumbnail || item.default_thumb?.src}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                        {/* Live indicator for StripChat */}
-                        {apiSource === "stripchat" && (
-                          <div className="absolute left-2 top-2 flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white">
-                            <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-                            LIVE
-                          </div>
-                        )}
-                        {/* Viewer count */}
-                        {item.views > 0 && (
-                          <div className="absolute right-2 top-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs text-white">
-                            <Eye className="h-3 w-3" />
-                            {item.views.toLocaleString()}
-                          </div>
-                        )}
+              // PornPics display
+              if (apiSource === "pornpics") {
+                return (
+                  <div
+                    key={`${video.id}-${index}`}
+                    ref={isLast ? lastVideoElementRef : null}
+                    className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50"
+                    onClick={() => window.open(video.url, "_blank")}
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden">
+                      <img
+                        src={video.default_thumb?.src || video.thumbnail || "/placeholder.svg"}
+                        alt={video.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                      <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
+                        {video.length_min || "Gallery"}
                       </div>
-                      <div className="p-3">
-                        <h3 className="line-clamp-1 text-sm font-medium text-white">{item.title}</h3>
-                        {apiSource === "pornpics" && item.photos && (
-                          <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
-                            <span>{item.photos} photos</span>
-                          </div>
-                        )}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="line-clamp-2 text-sm font-medium text-white">{video.title}</h3>
+                    </div>
+                  </div>
+                )
+              }
+
+              // Chaturbate grid display
+              if (apiSource === "chaturbate") {
+                return (
+                  <div
+                    key={`${video.id}-${index}`}
+                    ref={isLast ? lastVideoElementRef : null}
+                    className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50"
+                    onClick={() => window.open(video.url, "_blank")}
+                  >
+                    <div className="relative aspect-video overflow-hidden">
+                      <img
+                        src={video.default_thumb?.src || "/placeholder.svg"}
+                        alt={video.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-bold text-white">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                        LIVE
                       </div>
-                      <div className="absolute right-2 bottom-14 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            saveVideo(item)
-                          }}
-                          className="rounded-full bg-black/50 p-2 backdrop-blur-sm transition-colors hover:bg-black/70"
-                          aria-label={isVideoSaved(item.id) ? "Remove from saved" : "Save"}
-                        >
-                          {isVideoSaved(item.id) ? (
-                            <BookmarkCheck className="h-4 w-4 text-violet-400" />
-                          ) : (
-                            <Bookmark className="h-4 w-4 text-white" />
-                          )}
-                        </button>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                // Other APIs - Display as video cards (existing code)
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {videos.map((video) => (
-                    <div key={video.id} className="group relative">
-                      <button onClick={() => openVideo(video)} className="block w-full text-left">
-                        <div className="space-y-3">
-                          {apiSource === "eporner" && video.default_thumb?.src && (
-                            <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                              <img
-                                src={video.default_thumb.src || "/placeholder.svg"}
-                                alt={video.title}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                              <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                                <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
-                                  <Play className="h-8 w-8 text-white" fill="white" />
-                                </div>
-                              </div>
-                              {video.length_min && (
-                                <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                                  {video.length_min}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {(apiSource === "xvidapi" ||
-                            apiSource === "redgifs" ||
-                            apiSource === "pornpics" ||
-                            !video.default_thumb?.src) && (
-                            <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                              {video.default_thumb?.src ? (
-                                <img
-                                  src={video.default_thumb.src || "/placeholder.svg"}
-                                  alt={video.title}
-                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
-                                  <Play className="h-16 w-16 text-white/60" />
-                                </div>
-                              )}
-                              {video.length_min && (
-                                <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                                  {video.length_min}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="space-y-2">
-                            <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
-                              {video.title}
-                            </h3>
-                            {apiSource === "eporner" && (video.views || video.rate) && (
-                              <div className="flex items-center gap-4 text-sm text-slate-400">
-                                {video.views !== undefined && (
-                                  <div className="flex items-center gap-1.5">
-                                    <Eye className="h-4 w-4" />
-                                    <span>{`${Math.floor((video.views || 0) / 1000)}K`} Views</span>
-                                  </div>
-                                )}
-                                {video.rate !== undefined && (
-                                  <div className="flex items-center gap-1.5">
-                                    <ThumbsUp className="h-4 w-4" />
-                                    <span>{`${Math.round((video.rate || 0) * 10)}%`} Up</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {(apiSource === "redgifs" || apiSource === "pornpics") && video.views !== undefined && (
-                              <div className="flex items-center gap-4 text-sm text-slate-400">
-                                <div className="flex items-center gap-1.5">
-                                  <Eye className="h-4 w-4" />
-                                  <span>{`${Math.floor((video.views || 0) / 1000)}K`} Views</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-
-                      <div className="absolute right-2 top-2 flex gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            saveVideo(video)
-                          }}
-                          className="rounded-full bg-black/60 p-2 backdrop-blur-sm hover:bg-black/80"
-                        >
-                          {isVideoSaved(video.id) ? (
-                            <BookmarkCheck className="h-5 w-5 text-violet-400" />
-                          ) : (
-                            <Bookmark className="h-5 w-5 text-white" />
-                          )}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setShowAddToPlaylist(video.id)
-                          }}
-                          className="rounded-full bg-black/60 p-2 backdrop-blur-sm hover:bg-black/80"
-                        >
-                          <Plus className="h-5 w-5 text-white" />
-                        </button>
-                      </div>
-
-                      {showAddToPlaylist === video.id && (
-                        <div className="absolute right-2 top-16 z-10 w-64 rounded-lg border border-slate-700 bg-slate-900 p-2 shadow-xl">
-                          <div className="mb-2 flex items-center justify-between px-2 py-1">
-                            <span className="text-sm font-medium text-white">Add to Playlist</span>
-                            <button
-                              onClick={() => setShowAddToPlaylist(null)}
-                              className="text-slate-400 hover:text-white"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <div className="max-h-48 space-y-1 overflow-y-auto">
-                            {playlists.length === 0 ? (
-                              <p className="px-2 py-4 text-center text-sm text-slate-400">No playlists yet</p>
-                            ) : (
-                              playlists.map((playlist) => (
-                                <button
-                                  key={playlist.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    addToPlaylist(playlist.id, video.id)
-                                  }}
-                                  className="flex w-full items-center justify-between rounded px-2 py-2 text-sm text-white hover:bg-slate-800"
-                                >
-                                  <span>{playlist.name}</span>
-                                  {playlist.videoIds.includes(video.id) && (
-                                    <BookmarkCheck className="h-4 w-4 text-violet-400" />
-                                  )}
-                                </button>
-                              ))
-                            )}
-                          </div>
+                      {video.views > 0 && (
+                        <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs text-white">
+                          <Eye className="h-3 w-3" />
+                          {video.views.toLocaleString()}
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              <div ref={observerTarget} className="py-4">
-                {loadingMore && (
-                  <div className="flex items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
-                  </div>
-                )}
-                {!hasMore && videos.length > 0 && (
-                  <p className="text-center text-sm text-slate-400">No more videos to load</p>
-                )}
-              </div>
-            </>
-          ) : (
-            // This part handles the case where no videos are found for other APIs
-            <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-8 text-center">
-              <p className="text-slate-400">No videos found. Try a different search term or category.</p>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold text-white">My Library</h2>
-            <Button onClick={() => setShowCreatePlaylist(true)} className="bg-violet-600 hover:bg-violet-700">
-              <Plus className="mr-2 h-4 w-4" />
-              New Playlist
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-white">Playlists</h3>
-            {playlists.length === 0 ? (
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-8 text-center">
-                <p className="text-slate-400">No playlists yet. Create one to organize your videos!</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {playlists.map((playlist) => (
-                  <div
-                    key={playlist.id}
-                    className="group relative cursor-pointer rounded-lg border border-slate-700 bg-slate-800/50 p-4 hover:border-violet-500"
-                    onClick={() => setSelectedPlaylist(selectedPlaylist === playlist.id ? null : playlist.id)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-white group-hover:text-violet-400">{playlist.name}</h4>
-                        <p className="text-sm text-slate-400">{playlist.videoIds.length} videos</p>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deletePlaylist(playlist.id)
-                        }}
-                        className="rounded p-1 text-slate-400 hover:bg-red-950 hover:text-red-400"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="p-3">
+                      <h3 className="line-clamp-1 text-sm font-medium text-white">{video.title}</h3>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-400">{video.keywords}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                )
+              }
 
-          {selectedPlaylist && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-white">
-                {playlists.find((p) => p.id === selectedPlaylist)?.name}
-              </h3>
-              {getPlaylistVideos().length === 0 ? (
-                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-8 text-center">
-                  <p className="text-slate-400">No videos in this playlist yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {getPlaylistVideos().map((video) => (
-                    <button key={video.id} onClick={() => openVideo(video)} className="group block w-full text-left">
-                      <div className="space-y-3">
-                        {video.default_thumb?.src ? (
-                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                            <img
-                              src={video.default_thumb.src || "/placeholder.svg"}
-                              alt={video.title}
-                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                              <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
-                                <Play className="h-8 w-8 text-white" fill="white" />
-                              </div>
-                            </div>
-                            {video.length_min && (
-                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                                {video.length_min}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
-                              <Play className="h-16 w-16 text-white/60" />
-                            </div>
-                            {video.length_min && (
-                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                                {video.length_min}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="space-y-2">
-                          <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
-                            {video.title}
-                          </h3>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-white">Saved Videos</h3>
-            {savedVideos.length === 0 ? (
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-8 text-center">
-                <p className="text-slate-400">No saved videos yet. Bookmark videos to save them here!</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {savedVideos.map((video) => (
-                  <div key={video.id} className="group relative">
-                    <button onClick={() => openVideo(video)} className="block w-full text-left">
-                      <div className="space-y-3">
-                        {video.default_thumb?.src ? (
-                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                            <img
-                              src={video.default_thumb.src || "/placeholder.svg"}
-                              alt={video.title}
-                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                              <div className="rounded-full bg-white/20 p-4 backdrop-blur-sm">
-                                <Play className="h-8 w-8 text-white" fill="white" />
-                              </div>
-                            </div>
-                            {video.length_min && (
-                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                                {video.length_min}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900 to-slate-900">
-                              <Play className="h-16 w-16 text-white/60" />
-                            </div>
-                            {video.length_min && (
-                              <div className="absolute bottom-3 right-3 rounded-lg bg-black/80 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-                                {video.length_min}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="space-y-2">
-                          <h3 className="line-clamp-2 text-base font-normal leading-snug text-white group-hover:text-violet-400">
-                            {video.title}
-                          </h3>
-                        </div>
-                      </div>
-                    </button>
-
+              // Default video card
+              return (
+                <div
+                  key={`${video.id}-${index}`}
+                  ref={isLast ? lastVideoElementRef : null}
+                  className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50"
+                  onClick={() => openVideo(video)}
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <img
+                      src={video.default_thumb?.src || video.thumbnail || "/placeholder.svg"}
+                      alt={video.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Play className="h-12 w-12 text-white" />
+                    </div>
+                    <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
+                      {video.length_min || "Unknown"}
+                    </div>
+                    {/* Save button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         saveVideo(video)
                       }}
-                      className="absolute right-2 top-2 rounded-full bg-black/60 p-2 backdrop-blur-sm hover:bg-black/80"
+                      className="absolute top-2 right-2 rounded-full bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100"
                     >
-                      <BookmarkCheck className="h-5 w-5 text-violet-400" />
+                      {isVideoSaved(video.id) ? (
+                        <BookmarkCheck className="h-4 w-4 text-violet-400" />
+                      ) : (
+                        <Bookmark className="h-4 w-4 text-white" />
+                      )}
+                    </button>
+                    {/* Add to playlist button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowAddToPlaylist(video.id)
+                      }}
+                      className="absolute top-2 right-12 rounded-full bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <Plus className="h-4 w-4 text-white" />
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="p-3">
+                    <h3 className="line-clamp-2 text-sm font-medium text-white">{video.title}</h3>
+                    {video.views > 0 && (
+                      <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          {video.views.toLocaleString()}
+                        </span>
+                        {video.rate > 0 && (
+                          <span className="flex items-center gap-1">
+                            <ThumbsUp className="h-3 w-3" />
+                            {video.rate}%
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
+
+          {loadingMore && (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+            </div>
+          )}
+
+          {!hasMore && videos.length > 0 && (
+            <div className="py-8 text-center text-slate-500">No more videos to load</div>
+          )}
+        </>
       )}
+
+      {/* ... existing code for video modal, add to playlist modal, categories modal ... */}
 
       {showCategories && (
         <div className="fixed inset-0 z-50 bg-black/95 p-4">
@@ -1197,6 +976,222 @@ export function PornVideos() {
                 {selectedVideo.length_min && <span>{selectedVideo.length_min}</span>}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function PornLibrary() {
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [savedVideos, setSavedVideos] = useState<Video[]>([])
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
+  const [newPlaylistName, setNewPlaylistName] = useState("")
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
+
+  useEffect(() => {
+    loadLibraryData()
+  }, [])
+
+  const loadLibraryData = () => {
+    try {
+      const savedPlaylistsData = localStorage.getItem("porn_playlists")
+      const savedVideosData = localStorage.getItem("porn_saved_videos")
+
+      if (savedPlaylistsData) {
+        setPlaylists(JSON.parse(savedPlaylistsData))
+      }
+      if (savedVideosData) {
+        setSavedVideos(JSON.parse(savedVideosData))
+      }
+    } catch (err) {
+      console.error("Error loading library data:", err)
+    }
+  }
+
+  const createPlaylist = () => {
+    if (!newPlaylistName.trim()) return
+
+    try {
+      const newPlaylist: Playlist = {
+        id: Date.now().toString(),
+        name: newPlaylistName,
+        videoIds: [],
+        createdAt: new Date().toISOString(),
+      }
+
+      const updatedPlaylists = [...playlists, newPlaylist]
+      setPlaylists(updatedPlaylists)
+      localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
+      setNewPlaylistName("")
+      setShowCreatePlaylist(false)
+    } catch (err) {
+      console.error("Error creating playlist:", err)
+    }
+  }
+
+  const deletePlaylist = (playlistId: string) => {
+    try {
+      const updatedPlaylists = playlists.filter((p) => p.id !== playlistId)
+      setPlaylists(updatedPlaylists)
+      localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
+      if (selectedPlaylist === playlistId) {
+        setSelectedPlaylist(null)
+      }
+    } catch (err) {
+      console.error("Error deleting playlist:", err)
+    }
+  }
+
+  const removeFromSaved = (videoId: string) => {
+    try {
+      const updatedVideos = savedVideos.filter((v) => v.id !== videoId)
+      setSavedVideos(updatedVideos)
+      localStorage.setItem("porn_saved_videos", JSON.stringify(updatedVideos))
+    } catch (err) {
+      console.error("Error removing video:", err)
+    }
+  }
+
+  const getPlaylistVideos = () => {
+    if (!selectedPlaylist) return []
+    const playlist = playlists.find((p) => p.id === selectedPlaylist)
+    if (!playlist) return []
+    return savedVideos.filter((v) => playlist.videoIds.includes(v.id))
+  }
+
+  const displayVideos = selectedPlaylist ? getPlaylistVideos() : savedVideos
+
+  return (
+    <div className="space-y-6 pb-24">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">My Library</h2>
+        <Button onClick={() => setShowCreatePlaylist(true)} className="bg-violet-600 hover:bg-violet-700">
+          <Plus className="mr-2 h-4 w-4" />
+          New Playlist
+        </Button>
+      </div>
+
+      {/* Playlists */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => setSelectedPlaylist(null)}
+          variant={!selectedPlaylist ? "default" : "outline"}
+          className={!selectedPlaylist ? "bg-violet-600" : "border-slate-700 bg-slate-800/50 text-white"}
+        >
+          All Saved ({savedVideos.length})
+        </Button>
+        {playlists.map((playlist) => (
+          <div key={playlist.id} className="flex items-center gap-1">
+            <Button
+              onClick={() => setSelectedPlaylist(playlist.id)}
+              variant={selectedPlaylist === playlist.id ? "default" : "outline"}
+              className={
+                selectedPlaylist === playlist.id ? "bg-violet-600" : "border-slate-700 bg-slate-800/50 text-white"
+              }
+            >
+              {playlist.name} ({playlist.videoIds.length})
+            </Button>
+            <button
+              onClick={() => deletePlaylist(playlist.id)}
+              className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-red-400"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Videos Grid */}
+      {displayVideos.length === 0 ? (
+        <div className="rounded-lg bg-slate-800/50 p-8 text-center text-slate-400">
+          {selectedPlaylist ? "No videos in this playlist yet." : "No saved videos yet. Save videos to see them here."}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {displayVideos.map((video) => (
+            <div
+              key={video.id}
+              className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50"
+              onClick={() => setSelectedVideo(video)}
+            >
+              <div className="relative aspect-video overflow-hidden">
+                <img
+                  src={video.default_thumb?.src || video.thumbnail || "/placeholder.svg"}
+                  alt={video.title}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Play className="h-12 w-12 text-white" />
+                </div>
+                <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
+                  {video.length_min || "Unknown"}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeFromSaved(video.id)
+                  }}
+                  className="absolute top-2 right-2 rounded-full bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  <Trash2 className="h-4 w-4 text-red-400" />
+                </button>
+              </div>
+              <div className="p-3">
+                <h3 className="line-clamp-2 text-sm font-medium text-white">{video.title}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Playlist Modal */}
+      {showCreatePlaylist && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md rounded-xl bg-slate-800 p-6">
+            <h3 className="mb-4 text-lg font-bold text-white">Create New Playlist</h3>
+            <Input
+              type="text"
+              placeholder="Playlist name"
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+              className="mb-4 border-slate-700 bg-slate-900 text-white"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreatePlaylist(false)}>
+                Cancel
+              </Button>
+              <Button onClick={createPlaylist} className="bg-violet-600 hover:bg-violet-700">
+                Create
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Player Modal */}
+      {selectedVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <div className="relative w-full max-w-4xl">
+            <button
+              onClick={() => setSelectedVideo(null)}
+              className="absolute -top-12 right-0 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+              <iframe
+                src={selectedVideo.embed}
+                className="h-full w-full"
+                allowFullScreen
+                allow="autoplay"
+                title={selectedVideo.title}
+              />
+            </div>
+            <h3 className="mt-4 text-lg font-bold text-white">{selectedVideo.title}</h3>
           </div>
         </div>
       )}

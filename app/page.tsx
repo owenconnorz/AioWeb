@@ -7,8 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
-import { PornVideos } from "@/components/porn-videos"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download, GripVertical } from "lucide-react"
+import { PornVideos, PornLibrary } from "@/components/porn-videos"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download, GripVertical, BookmarkIcon } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("porn")
@@ -45,7 +45,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12">
-        {activeTab !== "porn" && (
+        {activeTab !== "porn" && activeTab !== "library" && (
           <div className="mb-8 text-center sm:mb-12">
             <div className="mb-4 flex flex-col items-center justify-center gap-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm">
@@ -60,7 +60,7 @@ export default function Home() {
               </h1>
             </div>
             <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
-              Watch porn or generate stunning images,create videos and more!
+              Generate stunning images, craft compelling text, create videos, and transform faces with cutting-edge AI
             </p>
           </div>
         )}
@@ -70,6 +70,14 @@ export default function Home() {
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
                 <PornVideos />
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === "library" && (
+            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+              <CardContent className="p-4 sm:p-6">
+                <PornLibrary />
               </CardContent>
             </Card>
           )}
@@ -117,6 +125,15 @@ export default function Home() {
           >
             <Film className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="nav-label">Porn</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("library")}
+            className={`nav-item ${activeTab === "library" ? "active" : ""}`}
+            aria-label="Library"
+          >
+            <BookmarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">Library</span>
           </button>
 
           <button
@@ -170,8 +187,18 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
-  const [apiOrder, setApiOrder] = useState<string[]>(["xvidapi", "eporner", "redgifs", "cam4", "pornpics"])
+  const [apiOrder, setApiOrder] = useState<string[]>([
+    "xvidapi",
+    "eporner",
+    "redgifs",
+    "cam4",
+    "chaturbate",
+    "pornpics",
+  ])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [touchStartY, setTouchStartY] = useState<number | null>(null)
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -197,7 +224,11 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
 
       const savedApiOrder = localStorage.getItem("porn_api_order")
       if (savedApiOrder) {
-        setApiOrder(JSON.parse(savedApiOrder))
+        const parsed = JSON.parse(savedApiOrder)
+        if (!parsed.includes("chaturbate")) {
+          parsed.push("chaturbate")
+        }
+        setApiOrder(parsed)
       }
     } catch (error) {
       console.error("Error loading settings:", error)
@@ -272,6 +303,7 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
 
   const handleDragStart = (api: string) => {
     setDraggedItem(api)
+    setIsDragging(true)
   }
 
   const handleDragOver = (e: React.DragEvent, api: string) => {
@@ -290,8 +322,90 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
 
   const handleDragEnd = () => {
     setDraggedItem(null)
+    setIsDragging(false)
+    saveApiOrder()
+  }
+
+  const handleTouchStart = (e: React.TouchEvent, api: string) => {
+    const touch = e.touches[0]
+    setTouchStartY(touch.clientY)
+
+    const timer = setTimeout(() => {
+      setDraggedItem(api)
+      setIsDragging(true)
+      if (navigator.vibrate) {
+        navigator.vibrate(50)
+      }
+    }, 500)
+
+    setLongPressTimer(timer)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent, api: string) => {
+    if (!isDragging || !draggedItem) {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer)
+        setLongPressTimer(null)
+      }
+      return
+    }
+
+    e.preventDefault()
+    const touch = e.touches[0]
+    const elements = document.elementsFromPoint(touch.clientX, touch.clientY)
+
+    for (const el of elements) {
+      const targetApi = el.getAttribute("data-api")
+      if (targetApi && targetApi !== draggedItem) {
+        const newOrder = [...apiOrder]
+        const draggedIndex = newOrder.indexOf(draggedItem)
+        const targetIndex = newOrder.indexOf(targetApi)
+
+        newOrder.splice(draggedIndex, 1)
+        newOrder.splice(targetIndex, 0, draggedItem)
+
+        setApiOrder(newOrder)
+        break
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      setLongPressTimer(null)
+    }
+
+    if (isDragging) {
+      saveApiOrder()
+    }
+
+    setDraggedItem(null)
+    setIsDragging(false)
+    setTouchStartY(null)
+  }
+
+  const saveApiOrder = () => {
     try {
       localStorage.setItem("porn_api_order", JSON.stringify(apiOrder))
+    } catch (error) {
+      console.error("Error saving API order:", error)
+    }
+  }
+
+  const moveItem = (api: string, direction: "up" | "down") => {
+    const newOrder = [...apiOrder]
+    const currentIndex = newOrder.indexOf(api)
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
+
+    if (newIndex < 0 || newIndex >= newOrder.length) return
+
+    newOrder.splice(currentIndex, 1)
+    newOrder.splice(newIndex, 0, api)
+
+    setApiOrder(newOrder)
+    try {
+      localStorage.setItem("porn_api_order", JSON.stringify(newOrder))
     } catch (error) {
       console.error("Error saving API order:", error)
     }
@@ -309,6 +423,8 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
         return "Cam4"
       case "pornpics":
         return "PornPics"
+      case "chaturbate":
+        return "Chaturbate"
       default:
         return api
     }
@@ -328,24 +444,72 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
       <div>
         <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">API Bar Order</h3>
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-          Drag and drop to reorder the API buttons in the Porn section
+          Long press and drag to reorder, or use the arrow buttons
         </p>
         <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-          {apiOrder.map((api) => (
+          {apiOrder.map((api, index) => (
             <div
               key={api}
+              data-api={api}
               draggable
               onDragStart={() => handleDragStart(api)}
               onDragOver={(e) => handleDragOver(e, api)}
               onDragEnd={handleDragEnd}
-              className={`flex cursor-move items-center gap-3 rounded-lg border p-3 transition-all ${
+              onTouchStart={(e) => handleTouchStart(e, api)}
+              onTouchMove={(e) => handleTouchMove(e, api)}
+              onTouchEnd={handleTouchEnd}
+              className={`flex cursor-move items-center gap-3 rounded-lg border p-3 transition-all select-none ${
                 draggedItem === api
-                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                  ? "border-indigo-500 bg-indigo-100 scale-105 shadow-lg dark:bg-indigo-900/40"
                   : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
               }`}
             >
-              <GripVertical className="h-5 w-5 text-slate-400" />
-              <span className="font-medium text-slate-900 dark:text-white">{getApiDisplayName(api)}</span>
+              <GripVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
+              <span className="font-medium text-slate-900 dark:text-white flex-1">{getApiDisplayName(api)}</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    moveItem(api, "up")
+                  }}
+                  disabled={index === 0}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    index === 0
+                      ? "text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                      : "text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
+                  }`}
+                  aria-label="Move up"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    moveItem(api, "down")
+                  }}
+                  disabled={index === apiOrder.length - 1}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    index === apiOrder.length - 1
+                      ? "text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                      : "text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
+                  }`}
+                  aria-label="Move down"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -473,14 +637,10 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
           <div className="space-y-3 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 p-4 dark:from-indigo-950/30 dark:to-purple-950/30">
             <div>
               <p className="text-sm font-medium text-slate-900 dark:text-white">AioWeb</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">Version 1.0.0</p>
-            </div>
-            <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
-              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Developed by</p>
-              <p className="mt-1 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Owen Connor Z</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Version 2.0.0</p>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              An AIO website for all your porn and ai needs this is just the start!
+              AI-powered creative suite for generating images, text, videos, and performing face swaps.
             </p>
           </div>
         </div>

@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
     console.log(`[v0] Searching ${source} API for:`, query, `page:`, page)
 
-    if (source === "stripchat") {
-      return await searchStripChat(page)
+    if (source === "chaturbate") {
+      return await searchChaturbate(page)
     } else if (source === "cam4") {
       return await searchCam4(page)
     } else if (source === "xvidapi") {
@@ -207,9 +207,10 @@ async function searchCam4(page = 1) {
   })
 }
 
-async function searchStripChat(page = 1) {
-  const apiUrl = `https://go.xlviiirdr.com/api/models?limit=50&offset=${(page - 1) * 50}&primaryTag=girls`
-  console.log(`[v0] Fetching StripChat API:`, apiUrl)
+async function searchChaturbate(page = 1) {
+  // The /affiliates/api/onlinerooms/ endpoint is more permissive
+  const apiUrl = `https://chaturbate.com/affiliates/api/onlinerooms/?wm=aBtQT&format=json&limit=50&offset=${(page - 1) * 50}&gender=f`
+  console.log(`[v0] Fetching Chaturbate API:`, apiUrl)
 
   const response = await fetch(apiUrl, {
     method: "GET",
@@ -220,40 +221,44 @@ async function searchStripChat(page = 1) {
   })
 
   if (!response.ok) {
-    console.log(`[v0] StripChat API error status:`, response.status)
-    throw new Error(`StripChat API error: ${response.status}`)
+    const errorText = await response.text()
+    console.log(`[v0] Chaturbate API error:`, response.status, errorText.substring(0, 200))
+    throw new Error(`Chaturbate API error: ${response.status}`)
   }
 
   const data = await response.json()
-  console.log(`[v0] StripChat API response:`, data.models?.length || 0, "models")
+  console.log(
+    `[v0] Chaturbate API response:`,
+    data.results?.length || (Array.isArray(data) ? data.length : 0),
+    "models",
+  )
 
-  if (data.models?.length > 0) {
-    console.log(`[v0] StripChat first model keys:`, Object.keys(data.models[0]))
+  // Chaturbate API returns either { results: [...] } or just an array
+  const models = data.results || (Array.isArray(data) ? data : [])
+
+  if (models.length > 0) {
+    console.log(`[v0] Chaturbate first model sample:`, JSON.stringify(models[0]).substring(0, 500))
   }
 
-  const transformedVideos = (data.models || []).map((model: any) => {
-    const username = model.username || model.displayName || `model-${Date.now()}`
-    const displayName = model.displayName || model.username || username
+  const transformedVideos = models.map((model: any) => {
+    const username = model.username || model.room_slug || `model-${Date.now()}`
 
-    // StripChat provides thumbnail URLs
-    const thumbUrl = model.previewUrl || model.avatarUrl || model.snapshotUrl || `/placeholder.svg?height=360&width=640`
-
-    // StripChat lite iframe embed URL
-    const embedUrl = `https://lite-iframe.stripcdn.com/${username}`
+    // Chaturbate embed URL format
+    const embedUrl = `https://chaturbate.com/fullvideo/?b=${username}&campaign=aBtQT&tour=IsSO&signup_notice=1&disable_sound=0`
 
     return {
       id: username,
-      title: displayName,
-      keywords: model.tags?.join(", ") || model.status || "Live",
-      views: model.viewersCount || model.viewers || 0,
+      title: username,
+      keywords: model.tags?.join(", ") || model.current_show || "Live",
+      views: model.num_users || model.num_viewers || 0,
       rate: 0,
-      url: `https://stripchat.com/${username}`,
+      url: `https://chaturbate.com/${username}`,
       added: new Date().toISOString(),
       length_sec: 0,
       length_min: "LIVE",
       embed: embedUrl,
       default_thumb: {
-        src: thumbUrl,
+        src: model.image_url || model.image_url_360x270 || `/placeholder.svg?height=360&width=640`,
         size: "640x360",
         width: 640,
         height: 360,
@@ -262,7 +267,7 @@ async function searchStripChat(page = 1) {
     }
   })
 
-  console.log(`[v0] Returning ${transformedVideos.length} StripChat live models`)
+  console.log(`[v0] Returning ${transformedVideos.length} Chaturbate live models`)
 
   return NextResponse.json({
     videos: transformedVideos,
