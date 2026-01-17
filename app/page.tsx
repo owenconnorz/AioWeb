@@ -8,10 +8,11 @@ import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos, PornLibrary } from "@/components/porn-videos"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, Download, GripVertical, BookmarkIcon } from "lucide-react"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2 } from "lucide-react"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("porn")
+  const [aiSubTab, setAiSubTab] = useState<"image" | "video" | "faceswap">("image")
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [mounted, setMounted] = useState(false)
 
@@ -82,26 +83,52 @@ export default function Home() {
             </Card>
           )}
 
-          {activeTab === "image" && (
+          {activeTab === "ai" && (
             <Card className="border-0 shadow-lg dark:bg-slate-800/50">
               <CardContent className="p-4 sm:p-6">
-                <ImageGenerator />
-              </CardContent>
-            </Card>
-          )}
+                {/* AI Sub-tabs navigation */}
+                <div className="mb-6 flex justify-center">
+                  <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+                    <button
+                      onClick={() => setAiSubTab("image")}
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        aiSubTab === "image"
+                          ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      }`}
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      Image
+                    </button>
+                    <button
+                      onClick={() => setAiSubTab("video")}
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        aiSubTab === "video"
+                          ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      }`}
+                    >
+                      <Video className="h-4 w-4" />
+                      Video
+                    </button>
+                    <button
+                      onClick={() => setAiSubTab("faceswap")}
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        aiSubTab === "faceswap"
+                          ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      }`}
+                    >
+                      <Users className="h-4 w-4" />
+                      Face
+                    </button>
+                  </div>
+                </div>
 
-          {activeTab === "video" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-              <CardContent className="p-4 sm:p-6">
-                <VideoGenerator />
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === "faceswap" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-              <CardContent className="p-4 sm:p-6">
-                <FaceSwap />
+                {/* AI Sub-tab content */}
+                {aiSubTab === "image" && <ImageGenerator />}
+                {aiSubTab === "video" && <VideoGenerator />}
+                {aiSubTab === "faceswap" && <FaceSwap />}
               </CardContent>
             </Card>
           )}
@@ -137,30 +164,12 @@ export default function Home() {
           </button>
 
           <button
-            onClick={() => setActiveTab("image")}
-            className={`nav-item ${activeTab === "image" ? "active" : ""}`}
-            aria-label="Image Generator"
+            onClick={() => setActiveTab("ai")}
+            className={`nav-item ${activeTab === "ai" ? "active" : ""}`}
+            aria-label="AI Tools"
           >
-            <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Image</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("video")}
-            className={`nav-item ${activeTab === "video" ? "active" : ""}`}
-            aria-label="Video Generator"
-          >
-            <Video className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Video</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("faceswap")}
-            className={`nav-item ${activeTab === "faceswap" ? "active" : ""}`}
-            aria-label="Face Swap"
-          >
-            <Users className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Face</span>
+            <Wand2 className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="nav-label">AI</span>
           </button>
 
           <button
@@ -194,6 +203,7 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     "cam4",
     "chaturbate",
     "pornpics",
+    "redtube",
   ])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [touchStartY, setTouchStartY] = useState<number | null>(null)
@@ -227,6 +237,9 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
         const parsed = JSON.parse(savedApiOrder)
         if (!parsed.includes("chaturbate")) {
           parsed.push("chaturbate")
+        }
+        if (!parsed.includes("redtube")) {
+          parsed.push("redtube")
         }
         setApiOrder(parsed)
       }
@@ -425,6 +438,8 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
         return "PornPics"
       case "chaturbate":
         return "Chaturbate"
+      case "redtube":
+        return "RedTube"
       default:
         return api
     }
@@ -559,12 +574,7 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
                 <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
               </label>
             </div>
-          </div>
-        </div>
 
-        <div>
-          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Application</h3>
-          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-slate-900 dark:text-white">Auto-save Results</p>
@@ -586,62 +596,71 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-slate-900 dark:text-white">Dark Mode</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Switch to a darker color scheme</p>
+                <p className="font-medium text-slate-900 dark:text-white">Watermark</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Add watermark to generated content</p>
               </div>
               <label className="relative inline-flex cursor-pointer items-center">
                 <input
                   type="checkbox"
-                  checked={darkMode}
-                  onChange={(e) => handleDarkModeToggle(e.target.checked)}
+                  checked={showWatermark}
+                  onChange={(e) => {
+                    setShowWatermark(e.target.checked)
+                    handleSaveSettings({ showWatermark: e.target.checked })
+                  }}
                   className="peer sr-only"
                 />
                 <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
               </label>
             </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div>
-                <p className="font-medium text-slate-900 dark:text-white">Install App</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {isInstalled
-                    ? "App is installed"
-                    : isInstallable
-                      ? "Add AioWeb to your home screen"
-                      : "Install option not available"}
-                </p>
-              </div>
-              {isInstalled ? (
-                <div className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                  Installed
-                </div>
-              ) : isInstallable ? (
-                <button
-                  onClick={handleInstallApp}
-                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                >
-                  <Download className="h-4 w-4" />
-                  Install
-                </button>
-              ) : (
-                <div className="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-400">
-                  Not Available
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-200 pt-6 dark:border-slate-700">
-          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">About</h3>
-          <div className="space-y-3 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 p-4 dark:from-indigo-950/30 dark:to-purple-950/30">
+        <div>
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Appearance</h3>
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">AioWeb</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">Version 2.0.0</p>
+              <p className="font-medium text-slate-900 dark:text-white">Dark Mode</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Use dark theme</p>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              AI-powered creative suite for generating images, text, videos, and performing face swaps.
-            </p>
+            <label className="relative inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                checked={darkMode}
+                onChange={(e) => handleDarkModeToggle(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Install App</h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-900 dark:text-white">Add to Home Screen</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {isInstalled ? "App is already installed" : "Install AioWeb as an app"}
+              </p>
+            </div>
+            <button
+              onClick={handleInstallApp}
+              disabled={isInstalled || !isInstallable}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 font-medium transition-colors ${
+                isInstalled || !isInstallable
+                  ? "cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {isInstalled ? "Installed" : "Install"}
+            </button>
           </div>
         </div>
       </div>

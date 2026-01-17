@@ -42,6 +42,8 @@ export async function GET(request: NextRequest) {
       return await searchCam4(page)
     } else if (source === "xvidapi") {
       return await searchXvidapi(query, page)
+    } else if (source === "redtube") {
+      return await searchRedTube(query, page)
     } else {
       return await searchEporner(query, page)
     }
@@ -243,8 +245,10 @@ async function searchChaturbate(page = 1) {
   const transformedVideos = models.map((model: any) => {
     const username = model.username || model.room_slug || `model-${Date.now()}`
 
-    // Chaturbate embed URL format
-    const embedUrl = `https://chaturbate.com/fullvideo/?b=${username}&campaign=aBtQT&tour=IsSO&signup_notice=1&disable_sound=0`
+    // Using the iframe_embed URL format which provides just the video player without chat
+    const embedUrl =
+      model.iframe_embed ||
+      `https://chaturbate.com/embed/${username}/?join_overlay=1&campaign=aBtQT&disable_sound=0&tour=9oGW`
 
     return {
       id: username,
@@ -272,5 +276,74 @@ async function searchChaturbate(page = 1) {
   return NextResponse.json({
     videos: transformedVideos,
     total: transformedVideos.length,
+  })
+}
+
+async function searchRedTube(query: string, page = 1) {
+  const isPopular = query === "popular"
+  const ordering = isPopular ? "mostviewed" : ""
+
+  let apiUrl = `https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=big&page=${page}`
+
+  if (!isPopular && query) {
+    apiUrl += `&search=${encodeURIComponent(query)}`
+  }
+  if (ordering) {
+    apiUrl += `&ordering=${ordering}&period=weekly`
+  }
+
+  console.log(`[v0] Fetching RedTube API:`, apiUrl)
+
+  const response = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    },
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.log(`[v0] RedTube API error:`, response.status, errorText.substring(0, 200))
+    throw new Error(`RedTube API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log(`[v0] RedTube API response:`, data.videos?.length || 0, "videos")
+
+  if (data.code && data.message) {
+    throw new Error(data.message)
+  }
+
+  const videos = data.videos || []
+
+  const transformedVideos = videos.map((item: any) => {
+    const video = item.video
+    return {
+      id: video.video_id || `rt-${Date.now()}-${Math.random()}`,
+      title: video.title || "Untitled",
+      keywords: video.tags?.map((t: any) => t.tag_name).join(", ") || "",
+      views: Number.parseInt(video.views || "0", 10),
+      rate: Number.parseFloat(video.rating || "0"),
+      url: video.url || `https://www.redtube.com/${video.video_id}`,
+      added: video.publish_date || "",
+      length_sec: Number.parseInt(video.duration || "0", 10),
+      length_min: video.duration || "0:00",
+      embed: `https://embed.redtube.com/?id=${video.video_id}`,
+      default_thumb: {
+        src: video.default_thumb || video.thumb || "/placeholder.svg",
+        size: "640x360",
+        width: 640,
+        height: 360,
+      },
+      thumbs: video.thumbs || [],
+    }
+  })
+
+  console.log(`[v0] Returning ${transformedVideos.length} RedTube videos`)
+
+  return NextResponse.json({
+    videos: transformedVideos,
+    total: data.count || transformedVideos.length,
   })
 }

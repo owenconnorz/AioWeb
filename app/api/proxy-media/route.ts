@@ -29,13 +29,24 @@ export async function GET(request: Request) {
 
     const range = request.headers.get("range")
 
+    let referer = "https://www.redgifs.com/"
+    let origin = "https://www.redgifs.com"
+
+    if (targetUrl.includes("redtube.com") || targetUrl.includes("redtube.")) {
+      referer = "https://www.redtube.com/"
+      origin = "https://www.redtube.com"
+    } else if (targetUrl.includes("embed.redtube.com")) {
+      referer = "https://embed.redtube.com/"
+      origin = "https://embed.redtube.com"
+    }
+
     const fetchHeaders: HeadersInit = {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Referer: "https://www.redgifs.com/",
-      Origin: "https://www.redgifs.com",
+      Referer: referer,
+      Origin: origin,
       Accept: "*/*",
-      "Accept-Encoding": "identity", // Disable compression for faster streaming
+      "Accept-Encoding": "identity",
     }
 
     if (range) {
@@ -65,7 +76,7 @@ export async function GET(request: Request) {
 
     const responseHeaders: Record<string, string> = {
       "Content-Type": contentType,
-      "Cache-Control": "public, max-age=31536000, immutable", // 1 year cache
+      "Cache-Control": "public, max-age=31536000, immutable",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
       "Access-Control-Allow-Headers": "Range, Content-Type",
