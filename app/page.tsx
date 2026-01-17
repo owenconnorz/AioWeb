@@ -204,10 +204,6 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     "chaturbate",
     "pornpics",
     "redtube",
-    "youporn",
-    "tube8",
-    "xhamster",
-    "spankbang",
   ])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [touchStartY, setTouchStartY] = useState<number | null>(null)
@@ -239,13 +235,15 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
       const savedApiOrder = localStorage.getItem("porn_api_order")
       if (savedApiOrder) {
         const parsed = JSON.parse(savedApiOrder)
-        const newApis = ["chaturbate", "redtube", "youporn", "tube8", "xhamster", "spankbang"]
+        const newApis = ["chaturbate", "redtube"]
         for (const api of newApis) {
           if (!parsed.includes(api)) {
             parsed.push(api)
           }
         }
-        setApiOrder(parsed)
+        const workingApis = ["xvidapi", "eporner", "redgifs", "cam4", "chaturbate", "pornpics", "redtube"]
+        const filteredOrder = parsed.filter((api: string) => workingApis.includes(api))
+        setApiOrder(filteredOrder)
       }
     } catch (error) {
       console.error("Error loading settings:", error)
@@ -444,14 +442,6 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
         return "Chaturbate"
       case "redtube":
         return "RedTube"
-      case "youporn":
-        return "YouPorn"
-      case "tube8":
-        return "Tube8"
-      case "xhamster":
-        return "xHamster"
-      case "spankbang":
-        return "SpankBang"
       default:
         return api
     }

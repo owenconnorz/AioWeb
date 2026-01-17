@@ -4,7 +4,7 @@ import { useState, useEffect, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Loader2, Download, ThumbsUp, ThumbsDown, Upload, X, AlertTriangle } from "lucide-react"
+import { Loader2, Download, ThumbsUp, ThumbsDown, Upload, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 
@@ -35,7 +35,7 @@ export function ImageGenerator() {
         setHistory(JSON.parse(savedHistory))
       }
     } catch (err) {
-      console.error("[v0] Failed to load history:", err)
+      console.error("Failed to load history:", err)
     }
   }, [])
 
@@ -45,7 +45,7 @@ export function ImageGenerator() {
     try {
       localStorage.setItem("imageGenerationHistory", JSON.stringify(history))
     } catch (err) {
-      console.error("[v0] Failed to save history:", err)
+      console.error("Failed to save history:", err)
     }
   }, [history, mounted])
 
@@ -58,16 +58,12 @@ export function ImageGenerator() {
     setError(null)
     setProgress(0)
 
-    console.log("[v0] Starting image generation...")
-    console.log("[v0] Has uploaded image:", !!uploadedImage)
-    console.log("[v0] Model:", selectedModel)
-
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) return prev
-        return prev + 15
+        return prev + 10
       })
-    }, 300)
+    }, 500)
 
     try {
       const positivePrompts = history
@@ -82,13 +78,8 @@ export function ImageGenerator() {
           nsfwFilter = JSON.parse(savedSettings).nsfwFilter ?? true
         }
       } catch (err) {
-        console.error("[v0] Failed to parse settings:", err)
+        console.error("Failed to parse settings:", err)
       }
-
-      console.log("[v0] Sending request to API with NSFW filter:", nsfwFilter)
-
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
 
       const response = await fetch("/api/generate-image", {
         method: "POST",
@@ -100,23 +91,15 @@ export function ImageGenerator() {
           nsfwFilter,
           uploadedImage,
         }),
-        signal: controller.signal,
-      }).catch((err) => {
-        clearTimeout(timeoutId)
-        throw new Error(`Network error: ${err.message}. Check your internet connection or try again.`)
       })
 
-      clearTimeout(timeoutId)
-
       const data = await response.json()
-      console.log("[v0] Response received:", data)
 
       if (!response.ok) {
-        throw new Error(data.error || `Server error (${response.status}). Please try again.`)
+        throw new Error(data.error || `Server error (${response.status})`)
       }
 
       if (data.images && data.images.length > 0) {
-        console.log("[v0] Images generated successfully:", data.images.length)
         setProgress(100)
         setImages(data.images)
 
@@ -128,15 +111,11 @@ export function ImageGenerator() {
         }
         setHistory((prev) => [...prev, newEntry])
       } else {
-        throw new Error("No images were generated. The AI service may be temporarily unavailable.")
+        throw new Error("No images were generated")
       }
     } catch (error) {
-      console.error("[v0] Image generation error:", error)
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to generate image. Please check your internet connection and try again."
-      setError(errorMessage)
+      console.error("Image generation error:", error)
+      setError(error instanceof Error ? error.message : "Failed to generate image")
       setProgress(0)
     } finally {
       clearInterval(progressInterval)
@@ -157,14 +136,10 @@ export function ImageGenerator() {
   }
 
   const handleDownload = (base64: string, index: number) => {
-    try {
-      const link = document.createElement("a")
-      link.href = `data:image/png;base64,${base64}`
-      link.download = `generated-image-${index + 1}.png`
-      link.click()
-    } catch (err) {
-      console.error("[v0] Download failed:", err)
-    }
+    const link = document.createElement("a")
+    link.href = `data:image/png;base64,${base64}`
+    link.download = `generated-image-${index + 1}.png`
+    link.click()
   }
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -191,39 +166,6 @@ export function ImageGenerator() {
         </p>
       </div>
 
-      {uploadedImage && selectedModel !== "promptchan" && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">
-                Image editing not supported with this model
-              </p>
-              <p className="text-sm text-amber-800 dark:text-amber-400 mt-1">
-                The selected model will generate a NEW image based on your description, not edit your uploaded photo.
-                Switch to <strong>PromptChan AI</strong> for true image-to-image editing.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2 border-amber-600 text-amber-700 hover:bg-amber-100 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-900/50 bg-transparent"
-                onClick={() => setSelectedModel("promptchan")}
-              >
-                Switch to PromptChan AI
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {uploadedImage && selectedModel === "promptchan" && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
-          <p className="text-sm text-green-900 dark:text-green-300">
-            ✓ Ready for image editing! PromptChan AI will modify your uploaded photo based on your instructions.
-          </p>
-        </div>
-      )}
-
       <div className="space-y-2">
         <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Image (Optional)</Label>
         {uploadedImage ? (
@@ -231,7 +173,7 @@ export function ImageGenerator() {
             <img
               src={uploadedImage || "/placeholder.svg"}
               alt="Uploaded"
-              className="h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-indigo-500 dark:hover:bg-slate-800"
+              className="h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
             />
             <Button
               variant="destructive"
@@ -261,14 +203,9 @@ export function ImageGenerator() {
             <SelectValue placeholder="Select AI model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="pollinations">Pollinations AI - Free & Unlimited (Recommended)</SelectItem>
-            <SelectItem value="grok">Grok AI - xAI's Image Generator</SelectItem>
-            <SelectItem value="promptchan">PromptChan AI - NSFW & Image Editing (May have issues)</SelectItem>
-            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro</SelectItem>
-            <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
-            <SelectItem value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</SelectItem>
-            <SelectItem value="darlink/darlink-1">Darlink (Specialized)</SelectItem>
-            <SelectItem value="lustorys/wan-2.5">Lustorys' Wan 2.5 AI</SelectItem>
+            <SelectItem value="pollinations">Pollinations AI (Free & Unlimited)</SelectItem>
+            <SelectItem value="pollinations-turbo">Pollinations Turbo (Faster)</SelectItem>
+            <SelectItem value="pollinations-flux">Pollinations Flux (Higher Quality)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -277,8 +214,8 @@ export function ImageGenerator() {
         id="image-prompt"
         placeholder={
           uploadedImage
-            ? "Add a sunset background, change the colors to blue and gold, enhance details..."
-            : "A serene mountain landscape at sunset with a crystal clear lake reflecting the colorful sky..."
+            ? "Add a sunset background, change the colors to blue and gold..."
+            : "A serene mountain landscape at sunset with a crystal clear lake..."
         }
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
@@ -311,12 +248,6 @@ export function ImageGenerator() {
             <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-500">{progress}%</span>
           </div>
           <Progress value={progress} className="h-2" />
-          <p className="text-xs text-slate-500 text-center dark:text-slate-400">
-            {progress < 30 && "Preparing your request..."}
-            {progress >= 30 && progress < 60 && "AI is creating your image..."}
-            {progress >= 60 && progress < 90 && "Finalizing details..."}
-            {progress >= 90 && "Almost done..."}
-          </p>
         </div>
       )}
 
@@ -349,7 +280,7 @@ export function ImageGenerator() {
               </Button>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4">
             {images.map((image, index) => (
               <div
                 key={index}
@@ -374,9 +305,6 @@ export function ImageGenerator() {
               </div>
             ))}
           </div>
-          {feedback === "positive" && (
-            <p className="text-xs text-green-600 dark:text-green-400">Thanks! The AI will learn from this example.</p>
-          )}
         </div>
       )}
 

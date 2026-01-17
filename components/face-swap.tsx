@@ -1,4 +1,5 @@
 "use client"
+
 import { useState, useRef, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -10,6 +11,7 @@ export function FaceSwap() {
   const [targetImage, setTargetImage] = useState<string | null>(null)
   const [resultImage, setResultImage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const sourceInputRef = useRef<HTMLInputElement>(null)
   const targetInputRef = useRef<HTMLInputElement>(null)
 
@@ -29,6 +31,7 @@ export function FaceSwap() {
 
     setIsLoading(true)
     setResultImage(null)
+    setError(null)
 
     try {
       const response = await fetch("/api/face-swap", {
@@ -41,9 +44,12 @@ export function FaceSwap() {
 
       if (data.resultImage) {
         setResultImage(data.resultImage)
+      } else {
+        setError("Failed to generate face swap result")
       }
     } catch (error) {
-      console.error("[v0] Face swap error:", error)
+      console.error("Face swap error:", error)
+      setError("Face swap failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -62,70 +68,83 @@ export function FaceSwap() {
     setSourceImage(null)
     setTargetImage(null)
     setResultImage(null)
+    setError(null)
     if (sourceInputRef.current) sourceInputRef.current.value = ""
     if (targetInputRef.current) targetInputRef.current.value = ""
   }
 
   return (
     <div className="space-y-6">
-      <Alert className="border-amber-200 bg-amber-50">
-        <AlertCircle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-800">
-          For advanced face swap capabilities, consider adding the fal integration for professional-grade results.
+      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <AlertDescription className="text-amber-800 dark:text-amber-300">
+          Face swap uses AI to generate a new portrait. Results may vary based on image quality and lighting.
         </AlertDescription>
       </Alert>
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-3">
-          <Label className="text-base font-semibold text-slate-900">Source Face</Label>
-          <p className="text-sm text-slate-600">Upload the face you want to use</p>
+          <Label className="text-base font-semibold text-slate-900 dark:text-white">Source Face</Label>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Upload the face you want to use</p>
 
-          <div className="flex flex-col gap-3">
-            <Button variant="outline" onClick={() => sourceInputRef.current?.click()} className="w-full gap-2">
-              <Upload className="h-4 w-4" />
-              Upload Source Image
-            </Button>
-            <input
-              ref={sourceInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageUpload(e, setSourceImage)}
-              className="hidden"
-            />
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => sourceInputRef.current?.click()}
+            className="w-full gap-2"
+            disabled={isLoading}
+          >
+            <Upload className="h-4 w-4" />
+            Upload Source Image
+          </Button>
+          <input
+            ref={sourceInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload(e, setSourceImage)}
+            className="hidden"
+          />
 
           {sourceImage && (
-            <div className="overflow-hidden rounded-lg border border-slate-200">
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
               <img src={sourceImage || "/placeholder.svg"} alt="Source" className="h-auto w-full" />
             </div>
           )}
         </div>
 
         <div className="space-y-3">
-          <Label className="text-base font-semibold text-slate-900">Target Image</Label>
-          <p className="text-sm text-slate-600">Upload the image to swap the face onto</p>
+          <Label className="text-base font-semibold text-slate-900 dark:text-white">Target Image</Label>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Upload the image to swap the face onto</p>
 
-          <div className="flex flex-col gap-3">
-            <Button variant="outline" onClick={() => targetInputRef.current?.click()} className="w-full gap-2">
-              <Upload className="h-4 w-4" />
-              Upload Target Image
-            </Button>
-            <input
-              ref={targetInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageUpload(e, setTargetImage)}
-              className="hidden"
-            />
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => targetInputRef.current?.click()}
+            className="w-full gap-2"
+            disabled={isLoading}
+          >
+            <Upload className="h-4 w-4" />
+            Upload Target Image
+          </Button>
+          <input
+            ref={targetInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload(e, setTargetImage)}
+            className="hidden"
+          />
 
           {targetImage && (
-            <div className="overflow-hidden rounded-lg border border-slate-200">
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
               <img src={targetImage || "/placeholder.svg"} alt="Target" className="h-auto w-full" />
             </div>
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+          <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Button
@@ -137,7 +156,7 @@ export function FaceSwap() {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Swapping Faces...
+              Processing...
             </>
           ) : (
             "Swap Faces"
@@ -145,7 +164,7 @@ export function FaceSwap() {
         </Button>
 
         {(sourceImage || targetImage || resultImage) && (
-          <Button onClick={handleReset} variant="outline" size="lg">
+          <Button onClick={handleReset} variant="outline" size="lg" disabled={isLoading}>
             Reset
           </Button>
         )}
@@ -153,8 +172,8 @@ export function FaceSwap() {
 
       {resultImage && (
         <div className="space-y-3">
-          <Label className="text-base font-semibold text-slate-900">Result</Label>
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <Label className="text-base font-semibold text-slate-900 dark:text-white">Result</Label>
+          <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
             <img src={resultImage || "/placeholder.svg"} alt="Result" className="h-auto w-full" />
           </div>
           <Button onClick={handleDownload} variant="outline" className="w-full gap-2 bg-transparent">

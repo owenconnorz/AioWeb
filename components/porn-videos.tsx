@@ -61,32 +61,9 @@ interface HistoryItem {
   apiSource: string
 }
 
-type ApiSource =
-  | "redgifs"
-  | "eporner"
-  | "xvidapi"
-  | "cam4"
-  | "pornpics"
-  | "chaturbate"
-  | "redtube"
-  | "youporn"
-  | "tube8"
-  | "xhamster"
-  | "spankbang"
+type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube"
 
-const DEFAULT_API_ORDER: ApiSource[] = [
-  "xvidapi",
-  "eporner",
-  "redgifs",
-  "cam4",
-  "pornpics",
-  "chaturbate",
-  "redtube",
-  "youporn",
-  "tube8",
-  "xhamster",
-  "spankbang",
-]
+const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube"]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
