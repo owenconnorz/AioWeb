@@ -167,22 +167,29 @@ export function ImageGenerator() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Image (Optional)</Label>
+        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Image to Edit (Optional)</Label>
         {uploadedImage ? (
-          <div className="relative">
-            <img
-              src={uploadedImage || "/placeholder.svg"}
-              alt="Uploaded"
-              className="h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
-            />
-            <Button
-              variant="destructive"
-              size="sm"
-              className="absolute right-2 top-2"
-              onClick={() => setUploadedImage(null)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="space-y-2">
+            <div className="relative">
+              <img
+                src={uploadedImage || "/placeholder.svg"}
+                alt="Uploaded"
+                className="h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
+              />
+              <Button
+                variant="destructive"
+                size="sm"
+                className="absolute right-2 top-2"
+                onClick={() => setUploadedImage(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                The AI will analyze your image and apply your requested edits. Describe what changes you want (e.g., "change background to a beach", "add sunglasses", "make it look like a painting").
+              </p>
+            </div>
           </div>
         ) : (
           <label className="flex h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-indigo-500 dark:hover:bg-slate-800">

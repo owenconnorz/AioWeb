@@ -726,16 +726,7 @@ export function PornVideos() {
                             ? "Chaturbate"
                             : api === "redtube"
                               ? "Redtube"
-                              : // Added new API source labels
-                                api === "youporn"
-                                ? "YouPorn"
-                                : api === "tube8"
-                                  ? "Tube8"
-                                  : api === "xhamster"
-                                    ? "XHamster"
-                                    : api === "spankbang"
-                                      ? "SpankBang"
-                                      : api}
+                              : api}
               </span>
             </button>
           ))}
