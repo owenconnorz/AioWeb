@@ -21,7 +21,7 @@ export function ImageGenerator() {
   const [isLoading, setIsLoading] = useState(false)
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<ImageGenerationHistory[]>([])
-  const [selectedModel, setSelectedModel] = useState("pollinations")
+  const [selectedModel, setSelectedModel] = useState("huggingface")
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
@@ -185,9 +185,12 @@ export function ImageGenerator() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-              <p className="text-xs text-blue-800 dark:text-blue-300">
-                The AI will analyze your image and apply your requested edits. Describe what changes you want (e.g., "change background to a beach", "add sunglasses", "make it look like a painting").
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                Limitation: Free AI cannot edit photos directly. The AI will analyze your image and generate a NEW similar image with your changes applied. The result will be inspired by your photo but not an exact edit of it.
+              </p>
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                For best results, describe style changes like "make it a painting" or "add sunset lighting" rather than body modifications.
               </p>
             </div>
           </div>
@@ -213,8 +216,15 @@ export function ImageGenerator() {
             <SelectItem value="pollinations">Pollinations AI (Free & Unlimited)</SelectItem>
             <SelectItem value="pollinations-turbo">Pollinations Turbo (Faster)</SelectItem>
             <SelectItem value="pollinations-flux">Pollinations Flux (Higher Quality)</SelectItem>
+            <SelectItem value="huggingface">Hugging Face (Real Image Editing)</SelectItem>
+            <SelectItem value="image-editing">Image Editing (Free - Limited)</SelectItem>
           </SelectContent>
         </Select>
+        {uploadedImage && selectedModel !== "huggingface" && selectedModel !== "image-editing" && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Tip: Select "Hugging Face (Real Image Editing)" for true image editing with your uploaded image
+          </p>
+        )}
       </div>
 
       <Textarea

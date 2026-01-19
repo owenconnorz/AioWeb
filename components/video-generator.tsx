@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Download, ThumbsUp, ThumbsDown, Play, Upload, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface VideoGenerationHistory {
   prompt: string
@@ -26,6 +27,7 @@ export function VideoGenerator() {
   const [progress, setProgress] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [selectedModel, setSelectedModel] = useState("huggingface")
 
   useEffect(() => {
     setMounted(true)
@@ -92,6 +94,7 @@ export function VideoGenerator() {
           learningContext: positivePrompts.join(", "),
           nsfwFilter,
           uploadedImage,
+          model: selectedModel,
         }),
       })
 
@@ -176,6 +179,19 @@ export function VideoGenerator() {
             ? "Describe how to animate or transform this image"
             : "Be specific about the scenes, actions, and style you want"}
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">AI Model</Label>
+        <Select value={selectedModel} onValueChange={setSelectedModel}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select AI model" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="huggingface">Hugging Face (Image-to-Video)</SelectItem>
+            <SelectItem value="pollinations">Pollinations (Free)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">

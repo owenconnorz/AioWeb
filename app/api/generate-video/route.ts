@@ -1,7 +1,5 @@
 export async function POST(req: Request) {
-  const { prompt, learningContext, model = "pollinations-video", nsfwFilter = true, uploadedImage } = await req.json()
-
-  console.log("[v0] Video generation request:", { model, prompt, nsfwFilter, hasUploadedImage: !!uploadedImage })
+  const { prompt, learningContext, model = "huggingface", nsfwFilter = true, uploadedImage } = await req.json()
 
   try {
     let enhancedPrompt = learningContext ? `${prompt} (Style inspiration: ${learningContext})` : prompt
@@ -14,17 +12,61 @@ export async function POST(req: Request) {
       enhancedPrompt += ". Safe for work, family-friendly content only"
     }
 
-    // Pollinations supports video generation via their text-to-video endpoint
-    const seed = Date.now()
+    // Hugging Face image-to-video model
+    if (model === "huggingface" && uploadedImage) {
+      const hfApiKey = process.env.HUGGINGFACE_API_KEY
+      if (!hfApiKey) {
+        return Response.json(
+          { error: "Hugging Face API key not configured", frames: [] },
+          { status: 400 }
+        )
+      }
 
-    // For video, we generate an animated GIF or short video using Pollinations
-    // The video endpoint generates actual animated content
+      const base64Data = uploadedImage.includes(",") ? uploadedImage.split(",")[1] : uploadedImage
+
+      // Use Stable Video Diffusion for image-to-video
+      const hfResponse = await fetch(
+        "https://router.huggingface.co/hf-inference/models/stabilityai/stable-video-diffusion-img2vid-xt",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${hfApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            inputs: base64Data,
+            parameters: {
+              num_frames: 8,
+              fps: 4,
+            }
+          }),
+          signal: AbortSignal.timeout(180000), // 3 minute timeout
+        }
+      )
+
+      if (hfResponse.ok) {
+        const contentType = hfResponse.headers.get("content-type")
+        
+        if (contentType?.includes("video") || contentType?.includes("image")) {
+          const arrayBuffer = await hfResponse.arrayBuffer()
+          const base64Result = Buffer.from(arrayBuffer).toString("base64")
+          
+          return Response.json({
+            videoUrl: `data:video/mp4;base64,${base64Result}`,
+            frames: [`data:image/png;base64,${base64Result}`],
+            message: "Video generated with Hugging Face",
+            isAnimated: true,
+          })
+        }
+      }
+      
+      // Fall through to Pollinations if HF fails
+    }
+
+    // Pollinations fallback
+    const seed = Date.now()
     const videoPrompt = encodeURIComponent(enhancedPrompt + ", cinematic motion, smooth animation")
 
-    // Pollinations video generation endpoint
-    const videoUrl = `https://image.pollinations.ai/prompt/${videoPrompt}?width=512&height=512&seed=${seed}&nologo=true&model=turbo`
-
-    // Generate 4 frames to create an animation effect
     const frames: string[] = []
     for (let i = 0; i < 4; i++) {
       const frameSeed = seed + i * 1000
@@ -32,14 +74,10 @@ export async function POST(req: Request) {
       frames.push(frameUrl)
     }
 
-    console.log("[v0] Video frames generated")
-
-    // Return the first frame as the video preview
-    // In a real implementation, these frames would be combined into a video
     return Response.json({
       videoUrl: frames[0],
       frames: frames,
-      message: "Video preview generated. The AI created multiple frames that can be animated.",
+      message: "Video preview generated with Pollinations",
       isAnimated: true,
     })
   } catch (error) {

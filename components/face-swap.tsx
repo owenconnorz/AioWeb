@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Loader2, Upload, Download, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export function FaceSwap() {
   const [sourceImage, setSourceImage] = useState<string | null>(null)
@@ -12,6 +13,7 @@ export function FaceSwap() {
   const [resultImage, setResultImage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedModel, setSelectedModel] = useState("huggingface")
   const sourceInputRef = useRef<HTMLInputElement>(null)
   const targetInputRef = useRef<HTMLInputElement>(null)
 
@@ -37,7 +39,7 @@ export function FaceSwap() {
       const response = await fetch("/api/face-swap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceImage, targetImage }),
+        body: JSON.stringify({ sourceImage, targetImage, model: selectedModel }),
       })
 
       const data = await response.json()
@@ -81,6 +83,19 @@ export function FaceSwap() {
           Face swap uses AI to generate a new portrait. Results may vary based on image quality and lighting.
         </AlertDescription>
       </Alert>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">AI Model</Label>
+        <Select value={selectedModel} onValueChange={setSelectedModel}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select AI model" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="huggingface">Hugging Face (Face Swap)</SelectItem>
+            <SelectItem value="pollinations">Pollinations (Free)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-3">
