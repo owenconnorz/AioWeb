@@ -174,7 +174,8 @@ export function ImageGenerator() {
               <img
                 src={uploadedImage || "/placeholder.svg"}
                 alt="Uploaded"
-                className="h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
+                className="max-h-64 w-full rounded-lg border border-slate-200 object-contain dark:border-slate-700"
+                style={{ imageOrientation: "from-image" }}
               />
               <Button
                 variant="destructive"
@@ -306,7 +307,8 @@ export function ImageGenerator() {
                 <img
                   src={`data:${image.mediaType};base64,${image.base64}`}
                   alt={`Generated image ${index + 1}`}
-                  className="h-auto w-full object-cover"
+                  className="h-auto w-full object-contain"
+                  style={{ imageOrientation: "from-image" }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
