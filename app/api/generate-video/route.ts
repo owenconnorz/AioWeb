@@ -1,125 +1,118 @@
+// POST: Start a new video generation (returns prediction ID immediately)
 export async function POST(req: Request) {
-  const { prompt, learningContext, uploadedImage } = await req.json()
-
   try {
-    const hfApiKey = process.env.HUGGINGFACE_API_KEY
-    if (!hfApiKey) {
+    const body = await req.json()
+    const prompt = body?.prompt || ""
+    const learningContext = body?.learningContext || ""
+    const uploadedImage = body?.uploadedImage || null
+
+    const replicateToken = process.env.REPLICATE_API_TOKEN
+    if (!replicateToken) {
       return Response.json(
-        { error: "Hugging Face API key not configured.", frames: [] },
+        { error: "Replicate API token not configured. Please add REPLICATE_API_TOKEN to environment variables." },
         { status: 400 }
       )
     }
 
     const enhancedPrompt = learningContext ? `${prompt} (Style: ${learningContext})` : prompt
-    const { Client } = await import("@gradio/client")
 
-    // Image-to-video: Try HF Spaces that are actively maintained
-    if (uploadedImage) {
-      const base64Data = uploadedImage.includes(",") ? uploadedImage.split(",")[1] : uploadedImage
-      const imageBuffer = Buffer.from(base64Data, "base64")
-      const imageBlob = new Blob([imageBuffer], { type: "image/jpeg" })
-
-      // Try Spaces known to work (updated list based on active HF Spaces)
-      const workingSpaces = [
-        "hysts/SD-XL",
-        "stabilityai/stable-diffusion",
-        "black-forest-labs/FLUX.1-schnell",
-      ]
-
-      // Since video generation requires GPU compute not available via free API,
-      // generate a series of images as frames instead
-      const frames: string[] = []
-      
-      for (const spaceName of workingSpaces) {
-        try {
-          const client = await Client.connect(spaceName, { hf_token: hfApiKey })
-          const apiInfo = await client.view_api()
-          const endpoints = Object.keys(apiInfo.named_endpoints || {})
-          
-          if (endpoints.length === 0) continue
-          
-          const endpoint = endpoints.find(e => e.includes("infer") || e.includes("generate")) || endpoints[0]
-          
-          // Generate multiple frames with slight prompt variations for animation effect
-          for (let i = 0; i < 8; i++) {
-            const framePrompt = `${enhancedPrompt}, frame ${i + 1} of animation sequence, motion blur`
-            
-            const result = await client.predict(endpoint, [framePrompt])
-            
-            if (result?.data?.[0]?.url) {
-              const imgResponse = await fetch(result.data[0].url)
-              const imgBuffer = await imgResponse.arrayBuffer()
-              frames.push(`data:image/png;base64,${Buffer.from(imgBuffer).toString("base64")}`)
-            }
-            
-            if (frames.length >= 4) break
-          }
-          
-          if (frames.length > 0) {
-            return Response.json({
-              frames,
-              message: `Generated ${frames.length} animation frames with ${spaceName}`,
-              isAnimated: true,
-              note: "True video generation requires dedicated GPU endpoints. Showing animated frames instead.",
-            })
-          }
-        } catch {
-          continue
-        }
-      }
+    // Seedance 1.5 Pro - better at following complex text instructions
+    const input: Record<string, string | number> = {
+      prompt: enhancedPrompt,
+      duration: 5,
+      aspect_ratio: "9:16",
     }
 
-    // Text-to-video: Generate image sequence as animation frames
-    const t2vSpaces = [
-      "stabilityai/stable-diffusion-3-medium",
-      "black-forest-labs/FLUX.1-schnell",
-    ]
-
-    for (const spaceName of t2vSpaces) {
-      try {
-        const client = await Client.connect(spaceName, { hf_token: hfApiKey })
-        const apiInfo = await client.view_api()
-        const endpoints = Object.keys(apiInfo.named_endpoints || {})
-        
-        if (endpoints.length === 0) continue
-        
-        const endpoint = endpoints[0]
-        const frames: string[] = []
-        
-        // Generate frames
-        for (let i = 0; i < 6; i++) {
-          const framePrompt = `${enhancedPrompt}, cinematic frame ${i + 1}, dynamic motion`
-          const result = await client.predict(endpoint, [framePrompt])
-          
-          if (result?.data?.[0]?.url) {
-            const imgResponse = await fetch(result.data[0].url)
-            const imgBuffer = await imgResponse.arrayBuffer()
-            frames.push(`data:image/png;base64,${Buffer.from(imgBuffer).toString("base64")}`)
-          }
-          
-          if (frames.length >= 4) break
-        }
-        
-        if (frames.length > 0) {
-          return Response.json({
-            frames,
-            message: `Generated ${frames.length} frames with ${spaceName}`,
-            isAnimated: true,
-          })
-        }
-      } catch {
-        continue
+    if (uploadedImage && typeof uploadedImage === "string" && uploadedImage.length > 0) {
+      let imageDataUri = uploadedImage
+      if (!uploadedImage.startsWith("data:")) {
+        imageDataUri = `data:image/jpeg;base64,${uploadedImage}`
       }
+      input.image = imageDataUri
     }
 
+    const response = await fetch("https://api.replicate.com/v1/models/bytedance/seedance-1.5-pro/predictions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${replicateToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ input })
+    })
+
+    const prediction = await response.json()
+
+    if (prediction.error) {
+      return Response.json({ error: prediction.error }, { status: 500 })
+    }
+
+    // Return prediction ID immediately for client-side polling
     return Response.json({
-      error: "Video generation requires dedicated GPU compute not available through free HuggingFace API. Consider using Replicate or Fal.ai for video generation.",
-      frames: [],
-    }, { status: 500 })
+      predictionId: prediction.id,
+      status: prediction.status,
+      message: "Video generation started. This takes 2-5 minutes.",
+    })
 
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : "Video generation failed", frames: [] },
+      { error: error instanceof Error ? error.message : "Video generation failed" },
+      { status: 500 },
+    )
+  }
+}
+
+// GET: Check status of a prediction
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const predictionId = searchParams.get("id")
+
+    if (!predictionId) {
+      return Response.json({ error: "Missing prediction ID" }, { status: 400 })
+    }
+
+    const replicateToken = process.env.REPLICATE_API_TOKEN
+    if (!replicateToken) {
+      return Response.json({ error: "Replicate API token not configured" }, { status: 400 })
+    }
+
+    const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+      headers: { "Authorization": `Bearer ${replicateToken}` }
+    })
+
+    const result = await response.json()
+
+    if (result.status === "succeeded" && result.output) {
+      const videoUrl = typeof result.output === "string" ? result.output : result.output[0]
+      
+      // Fetch video and convert to base64
+      const videoResponse = await fetch(videoUrl)
+      const videoBuffer = await videoResponse.arrayBuffer()
+      const base64Video = Buffer.from(videoBuffer).toString("base64")
+
+      return Response.json({
+        status: "succeeded",
+        videoUrl: `data:video/mp4;base64,${base64Video}`,
+        message: "Video generated successfully!",
+      })
+    }
+
+    if (result.status === "failed") {
+      return Response.json({
+        status: "failed",
+        error: result.error || "Video generation failed",
+      })
+    }
+
+    // Still processing
+    return Response.json({
+      status: result.status,
+      message: result.status === "starting" ? "Initializing..." : "Generating video...",
+    })
+
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Failed to check status" },
       { status: 500 },
     )
   }

@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label"
 import { Loader2, Download, ThumbsUp, ThumbsDown, Play, Upload, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 
-
 interface VideoGenerationHistory {
   prompt: string
   videoData: string
@@ -53,6 +52,8 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
   const [progress, setProgress] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [editPrompt, setEditPrompt] = useState("")
+  const [isEditingImage, setIsEditingImage] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -95,13 +96,6 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
     setFeedback(null)
     setProgress(0)
 
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 85) return prev
-        return prev + 5
-      })
-    }, 500)
-
     try {
       const positivePrompts = history
         .filter((h) => h.feedback === "positive")
@@ -111,6 +105,8 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
       const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
       const nsfwFilter = savedSettings ? (JSON.parse(savedSettings).nsfwFilter ?? true) : true
 
+      // Step 1: Start video generation
+      setProgress(5)
       const response = await fetch("/api/generate-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,38 +121,74 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
 
       const data = await response.json()
 
-      if (!response.ok) {
-        alert(`Error: ${data.error || "Failed to generate video"}`)
+      if (!response.ok || data.error) {
+        alert(`Error: ${data.error || "Failed to start video generation"}`)
         setProgress(0)
+        setIsLoading(false)
         return
       }
 
-      if (data.videoUrl) {
-        setProgress(100)
-        setVideoUrl(data.videoUrl)
-
-        if (data.frames && data.frames.length > 0) {
-          setFrames(data.frames)
-          setIsPlaying(true)
-        }
-
-        const newEntry: VideoGenerationHistory = {
-          prompt,
-          videoData: data.videoUrl,
-          feedback: null,
-          timestamp: Date.now(),
-        }
-        setHistory((prev) => [...prev, newEntry])
-      } else {
-        alert("No video was generated. Please try again.")
+      const predictionId = data.predictionId
+      if (!predictionId) {
+        alert("No prediction ID received")
         setProgress(0)
+        setIsLoading(false)
+        return
       }
+
+      // Step 2: Poll for status
+      setProgress(10)
+      let attempts = 0
+      const maxAttempts = 120 // 10 minutes max (5s intervals)
+
+      const pollInterval = setInterval(async () => {
+        attempts++
+        
+        try {
+          const statusResponse = await fetch(`/api/generate-video?id=${predictionId}`)
+          const statusData = await statusResponse.json()
+
+          // Update progress based on status
+          if (statusData.status === "starting") {
+            setProgress(Math.min(20, 10 + attempts))
+          } else if (statusData.status === "processing") {
+            setProgress(Math.min(90, 20 + attempts * 2))
+          }
+
+          if (statusData.status === "succeeded" && statusData.videoUrl) {
+            clearInterval(pollInterval)
+            setProgress(100)
+            setVideoUrl(statusData.videoUrl)
+
+            const newEntry: VideoGenerationHistory = {
+              prompt,
+              videoData: statusData.videoUrl,
+              feedback: null,
+              timestamp: Date.now(),
+            }
+            setHistory((prev) => [...prev, newEntry])
+            setIsLoading(false)
+          } else if (statusData.status === "failed" || statusData.error) {
+            clearInterval(pollInterval)
+            alert(`Error: ${statusData.error || "Video generation failed"}`)
+            setProgress(0)
+            setIsLoading(false)
+          } else if (attempts >= maxAttempts) {
+            clearInterval(pollInterval)
+            alert("Video generation timed out. Please try again.")
+            setProgress(0)
+            setIsLoading(false)
+          }
+        } catch (pollError) {
+          console.error("Polling error:", pollError)
+          // Don't stop on polling errors, keep trying
+        }
+      }, 5000) // Poll every 5 seconds
+
     } catch (error) {
       console.error("Video generation error:", error)
       alert(`Failed to generate video: ${error instanceof Error ? error.message : "Unknown error"}`)
       setProgress(0)
-    } finally {
-      clearInterval(progressInterval)
       setIsLoading(false)
     }
   }
@@ -178,7 +210,7 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
 
     const link = document.createElement("a")
     link.href = videoUrl
-    link.download = "generated-video.png"
+    link.download = videoUrl.includes("video/mp4") ? "generated-video.mp4" : "generated-video.png"
     link.click()
   }
 
@@ -197,6 +229,15 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
         reader.readAsDataURL(file)
       }
     }
+  }
+
+  const handleEditImageFirst = async () => {
+    // Placeholder for handleEditImageFirst logic
+    setIsEditingImage(true)
+    // Simulate image editing process
+    setTimeout(() => {
+      setIsEditingImage(false)
+    }, 3000)
   }
 
   return (
@@ -278,7 +319,48 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
         </div>
       )}
 
-      {frames.length > 0 && (
+      {videoUrl && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-base font-semibold text-slate-900 dark:text-slate-100">Generated Video</Label>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFeedback("positive")}
+                className={feedback === "positive" ? "text-green-600" : ""}
+              >
+                <ThumbsUp className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFeedback("negative")}
+                className={feedback === "negative" ? "text-red-600" : ""}
+              >
+                <ThumbsDown className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-black">
+            <video
+              src={videoUrl}
+              controls
+              autoPlay
+              loop
+              className="w-full h-auto"
+            />
+          </div>
+
+          <Button onClick={handleDownload} variant="outline" className="w-full gap-2 bg-transparent">
+            <Download className="h-4 w-4" />
+            Download Video
+          </Button>
+        </div>
+      )}
+
+      {frames.length > 0 && !videoUrl && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold text-slate-900 dark:text-slate-100">Generated Animation</Label>
@@ -309,7 +391,6 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
               className="w-full h-auto"
             />
 
-            {/* Frame navigation */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
               <div className="flex items-center justify-between">
                 <Button
