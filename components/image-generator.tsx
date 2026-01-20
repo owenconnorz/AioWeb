@@ -169,31 +169,21 @@ export function ImageGenerator() {
       <div className="space-y-2">
         <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Image to Edit (Optional)</Label>
         {uploadedImage ? (
-          <div className="space-y-2">
-            <div className="relative">
-              <img
-                src={uploadedImage || "/placeholder.svg"}
-                alt="Uploaded"
-                className="max-h-64 w-full rounded-lg border border-slate-200 object-contain dark:border-slate-700"
-                style={{ imageOrientation: "from-image" }}
-              />
-              <Button
-                variant="destructive"
-                size="sm"
-                className="absolute right-2 top-2"
-                onClick={() => setUploadedImage(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-              <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                Limitation: Free AI cannot edit photos directly. The AI will analyze your image and generate a NEW similar image with your changes applied. The result will be inspired by your photo but not an exact edit of it.
-              </p>
-              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                For best results, describe style changes like "make it a painting" or "add sunset lighting" rather than body modifications.
-              </p>
-            </div>
+          <div className="relative">
+            <img
+              src={uploadedImage || "/placeholder.svg"}
+              alt="Uploaded"
+              className="max-h-64 w-full rounded-lg border border-slate-200 object-contain dark:border-slate-700"
+              style={{ imageOrientation: "from-image" }}
+            />
+            <Button
+              variant="destructive"
+              size="sm"
+              className="absolute right-2 top-2"
+              onClick={() => setUploadedImage(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         ) : (
           <label className="flex h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-indigo-500 dark:hover:bg-slate-800">
