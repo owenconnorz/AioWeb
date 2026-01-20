@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Download, ThumbsUp, ThumbsDown, Upload, X } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import { Progress } from "@/components/ui/progress"
 
 interface ImageGenerationHistory {
@@ -15,13 +15,17 @@ interface ImageGenerationHistory {
   timestamp: number
 }
 
-export function ImageGenerator() {
+interface ImageGeneratorProps {
+  selectedModel?: string
+  onModelChange?: (model: string) => void
+}
+
+export function ImageGenerator({ selectedModel = "huggingface", onModelChange }: ImageGeneratorProps) {
   const [prompt, setPrompt] = useState("")
   const [images, setImages] = useState<Array<{ base64: string; mediaType: string }>>([])
   const [isLoading, setIsLoading] = useState(false)
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<ImageGenerationHistory[]>([])
-  const [selectedModel, setSelectedModel] = useState("huggingface")
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
@@ -192,29 +196,6 @@ export function ImageGenerator() {
             <span className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG up to 10MB</span>
             <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
           </label>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="image-model-select" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-          AI Model
-        </Label>
-        <Select value={selectedModel} onValueChange={setSelectedModel}>
-          <SelectTrigger id="image-model-select" className="w-full">
-            <SelectValue placeholder="Select AI model" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pollinations">Pollinations AI (Free & Unlimited)</SelectItem>
-            <SelectItem value="pollinations-turbo">Pollinations Turbo (Faster)</SelectItem>
-            <SelectItem value="pollinations-flux">Pollinations Flux (Higher Quality)</SelectItem>
-            <SelectItem value="huggingface">Hugging Face (Real Image Editing)</SelectItem>
-            <SelectItem value="image-editing">Image Editing (Free - Limited)</SelectItem>
-          </SelectContent>
-        </Select>
-        {uploadedImage && selectedModel !== "huggingface" && selectedModel !== "image-editing" && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
-            Tip: Select "Hugging Face (Real Image Editing)" for true image editing with your uploaded image
-          </p>
         )}
       </div>
 

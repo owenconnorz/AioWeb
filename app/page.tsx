@@ -10,9 +10,11 @@ import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos, PornLibrary } from "@/components/porn-videos"
 import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2 } from "lucide-react"
 
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState("porn")
   const [aiSubTab, setAiSubTab] = useState<"image" | "video" | "faceswap">("image")
+  const [selectedAiModel, setSelectedAiModel] = useState("huggingface")
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [mounted, setMounted] = useState(false)
 
@@ -125,10 +127,19 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* AI Model Selector - HuggingFace Only */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-800 dark:bg-indigo-900/30">
+                    <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                      Powered by HuggingFace Premium
+                    </span>
+                  </div>
+                </div>
+
                 {/* AI Sub-tab content */}
-                {aiSubTab === "image" && <ImageGenerator />}
-                {aiSubTab === "video" && <VideoGenerator />}
-                {aiSubTab === "faceswap" && <FaceSwap />}
+                {aiSubTab === "image" && <ImageGenerator selectedModel={selectedAiModel} onModelChange={setSelectedAiModel} />}
+                {aiSubTab === "video" && <VideoGenerator selectedModel={selectedAiModel} onModelChange={setSelectedAiModel} />}
+                {aiSubTab === "faceswap" && <FaceSwap selectedModel={selectedAiModel} onModelChange={setSelectedAiModel} />}
               </CardContent>
             </Card>
           )}
