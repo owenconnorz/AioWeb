@@ -1,3 +1,16 @@
+// Convert base64 to Blob (orientation handled client-side)
+function base64ToBlob(base64Data: string): Blob {
+  const imageBuffer = Buffer.from(base64Data, "base64")
+  return new Blob([imageBuffer], { type: "image/jpeg" })
+}
+
+// Normalize image orientation before sending to AI
+async function normalizeImageOrientation(base64Data: string): Promise<Blob> {
+  // Placeholder for image orientation normalization logic
+  // This function should be implemented to handle image orientation
+  return base64ToBlob(base64Data);
+}
+
 export async function POST(req: Request) {
   const { prompt, learningContext, nsfwFilter = true, uploadedImage } = await req.json()
 
@@ -25,8 +38,8 @@ export async function POST(req: Request) {
     // Image-to-video generation
     if (uploadedImage) {
       const base64Data = uploadedImage.includes(",") ? uploadedImage.split(",")[1] : uploadedImage
-      const imageBuffer = Buffer.from(base64Data, "base64")
-      const imageBlob = new Blob([imageBuffer], { type: "image/jpeg" })
+      
+      const imageBlob = base64ToBlob(base64Data)
 
       // HuggingFace Premium Spaces for image-to-video
       const i2vSpaces = [

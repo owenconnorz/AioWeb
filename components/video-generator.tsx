@@ -20,6 +20,27 @@ interface VideoGeneratorProps {
   onModelChange?: (model: string) => void
 }
 
+// Normalize image orientation using canvas (fixes phone camera EXIF rotation)
+async function normalizeImageOrientation(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        reject(new Error("Could not get canvas context"))
+        return
+      }
+      ctx.drawImage(img, 0, 0)
+      resolve(canvas.toDataURL("image/jpeg", 0.95))
+    }
+    img.onerror = () => reject(new Error("Failed to load image"))
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 export function VideoGenerator({ selectedModel = "huggingface", onModelChange }: VideoGeneratorProps) {
   const [prompt, setPrompt] = useState("")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -161,14 +182,20 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
     link.click()
   }
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setUploadedImage(reader.result as string)
+      try {
+        const normalizedImage = await normalizeImageOrientation(file)
+        setUploadedImage(normalizedImage)
+      } catch (err) {
+        console.error("Failed to process image:", err)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setUploadedImage(reader.result as string)
+        }
+        reader.readAsDataURL(file)
       }
-      reader.readAsDataURL(file)
     }
   }
 

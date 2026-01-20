@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ChangeEvent } from "react"
+import { useState, useEffect, type ChangeEvent, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,33 @@ interface ImageGenerationHistory {
 interface ImageGeneratorProps {
   selectedModel?: string
   onModelChange?: (model: string) => void
+}
+
+// Normalize image orientation using canvas (fixes phone camera EXIF rotation)
+async function normalizeImageOrientation(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      // Create canvas with correct dimensions
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        reject(new Error("Could not get canvas context"))
+        return
+      }
+      
+      // Draw image - modern browsers auto-apply EXIF orientation when drawing to canvas
+      ctx.drawImage(img, 0, 0)
+      
+      // Convert to base64
+      resolve(canvas.toDataURL("image/jpeg", 0.95))
+    }
+    img.onerror = () => reject(new Error("Failed to load image"))
+    img.src = URL.createObjectURL(file)
+  })
 }
 
 export function ImageGenerator({ selectedModel = "huggingface", onModelChange }: ImageGeneratorProps) {
@@ -146,15 +173,23 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
     link.click()
   }
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      setUploadedImage(event.target?.result as string)
+    try {
+      // Normalize image orientation before storing
+      const normalizedImage = await normalizeImageOrientation(file)
+      setUploadedImage(normalizedImage)
+    } catch (err) {
+      console.error("Failed to process image:", err)
+      // Fallback to regular FileReader if normalization fails
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setUploadedImage(event.target?.result as string)
+      }
+      reader.readAsDataURL(file)
     }
-    reader.readAsDataURL(file)
   }
 
   return (

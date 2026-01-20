@@ -11,6 +11,27 @@ interface FaceSwapProps {
   onModelChange?: (model: string) => void
 }
 
+// Normalize image orientation using canvas (fixes phone camera EXIF rotation)
+async function normalizeImageOrientation(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        reject(new Error("Could not get canvas context"))
+        return
+      }
+      ctx.drawImage(img, 0, 0)
+      resolve(canvas.toDataURL("image/jpeg", 0.95))
+    }
+    img.onerror = () => reject(new Error("Failed to load image"))
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 export function FaceSwap({ selectedModel = "huggingface", onModelChange }: FaceSwapProps) {
   const [sourceImage, setSourceImage] = useState<string | null>(null)
   const [targetImage, setTargetImage] = useState<string | null>(null)
@@ -20,14 +41,20 @@ export function FaceSwap({ selectedModel = "huggingface", onModelChange }: FaceS
   const sourceInputRef = useRef<HTMLInputElement>(null)
   const targetInputRef = useRef<HTMLInputElement>(null)
 
-  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>, setImage: (image: string) => void) => {
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>, setImage: (image: string) => void) => {
     const file = event.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImage(reader.result as string)
+      try {
+        const normalizedImage = await normalizeImageOrientation(file)
+        setImage(normalizedImage)
+      } catch (err) {
+        console.error("Failed to process image:", err)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setImage(reader.result as string)
+        }
+        reader.readAsDataURL(file)
       }
-      reader.readAsDataURL(file)
     }
   }
 

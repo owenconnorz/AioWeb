@@ -1,3 +1,15 @@
+// Convert base64 to Blob (orientation handled client-side)
+function base64ToBlob(base64Data: string): Blob {
+  const imageBuffer = Buffer.from(base64Data, "base64")
+  return new Blob([imageBuffer], { type: "image/jpeg" })
+}
+
+async function normalizeImageOrientation(base64Data: string): Promise<Blob> {
+  // Placeholder function to simulate image orientation normalization
+  // In a real scenario, this function would handle orientation normalization
+  return base64ToBlob(base64Data);
+}
+
 export async function POST(req: Request) {
   const { sourceImage, targetImage } = await req.json()
 
@@ -15,11 +27,8 @@ export async function POST(req: Request) {
 
     const { Client } = await import("@gradio/client")
     
-    const sourceBuffer = Buffer.from(sourceBase64, "base64")
-    const sourceBlob = new Blob([sourceBuffer], { type: "image/jpeg" })
-    
-    const targetBuffer = Buffer.from(targetBase64, "base64")
-    const targetBlob = new Blob([targetBuffer], { type: "image/jpeg" })
+    const sourceBlob = base64ToBlob(sourceBase64)
+    const targetBlob = base64ToBlob(targetBase64)
 
     // HuggingFace Spaces for face swapping
     const faceSwapSpaces = [
