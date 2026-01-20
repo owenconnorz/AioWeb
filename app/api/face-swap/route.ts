@@ -2,7 +2,7 @@ export async function POST(req: Request) {
   const { sourceImage, targetImage, model = "huggingface" } = await req.json()
 
   try {
-    // Hugging Face face swap using roop-like model
+    // Hugging Face face swap using Gradio client
     if (model === "huggingface") {
       const hfApiKey = process.env.HUGGINGFACE_API_KEY
       if (!hfApiKey) {
@@ -15,37 +15,54 @@ export async function POST(req: Request) {
       const sourceBase64 = sourceImage.includes(",") ? sourceImage.split(",")[1] : sourceImage
       const targetBase64 = targetImage.includes(",") ? targetImage.split(",")[1] : targetImage
 
-      // Use face-fusion or similar model for face swapping
-      const hfResponse = await fetch(
-        "https://router.huggingface.co/hf-inference/models/deepinsight/inswapper_128",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${hfApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            inputs: {
-              source_image: sourceBase64,
-              target_image: targetBase64,
-            }
-          }),
-          signal: AbortSignal.timeout(120000),
-        }
-      )
-
-      if (hfResponse.ok) {
-        const contentType = hfResponse.headers.get("content-type")
+      try {
+        // Use @gradio/client for face swap Space
+        const { Client } = await import("@gradio/client")
         
-        if (contentType?.includes("image")) {
-          const arrayBuffer = await hfResponse.arrayBuffer()
-          const base64Result = Buffer.from(arrayBuffer).toString("base64")
+        // Use a working face swap Space
+        const client = await Client.connect("felixrosberg/face-swap", {
+          hf_token: hfApiKey,
+        })
+        
+        const sourceBuffer = Buffer.from(sourceBase64, "base64")
+        const sourceBlob = new Blob([sourceBuffer], { type: "image/jpeg" })
+        
+        const targetBuffer = Buffer.from(targetBase64, "base64")
+        const targetBlob = new Blob([targetBuffer], { type: "image/jpeg" })
+        
+        // Call the face swap endpoint
+        const result = await client.predict("/run_inference", [
+          sourceBlob,  // Source face
+          targetBlob,  // Target image
+        ])
+        
+        if (result?.data?.[0]) {
+          const resultImage = result.data[0]
           
-          return Response.json({
-            resultImage: `data:image/png;base64,${base64Result}`,
-            message: "Face swap completed with Hugging Face",
-          })
+          if (resultImage?.url) {
+            const imgResponse = await fetch(resultImage.url)
+            const imgBuffer = await imgResponse.arrayBuffer()
+            const base64Result = Buffer.from(imgBuffer).toString("base64")
+            
+            return Response.json({
+              resultImage: `data:image/png;base64,${base64Result}`,
+              message: "Face swap completed with Hugging Face",
+            })
+          }
+          
+          if (typeof resultImage === "string" && resultImage.startsWith("http")) {
+            const imgResponse = await fetch(resultImage)
+            const imgBuffer = await imgResponse.arrayBuffer()
+            const base64Result = Buffer.from(imgBuffer).toString("base64")
+            
+            return Response.json({
+              resultImage: `data:image/png;base64,${base64Result}`,
+              message: "Face swap completed with Hugging Face",
+            })
+          }
         }
+      } catch (hfError) {
+        console.log("[v0] HuggingFace face swap error:", hfError)
       }
       
       // Fall through to Pollinations if HF model not available

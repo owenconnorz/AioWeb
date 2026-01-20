@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       enhancedPrompt += ". Safe for work, family-friendly content only"
     }
 
-    // Hugging Face image-to-video model
+    // Hugging Face image-to-video model using Gradio client
     if (model === "huggingface" && uploadedImage) {
       const hfApiKey = process.env.HUGGINGFACE_API_KEY
       if (!hfApiKey) {
@@ -24,40 +24,45 @@ export async function POST(req: Request) {
 
       const base64Data = uploadedImage.includes(",") ? uploadedImage.split(",")[1] : uploadedImage
 
-      // Use Stable Video Diffusion for image-to-video
-      const hfResponse = await fetch(
-        "https://router.huggingface.co/hf-inference/models/stabilityai/stable-video-diffusion-img2vid-xt",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${hfApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            inputs: base64Data,
-            parameters: {
-              num_frames: 8,
-              fps: 4,
-            }
-          }),
-          signal: AbortSignal.timeout(180000), // 3 minute timeout
-        }
-      )
-
-      if (hfResponse.ok) {
-        const contentType = hfResponse.headers.get("content-type")
+      try {
+        // Use @gradio/client for HF Spaces
+        const { Client } = await import("@gradio/client")
         
-        if (contentType?.includes("video") || contentType?.includes("image")) {
-          const arrayBuffer = await hfResponse.arrayBuffer()
-          const base64Result = Buffer.from(arrayBuffer).toString("base64")
+        // Use a working image-to-video Space
+        const client = await Client.connect("KwaiVGI/LivePortrait", {
+          hf_token: hfApiKey,
+        })
+        
+        const imageBuffer = Buffer.from(base64Data, "base64")
+        const imageBlob = new Blob([imageBuffer], { type: "image/jpeg" })
+        
+        // LivePortrait animates faces in images
+        const result = await client.predict("/execute_video", [
+          imageBlob, // Source image
+          null,      // Driving video (optional)
+          true,      // Flag for retargeting
+          false,     // Flag for stitching
+          true,      // Flag for relative motion
+        ])
+        
+        if (result?.data?.[0]) {
+          const videoResult = result.data[0]
           
-          return Response.json({
-            videoUrl: `data:video/mp4;base64,${base64Result}`,
-            frames: [`data:image/png;base64,${base64Result}`],
-            message: "Video generated with Hugging Face",
-            isAnimated: true,
-          })
+          if (videoResult?.url) {
+            const videoResponse = await fetch(videoResult.url)
+            const videoBuffer = await videoResponse.arrayBuffer()
+            const base64Result = Buffer.from(videoBuffer).toString("base64")
+            
+            return Response.json({
+              videoUrl: `data:video/mp4;base64,${base64Result}`,
+              frames: [],
+              message: "Video generated with Hugging Face LivePortrait",
+              isAnimated: true,
+            })
+          }
         }
+      } catch (hfError) {
+        console.log("[v0] HuggingFace video error:", hfError)
       }
       
       // Fall through to Pollinations if HF fails

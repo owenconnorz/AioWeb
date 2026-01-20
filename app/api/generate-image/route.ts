@@ -19,156 +19,67 @@ export async function POST(req: Request) {
 
       const base64Data = uploadedImage.includes(",") ? uploadedImage.split(",")[1] : uploadedImage
 
-      // Use Qwen Image Edit Space via Gradio API - this model actually edits images
+      // Use Qwen Image Edit Space via @gradio/client pattern
       // Space: prithivMLmods/Qwen-Image-Edit-2511-LoRAs-Fast
       const spaceUrl = "https://prithivmlmods-qwen-image-edit-2511-loras-fast.hf.space"
       
       try {
-        // Use the Gradio Client API format - call specific function by index
-        // First, try to get the space config to find available API endpoints
-        const configResponse = await fetch(`${spaceUrl}/config`, {
-          headers: { "Authorization": `Bearer ${hfApiKey}` },
+        // Import and use @gradio/client
+        const { Client } = await import("@gradio/client")
+        
+        const client = await Client.connect("prithivMLmods/Qwen-Image-Edit-2511-LoRAs-Fast", {
+          hf_token: hfApiKey,
         })
         
-        let apiName = "generate" // Common function name for image generation spaces
-        if (configResponse.ok) {
-          const config = await configResponse.json()
-          // Find the first callable function
-          if (config.dependencies) {
-            for (const dep of config.dependencies) {
-              if (dep.api_name) {
-                apiName = dep.api_name.replace("/", "")
-                break
-              }
-            }
-          }
-        }
-
-        // Call the Gradio API with the correct function name
-        const callResponse = await fetch(`${spaceUrl}/gradio_api/call/${apiName}`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${hfApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            data: [
-              { path: `data:image/jpeg;base64,${base64Data}`, meta: { _type: "gradio.FileData" } },
-              enhancedPrompt,
-              "Hyper-SDXL",
-            ],
-          }),
-          signal: AbortSignal.timeout(30000),
-        })
-
-        if (callResponse.ok) {
-          const callData = await callResponse.json()
-          const eventId = callData.event_id
-
-          if (eventId) {
-            // Get result from SSE endpoint
-            const resultResponse = await fetch(`${spaceUrl}/gradio_api/call/${apiName}/${eventId}`, {
-              headers: { "Authorization": `Bearer ${hfApiKey}` },
-              signal: AbortSignal.timeout(180000),
-            })
-
-            if (resultResponse.ok) {
-              const resultText = await resultResponse.text()
-              const lines = resultText.split("\n")
-              
-              for (const line of lines) {
-                if (line.startsWith("data:")) {
-                  const jsonStr = line.slice(5).trim()
-                  if (jsonStr) {
-                    try {
-                      const data = JSON.parse(jsonStr)
-                      if (data && Array.isArray(data) && data[0]) {
-                        const resultImage = data[0]
-                        
-                        if (typeof resultImage === "string" && resultImage.startsWith("http")) {
-                          const imgResponse = await fetch(resultImage)
-                          const imgBuffer = await imgResponse.arrayBuffer()
-                          const base64Result = Buffer.from(imgBuffer).toString("base64")
-                          return Response.json({
-                            images: [{ base64: base64Result, mediaType: "image/png" }],
-                            prompt: enhancedPrompt,
-                          })
-                        }
-                        if (typeof resultImage === "object" && resultImage.url) {
-                          const imgUrl = resultImage.url.startsWith("http") ? resultImage.url : `${spaceUrl}/file=${resultImage.path || resultImage.url}`
-                          const imgResponse = await fetch(imgUrl, {
-                            headers: { "Authorization": `Bearer ${hfApiKey}` },
-                          })
-                          const imgBuffer = await imgResponse.arrayBuffer()
-                          const base64Result = Buffer.from(imgBuffer).toString("base64")
-                          return Response.json({
-                            images: [{ base64: base64Result, mediaType: "image/png" }],
-                            prompt: enhancedPrompt,
-                          })
-                        }
-                      }
-                    } catch {}
-                  }
-                }
-              }
-            }
-          }
-        } else {
-          // Fallback: Try queue/push format
-          const queueResponse = await fetch(`${spaceUrl}/queue/push`, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${hfApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              data: [
-                `data:image/jpeg;base64,${base64Data}`,
-                enhancedPrompt,
-                "Hyper-SDXL",
-              ],
-              fn_index: 0,
-              session_hash: Math.random().toString(36).substring(7),
-            }),
-            signal: AbortSignal.timeout(30000),
-          })
+        // Create image in the Gallery format required by the Space
+        // The API expects: images (Gallery), prompt, lora_adapter, seed, randomize_seed, guidance_scale, steps
+        const imageBuffer = Buffer.from(base64Data, "base64")
+        const imageBlob = new Blob([imageBuffer], { type: "image/jpeg" })
+        
+        // Call /infer endpoint with Gallery format for images parameter
+        // Gallery expects: [{image: blob}] format
+        const result = await client.predict("/infer", [
+          [{ image: imageBlob }],  // Gallery format: array of {image: blob}
+          enhancedPrompt,           // Edit prompt
+          "Hyper-Realistic-Portrait", // LoRA - best for realistic edits
+          0,                        // Seed
+          true,                     // Randomize seed
+          1,                        // Guidance scale
+          4,                        // Inference steps
+        ])
+        
+        if (result?.data?.[0]) {
+          const resultImage = result.data[0]
           
-          if (queueResponse.ok) {
-            const queueData = await queueResponse.json()
-            const eventId = queueData.event_id
-            
-            if (eventId) {
-              // Poll with SSE
-              const statusResponse = await fetch(`${spaceUrl}/queue/data?session_hash=${queueData.session_hash}`, {
-                headers: { "Authorization": `Bearer ${hfApiKey}` },
-                signal: AbortSignal.timeout(180000),
-              })
-              
-              if (statusResponse.ok) {
-                const statusText = await statusResponse.text()
-                const lines = statusText.split("\n")
-                
-                for (const line of lines) {
-                  if (line.startsWith("data:")) {
-                    try {
-                      const data = JSON.parse(line.slice(5).trim())
-                      if (data.msg === "process_completed" && data.output?.data?.[0]) {
-                        const resultImage = data.output.data[0]
-                        if (resultImage?.url) {
-                          const imgResponse = await fetch(resultImage.url)
-                          const imgBuffer = await imgResponse.arrayBuffer()
-                          const base64Result = Buffer.from(imgBuffer).toString("base64")
-                          return Response.json({
-                            images: [{ base64: base64Result, mediaType: "image/png" }],
-                            prompt: enhancedPrompt,
-                          })
-                        }
-                      }
-                    } catch {}
-                  }
-                }
-              }
-            }
+          // If result is a URL, fetch it
+          if (typeof resultImage === "string" && resultImage.startsWith("http")) {
+            const imgResponse = await fetch(resultImage)
+            const imgBuffer = await imgResponse.arrayBuffer()
+            const base64Result = Buffer.from(imgBuffer).toString("base64")
+            return Response.json({
+              images: [{ base64: base64Result, mediaType: "image/png" }],
+              prompt: enhancedPrompt,
+            })
+          }
+          
+          // If result has url property
+          if (resultImage?.url) {
+            const imgResponse = await fetch(resultImage.url)
+            const imgBuffer = await imgResponse.arrayBuffer()
+            const base64Result = Buffer.from(imgBuffer).toString("base64")
+            return Response.json({
+              images: [{ base64: base64Result, mediaType: "image/png" }],
+              prompt: enhancedPrompt,
+            })
+          }
+          
+          // If result is already base64
+          if (typeof resultImage === "string") {
+            const base64Part = resultImage.includes(",") ? resultImage.split(",")[1] : resultImage
+            return Response.json({
+              images: [{ base64: base64Part, mediaType: "image/png" }],
+              prompt: enhancedPrompt,
+            })
           }
         }
       } catch (spaceError) {
