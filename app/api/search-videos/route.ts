@@ -23,6 +23,76 @@ interface XvidapiVideo {
   updated_at?: string
 }
 
+async function searchRule34(query: string, page = 1) {
+  const isPopular = query === "popular"
+  // Rule34 uses tags separated by + and pid for pagination (0-indexed)
+  const pid = page - 1
+  const tags = isPopular ? "" : query.replace(/\s+/g, "_").toLowerCase()
+  
+  // Add randomization for popular queries
+  const randomPid = isPopular ? Math.floor(Math.random() * 100) : pid
+  
+  const apiUrl = tags 
+    ? `https://r34-json.herokuapp.com/posts?limit=24&pid=${randomPid}&tags=${encodeURIComponent(tags)}`
+    : `https://r34-json.herokuapp.com/posts?limit=24&pid=${randomPid}`
+
+  console.log(`[v0] Fetching Rule34 API:`, apiUrl)
+
+  const response = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    },
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.log(`[v0] Rule34 API error:`, response.status, errorText.substring(0, 200))
+    throw new Error(`Rule34 API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log(`[v0] Rule34 API response:`, data.posts?.length || 0, "posts, total:", data.count)
+
+  const posts = data.posts || []
+
+  const transformedVideos = posts.map((post: any) => {
+    const isVideo = post.type === "video"
+    const fileUrl = post.file_url || post.sample_url || post.preview_url
+    
+    return {
+      id: post.id || `r34-${Date.now()}-${Math.random()}`,
+      title: post.tags?.slice(0, 5).join(" ") || "Rule34 Post",
+      keywords: post.tags?.join(", ") || "",
+      views: Number.parseInt(post.score || "0", 10),
+      rate: Number.parseFloat(post.score || "0"),
+      url: fileUrl,
+      added: post.created_at || "",
+      length_sec: 0,
+      length_min: isVideo ? "Video" : "Image",
+      embed: fileUrl,
+      default_thumb: {
+        src: post.preview_url || post.sample_url || fileUrl || "/placeholder.svg",
+        size: `${post.preview_width || 150}x${post.preview_height || 150}`,
+        width: Number.parseInt(post.preview_width || "150", 10),
+        height: Number.parseInt(post.preview_height || "150", 10),
+      },
+      thumbs: [],
+      isImage: !isVideo,
+      fullImage: fileUrl,
+      sampleImage: post.sample_url || fileUrl,
+    }
+  })
+
+  console.log(`[v0] Returning ${transformedVideos.length} Rule34 posts`)
+
+  return NextResponse.json({
+    videos: transformedVideos,
+    total: Number.parseInt(data.count || "0", 10),
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -44,6 +114,8 @@ export async function GET(request: NextRequest) {
       return await searchXvidapi(query, page)
     } else if (source === "redtube") {
       return await searchRedTube(query, page)
+    } else if (source === "rule34") {
+      return await searchRule34(query, page)
     } else {
       return await searchEporner(query, page)
     }
