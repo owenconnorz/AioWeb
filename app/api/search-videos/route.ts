@@ -80,10 +80,14 @@ async function searchEporner(query: string, page = 1) {
   })
 }
 
-async function searchXvidapi(query: string, page = 1) {
+async function searchXvidapi(query: string, page = 1, refresh = 0) {
   const isPopular = query === "popular"
+  // Add randomization for popular queries to get different content each time
+  const randomOffset = isPopular ? Math.floor(Math.random() * 50) + 1 : 0
+  const actualPage = page + randomOffset
+  
   const apiUrl = isPopular
-    ? `https://xvidapi.com/api.php/provide/vod?ac=detail&at=json&pg=${page}`
+    ? `https://xvidapi.com/api.php/provide/vod?ac=detail&at=json&pg=${actualPage}`
     : `https://xvidapi.com/api.php/provide/vod?ac=detail&at=json&wd=${encodeURIComponent(query)}&pg=${page}`
 
   const response = await fetch(apiUrl, {

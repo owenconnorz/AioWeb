@@ -67,35 +67,190 @@ const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4",
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
-  "AI",
+  // Popular
   "Amateur",
   "Anal",
-  "Arab",
-  "Asian Woman",
-  "ASMR",
-  "Ass",
-  "Ass to Mouth",
+  "Asian",
   "BBW",
-  "BDSM",
   "Big Ass",
   "Big Tits",
   "Blonde",
   "Blowjob",
   "Brunette",
-  "Compilation",
   "Creampie",
   "Cumshot",
   "Ebony",
-  "Fetish",
   "Hardcore",
-  "Hentai",
   "Latina",
   "Lesbian",
   "MILF",
   "POV",
-  "Public",
   "Teen",
   "Threesome",
+  // Body Types
+  "Petite",
+  "Curvy",
+  "Skinny",
+  "Thick",
+  "Fit",
+  "Chubby",
+  "Pregnant",
+  // Ethnicity
+  "Arab",
+  "Indian",
+  "Japanese",
+  "Korean",
+  "Chinese",
+  "Thai",
+  "Filipina",
+  "Russian",
+  "European",
+  "British",
+  "German",
+  "French",
+  "Italian",
+  "Spanish",
+  "Czech",
+  "Brazilian",
+  "Colombian",
+  // Hair
+  "Redhead",
+  "Ginger",
+  // Age
+  "Mature",
+  "Granny",
+  "Cougar",
+  "College",
+  "Young",
+  // Acts
+  "Deepthroat",
+  "Facial",
+  "Gangbang",
+  "Orgy",
+  "Double Penetration",
+  "Ass to Mouth",
+  "Handjob",
+  "Footjob",
+  "Titjob",
+  "Rimjob",
+  "69",
+  "Fisting",
+  "Squirt",
+  "Swallow",
+  "Bukkake",
+  // Positions
+  "Doggy Style",
+  "Cowgirl",
+  "Reverse Cowgirl",
+  "Missionary",
+  // Categories
+  "BDSM",
+  "Bondage",
+  "Domination",
+  "Femdom",
+  "Fetish",
+  "Foot Fetish",
+  "Latex",
+  "Leather",
+  "Lingerie",
+  "Stockings",
+  "Pantyhose",
+  "High Heels",
+  "Uniform",
+  "Cosplay",
+  "Role Play",
+  // Settings
+  "Public",
+  "Outdoor",
+  "Beach",
+  "Pool",
+  "Shower",
+  "Bathroom",
+  "Kitchen",
+  "Office",
+  "Car",
+  "Hotel",
+  "Gym",
+  "Massage",
+  "Casting",
+  // Production
+  "Homemade",
+  "Webcam",
+  "Selfie",
+  "Hidden Camera",
+  "Reality",
+  "Parody",
+  "Vintage",
+  "Retro",
+  // Content Type
+  "Solo",
+  "Masturbation",
+  "Dildo",
+  "Vibrator",
+  "Toys",
+  "Striptease",
+  "Dance",
+  "Twerk",
+  "Compilation",
+  "Music Video",
+  "Behind The Scenes",
+  // Animated
+  "Hentai",
+  "Cartoon",
+  "3D",
+  "AI",
+  "Animation",
+  // Special
+  "ASMR",
+  "JOI",
+  "Dirty Talk",
+  "Moaning",
+  "Orgasm",
+  "Multiple Orgasms",
+  // Relationship
+  "Stepmom",
+  "Stepsister",
+  "Stepbrother",
+  "Stepdaughter",
+  "Wife",
+  "Girlfriend",
+  "Cheating",
+  "Cuckold",
+  // Physical Features
+  "Natural Tits",
+  "Fake Tits",
+  "Small Tits",
+  "Huge Tits",
+  "Pierced",
+  "Tattooed",
+  "Hairy",
+  "Shaved",
+  "Bush",
+  // Misc
+  "Interracial",
+  "BBC",
+  "Swinger",
+  "Party",
+  "Club",
+  "First Time",
+  "Virgin",
+  "Innocent",
+  "Nerd",
+  "Goth",
+  "Emo",
+  "Punk",
+  "Hippie",
+  "Secretary",
+  "Teacher",
+  "Student",
+  "Nurse",
+  "Doctor",
+  "Maid",
+  "Babysitter",
+  "Cheerleader",
+  "Pornstar",
+  "Celebrity",
+  "Model",
 ]
 
 export function PornVideos() {
@@ -841,6 +996,27 @@ export function PornVideos() {
             <h2 className="text-2xl font-bold text-white sm:text-3xl m3-page-enter">
               {selectedCategory || searchQuery || "Hottest New Videos"}
             </h2>
+            <Button
+              onClick={handleRefresh}
+              variant="ghost"
+              size="sm"
+              className="text-slate-400 hover:text-white m3-button"
+              disabled={loading}
+            >
+              <svg
+                className={`h-5 w-5 ${loading ? "animate-spin" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 m3-stagger">
@@ -872,9 +1048,11 @@ export function PornVideos() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                       <Play className="h-12 w-12 text-white" />
                     </div>
-                    {video.length_min && (
+                    {(video.length_min && video.length_min !== "Unknown" || video.length_sec > 0) && (
                       <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
-                        {video.length_min}
+                        {video.length_min && video.length_min !== "Unknown" 
+                          ? video.length_min 
+                          : `${Math.floor(video.length_sec / 60)}:${String(video.length_sec % 60).padStart(2, '0')}`}
                       </div>
                     )}
                     {(apiSource === "cam4" || apiSource === "chaturbate") && (
@@ -1386,9 +1564,11 @@ export function PornLibrary() {
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                     <Play className="h-12 w-12 text-white" />
                   </div>
-                  {video.length_min && (
+                  {(video.length_min && video.length_min !== "Unknown" || video.length_sec > 0) && (
                     <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
-                      {video.length_min}
+                      {video.length_min && video.length_min !== "Unknown" 
+                        ? video.length_min 
+                        : `${Math.floor(video.length_sec / 60)}:${String(video.length_sec % 60).padStart(2, '0')}`}
                     </div>
                   )}
                   {activeTab !== "history" && (
