@@ -425,7 +425,16 @@ export function PornVideos() {
     try {
       const savedOrder = localStorage.getItem("porn_api_order")
       if (savedOrder) {
-        setApiOrder(JSON.parse(savedOrder))
+        const parsed = JSON.parse(savedOrder) as ApiSource[]
+        // Merge any new APIs that aren't in the saved order
+        const missingApis = DEFAULT_API_ORDER.filter(api => !parsed.includes(api))
+        if (missingApis.length > 0) {
+          const mergedOrder = [...parsed, ...missingApis]
+          setApiOrder(mergedOrder)
+          localStorage.setItem("porn_api_order", JSON.stringify(mergedOrder))
+        } else {
+          setApiOrder(parsed)
+        }
       }
     } catch (err) {
       console.error("Error loading API order:", err)
@@ -1321,15 +1330,34 @@ export function PornVideos() {
                 </button>
               </div>
             </div>
-            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-              <iframe
-                src={getEmbedUrl(selectedVideo)}
-                className="h-full w-full"
-                frameBorder="0"
-                allowFullScreen
-                allow="autoplay; encrypted-media"
-                title={selectedVideo.title}
-              />
+            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black flex items-center justify-center">
+              {selectedVideo.isImage ? (
+                <img
+                  src={selectedVideo.fullImage || selectedVideo.sampleImage || selectedVideo.url}
+                  alt={selectedVideo.title}
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : selectedVideo.url?.endsWith('.mp4') || selectedVideo.url?.endsWith('.webm') || apiSource === "rule34" ? (
+                <video
+                  src={selectedVideo.url || selectedVideo.embed}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  className="h-full w-full object-contain"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <iframe
+                  src={getEmbedUrl(selectedVideo)}
+                  className="h-full w-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media"
+                  title={selectedVideo.title}
+                />
+              )}
             </div>
           </div>
         </div>

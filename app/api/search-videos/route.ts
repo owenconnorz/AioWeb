@@ -25,50 +25,54 @@ interface XvidapiVideo {
 
 async function searchRule34(query: string, page = 1) {
   const isPopular = query === "popular"
-  // Rule34 uses tags separated by + and pid for pagination (0-indexed)
+  // Rule34.xxx API - uses pid for pagination (0-indexed), no auth required
   const pid = page - 1
   const tags = isPopular ? "" : query.replace(/\s+/g, "_").toLowerCase()
   
   // Add randomization for popular queries
-  const randomPid = isPopular ? Math.floor(Math.random() * 100) : pid
+  const randomPid = isPopular ? Math.floor(Math.random() * 50) : pid
   
-  const apiUrl = tags 
-    ? `https://r34-json.herokuapp.com/posts?limit=24&pid=${randomPid}&tags=${encodeURIComponent(tags)}`
-    : `https://r34-json.herokuapp.com/posts?limit=24&pid=${randomPid}`
-
-  console.log(`[v0] Fetching Rule34 API:`, apiUrl)
+  // Rule34.xxx API with JSON response
+  const apiUrl = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&limit=24&pid=${randomPid}${tags ? `&tags=${encodeURIComponent(tags)}` : ""}&json=1`
 
   const response = await fetch(apiUrl, {
     method: "GET",
     headers: {
-      "Content-Type": "application/json",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "Accept": "application/json",
     },
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    console.log(`[v0] Rule34 API error:`, response.status, errorText.substring(0, 200))
     throw new Error(`Rule34 API error: ${response.status}`)
   }
 
-  const data = await response.json()
-  console.log(`[v0] Rule34 API response:`, data.posts?.length || 0, "posts, total:", data.count)
-
-  const posts = data.posts || []
+  // Rule34 returns array directly, not wrapped in object
+  const text = await response.text()
+  let posts: any[] = []
+  
+  if (text && text.trim() && text !== "null" && text !== "[]") {
+    try {
+      const data = JSON.parse(text)
+      posts = Array.isArray(data) ? data : []
+    } catch {
+      posts = []
+    }
+  }
 
   const transformedVideos = posts.map((post: any) => {
-    const isVideo = post.type === "video"
+    const isVideo = post.file_url?.endsWith('.mp4') || post.file_url?.endsWith('.webm')
     const fileUrl = post.file_url || post.sample_url || post.preview_url
+    const tagsArray = typeof post.tags === 'string' ? post.tags.split(' ') : []
     
     return {
       id: post.id || `r34-${Date.now()}-${Math.random()}`,
-      title: post.tags?.slice(0, 5).join(" ") || "Rule34 Post",
-      keywords: post.tags?.join(", ") || "",
+      title: tagsArray.slice(0, 5).join(" ") || "Rule34 Post",
+      keywords: post.tags || "",
       views: Number.parseInt(post.score || "0", 10),
       rate: Number.parseFloat(post.score || "0"),
       url: fileUrl,
-      added: post.created_at || "",
+      added: post.change ? new Date(post.change * 1000).toISOString() : "",
       length_sec: 0,
       length_min: isVideo ? "Video" : "Image",
       embed: fileUrl,
@@ -85,11 +89,9 @@ async function searchRule34(query: string, page = 1) {
     }
   })
 
-  console.log(`[v0] Returning ${transformedVideos.length} Rule34 posts`)
-
   return NextResponse.json({
     videos: transformedVideos,
-    total: Number.parseInt(data.count || "0", 10),
+    total: transformedVideos.length,
   })
 }
 
