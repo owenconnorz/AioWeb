@@ -241,7 +241,7 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 m3-page-enter">
       <div>
         <Label htmlFor="video-prompt" className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Describe your video
@@ -293,7 +293,7 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
       <Button
         onClick={handleGenerate}
         disabled={!prompt.trim() || isLoading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700"
+        className="w-full gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 m3-button m3-ripple"
         size="lg"
       >
         {isLoading ? (
@@ -320,7 +320,7 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
       )}
 
       {videoUrl && (
-        <div className="space-y-4">
+        <div className="space-y-4 m3-scale-pop">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold text-slate-900 dark:text-slate-100">Generated Video</Label>
             <div className="flex gap-2">

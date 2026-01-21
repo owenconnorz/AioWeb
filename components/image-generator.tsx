@@ -193,7 +193,7 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 m3-page-enter">
       <div>
         <Label htmlFor="image-prompt" className="text-base font-semibold text-slate-900 dark:text-white">
           {uploadedImage ? "Describe your edits" : "Describe your image"}
@@ -250,7 +250,7 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
       <Button
         onClick={handleGenerate}
         disabled={!prompt.trim() || isLoading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 m3-button m3-ripple"
         size="lg"
       >
         {isLoading ? (
@@ -308,7 +308,8 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
             {images.map((image, index) => (
               <div
                 key={index}
-                className="group relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                className="group relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 m3-card m3-scale-pop"
+                style={{ animationDelay: `${index * 100}ms` }}
               >
                 <img
                   src={`data:${image.mediaType};base64,${image.base64}`}

@@ -47,11 +47,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12">
+      <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12 m3-page-enter">
         {activeTab !== "porn" && activeTab !== "library" && (
-          <div className="mb-8 text-center sm:mb-12">
+          <div className="mb-8 text-center sm:mb-12 m3-stagger">
             <div className="mb-4 flex flex-col items-center justify-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm">
+              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm m3-button">
                 <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
                 Powered by AI
               </div>
@@ -70,7 +70,7 @@ export default function Home() {
 
         <div className="w-full">
           {activeTab === "porn" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+            <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
               <CardContent className="p-4 sm:p-6">
                 <PornVideos />
               </CardContent>
@@ -78,7 +78,7 @@ export default function Home() {
           )}
 
           {activeTab === "library" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+            <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
               <CardContent className="p-4 sm:p-6">
                 <PornLibrary />
               </CardContent>
@@ -86,14 +86,14 @@ export default function Home() {
           )}
 
           {activeTab === "ai" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+            <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
               <CardContent className="p-4 sm:p-6">
                 {/* AI Sub-tabs navigation */}
                 <div className="mb-6 flex justify-center">
                   <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
                     <button
                       onClick={() => setAiSubTab("image")}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all m3-button m3-ripple ${
                         aiSubTab === "image"
                           ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -104,7 +104,7 @@ export default function Home() {
                     </button>
                     <button
                       onClick={() => setAiSubTab("video")}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all m3-button m3-ripple ${
                         aiSubTab === "video"
                           ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -115,7 +115,7 @@ export default function Home() {
                     </button>
                     <button
                       onClick={() => setAiSubTab("faceswap")}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all m3-button m3-ripple ${
                         aiSubTab === "faceswap"
                           ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -154,11 +154,11 @@ export default function Home() {
         </div>
       </div>
 
-      <nav className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
+      <nav className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 m3-slide-up">
         <div className="glass-nav-pill flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80 sm:gap-2 sm:p-2.5">
           <button
             onClick={() => setActiveTab("porn")}
-            className={`nav-item ${activeTab === "porn" ? "active" : ""}`}
+            className={`nav-item m3-ripple ${activeTab === "porn" ? "active" : ""}`}
             aria-label="Porn Videos"
           >
             <Film className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -167,7 +167,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("library")}
-            className={`nav-item ${activeTab === "library" ? "active" : ""}`}
+            className={`nav-item m3-ripple ${activeTab === "library" ? "active" : ""}`}
             aria-label="Library"
           >
             <BookmarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -176,7 +176,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("ai")}
-            className={`nav-item ${activeTab === "ai" ? "active" : ""}`}
+            className={`nav-item m3-ripple ${activeTab === "ai" ? "active" : ""}`}
             aria-label="AI Tools"
           >
             <Wand2 className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -185,7 +185,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("settings")}
-            className={`nav-item ${activeTab === "settings" ? "active" : ""}`}
+            className={`nav-item m3-ripple ${activeTab === "settings" ? "active" : ""}`}
             aria-label="Settings"
           >
             <Settings className="h-5 w-5 sm:h-6 sm:w-6" />

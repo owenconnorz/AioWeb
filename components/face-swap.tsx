@@ -106,8 +106,8 @@ export function FaceSwap({ selectedModel = "huggingface", onModelChange }: FaceS
   }
 
   return (
-    <div className="space-y-6">
-      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+    <div className="space-y-6 m3-page-enter">
+      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 m3-expand">
         <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         <AlertDescription className="text-amber-800 dark:text-amber-300">
           Face swap uses AI to generate a new portrait. Results may vary based on image quality and lighting.
@@ -182,7 +182,7 @@ export function FaceSwap({ selectedModel = "huggingface", onModelChange }: FaceS
         <Button
           onClick={handleSwap}
           disabled={!sourceImage || !targetImage || isLoading}
-          className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 m3-button m3-ripple"
           size="lg"
         >
           {isLoading ? (
@@ -203,9 +203,9 @@ export function FaceSwap({ selectedModel = "huggingface", onModelChange }: FaceS
       </div>
 
       {resultImage && (
-        <div className="space-y-3">
+        <div className="space-y-3 m3-scale-pop">
           <Label className="text-base font-semibold text-slate-900 dark:text-white">Result</Label>
-          <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+          <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 m3-card">
             <img src={resultImage || "/placeholder.svg"} alt="Result" className="h-auto w-full" />
           </div>
           <Button onClick={handleDownload} variant="outline" className="w-full gap-2 bg-transparent">

@@ -173,4 +173,250 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Material 3 Animation System */
+  
+  /* M3 Easing curves */
+  :root {
+    --m3-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --m3-ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --m3-ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+    --m3-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --m3-ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+    --m3-ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  }
+
+  /* Ripple effect for buttons and interactive elements */
+  .m3-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .m3-ripple::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), 
+      rgba(255, 255, 255, 0.3) 0%, 
+      transparent 60%);
+    opacity: 0;
+    transform: scale(0);
+    transition: transform 0.5s var(--m3-ease-emphasized), opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .m3-ripple:active::after {
+    opacity: 1;
+    transform: scale(2.5);
+    transition: transform 0.1s var(--m3-ease-emphasized-accelerate), opacity 0s;
+  }
+
+  /* Card hover lift animation */
+  .m3-card {
+    transition: transform 0.3s var(--m3-ease-emphasized),
+                box-shadow 0.3s var(--m3-ease-emphasized);
+  }
+
+  .m3-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .m3-card:active {
+    transform: translateY(-2px) scale(0.98);
+  }
+
+  /* Staggered fade-in for lists */
+  .m3-stagger > * {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: m3-fade-up 0.4s var(--m3-ease-emphasized-decelerate) forwards;
+  }
+
+  .m3-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .m3-stagger > *:nth-child(2) { animation-delay: 50ms; }
+  .m3-stagger > *:nth-child(3) { animation-delay: 100ms; }
+  .m3-stagger > *:nth-child(4) { animation-delay: 150ms; }
+  .m3-stagger > *:nth-child(5) { animation-delay: 200ms; }
+  .m3-stagger > *:nth-child(6) { animation-delay: 250ms; }
+  .m3-stagger > *:nth-child(7) { animation-delay: 300ms; }
+  .m3-stagger > *:nth-child(8) { animation-delay: 350ms; }
+  .m3-stagger > *:nth-child(n+9) { animation-delay: 400ms; }
+
+  @keyframes m3-fade-up {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Button press animation */
+  .m3-button {
+    transition: transform 0.15s var(--m3-ease-standard),
+                background-color 0.2s var(--m3-ease-standard),
+                box-shadow 0.2s var(--m3-ease-standard);
+  }
+
+  .m3-button:hover {
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+
+  .m3-button:active {
+    transform: scale(0.96);
+  }
+
+  /* Page transition fade */
+  .m3-page-enter {
+    animation: m3-page-in 0.35s var(--m3-ease-emphasized-decelerate) forwards;
+  }
+
+  @keyframes m3-page-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Tab indicator slide */
+  .m3-tab-indicator {
+    transition: transform 0.3s var(--m3-ease-emphasized),
+                width 0.3s var(--m3-ease-emphasized);
+  }
+
+  /* Expand/collapse animation */
+  .m3-expand {
+    animation: m3-expand-in 0.3s var(--m3-ease-emphasized-decelerate) forwards;
+    transform-origin: top;
+  }
+
+  @keyframes m3-expand-in {
+    from {
+      opacity: 0;
+      transform: scaleY(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  /* Floating action button animation */
+  .m3-fab {
+    transition: transform 0.2s var(--m3-ease-emphasized),
+                box-shadow 0.2s var(--m3-ease-emphasized);
+  }
+
+  .m3-fab:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .m3-fab:active {
+    transform: scale(0.95);
+  }
+
+  /* Shimmer loading effect */
+  .m3-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: m3-shimmer 1.5s infinite;
+  }
+
+  @keyframes m3-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Scale pop animation for modals/dialogs */
+  .m3-scale-pop {
+    animation: m3-scale-in 0.25s var(--m3-ease-emphasized-decelerate) forwards;
+  }
+
+  @keyframes m3-scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Pulse animation for loading states */
+  .m3-pulse {
+    animation: m3-pulse 2s var(--m3-ease-standard) infinite;
+  }
+
+  @keyframes m3-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Slide from bottom for bottom sheets */
+  .m3-slide-up {
+    animation: m3-slide-bottom 0.35s var(--m3-ease-emphasized-decelerate) forwards;
+  }
+
+  @keyframes m3-slide-bottom {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Icon spin animation */
+  .m3-spin {
+    animation: m3-rotate 1s linear infinite;
+  }
+
+  @keyframes m3-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Bounce animation for attention */
+  .m3-bounce {
+    animation: m3-bounce 0.5s var(--m3-ease-emphasized);
+  }
+
+  @keyframes m3-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Image reveal animation */
+  .m3-reveal {
+    animation: m3-reveal 0.5s var(--m3-ease-emphasized-decelerate) forwards;
+  }
+
+  @keyframes m3-reveal {
+    from {
+      opacity: 0;
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      opacity: 1;
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
+  /* Smooth height transition helper */
+  .m3-height-transition {
+    transition: height 0.3s var(--m3-ease-emphasized),
+                max-height 0.3s var(--m3-ease-emphasized);
+  }
 }

@@ -132,6 +132,73 @@ export function PornVideos() {
   >([])
   const [galleryLoading, setGalleryLoading] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [hoverThumbs, setHoverThumbs] = useState<{ [key: string]: number }>({})
+  const hoverIntervalsRef = useRef<{ [key: string]: NodeJS.Timeout }>({})
+  const touchStartRef = useRef<{ [key: string]: number }>({})
+  const activeTouchRef = useRef<string | null>(null)
+
+  const startThumbnailPreview = (videoId: string, thumbs: Array<{ src: string }>) => {
+    if (!thumbs || thumbs.length <= 1) return
+    
+    // Clear any existing interval for this video
+    if (hoverIntervalsRef.current[videoId]) {
+      clearInterval(hoverIntervalsRef.current[videoId])
+    }
+    
+    let currentIndex = 0
+    hoverIntervalsRef.current[videoId] = setInterval(() => {
+      currentIndex = (currentIndex + 1) % thumbs.length
+      setHoverThumbs(prev => ({ ...prev, [videoId]: currentIndex }))
+    }, 500)
+  }
+
+  const stopThumbnailPreview = (videoId: string) => {
+    if (hoverIntervalsRef.current[videoId]) {
+      clearInterval(hoverIntervalsRef.current[videoId])
+      delete hoverIntervalsRef.current[videoId]
+    }
+    setHoverThumbs(prev => {
+      const newThumbs = { ...prev }
+      delete newThumbs[videoId]
+      return newThumbs
+    })
+  }
+
+  const handleMouseEnter = (videoId: string, thumbs: Array<{ src: string }>) => {
+    startThumbnailPreview(videoId, thumbs)
+  }
+
+  const handleMouseLeave = (videoId: string) => {
+    stopThumbnailPreview(videoId)
+  }
+
+  const handleTouchStart = (videoId: string, thumbs: Array<{ src: string }>) => {
+    touchStartRef.current[videoId] = Date.now()
+    
+    // Stop any previous touch preview
+    if (activeTouchRef.current && activeTouchRef.current !== videoId) {
+      stopThumbnailPreview(activeTouchRef.current)
+    }
+    
+    // Start preview after 200ms hold
+    setTimeout(() => {
+      if (touchStartRef.current[videoId] && Date.now() - touchStartRef.current[videoId] >= 200) {
+        activeTouchRef.current = videoId
+        startThumbnailPreview(videoId, thumbs)
+      }
+    }, 200)
+  }
+
+  const handleTouchEnd = (videoId: string) => {
+    delete touchStartRef.current[videoId]
+    // Keep preview running for a moment so user can see it
+    setTimeout(() => {
+      if (activeTouchRef.current === videoId) {
+        stopThumbnailPreview(videoId)
+        activeTouchRef.current = null
+      }
+    }, 1500)
+  }
 
   const loadVideos = async (query = "", category = "") => {
     setLoading(true)
@@ -771,12 +838,12 @@ export function PornVideos() {
       ) : (
         <>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">
+            <h2 className="text-2xl font-bold text-white sm:text-3xl m3-page-enter">
               {selectedCategory || searchQuery || "Hottest New Videos"}
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 m3-stagger">
             {videos.map((video, index) => {
               const isLast = index === videos.length - 1
 
@@ -784,12 +851,20 @@ export function PornVideos() {
                 <div
                   key={`${video.id}-${index}`}
                   ref={isLast ? lastVideoElementRef : null}
-                  className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50"
+                  className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50 m3-card"
                   onClick={() => openVideo(video)}
+                  onMouseEnter={() => handleMouseEnter(video.id, video.thumbs || [])}
+                  onMouseLeave={() => handleMouseLeave(video.id)}
+                  onTouchStart={() => handleTouchStart(video.id, video.thumbs || [])}
+                  onTouchEnd={() => handleTouchEnd(video.id)}
                 >
                   <div className="relative aspect-video overflow-hidden">
                     <img
-                      src={video.default_thumb?.src || video.thumbnail || "/placeholder.svg"}
+                      src={
+                        hoverThumbs[video.id] !== undefined && video.thumbs?.length > 0
+                          ? video.thumbs[hoverThumbs[video.id]]?.src
+                          : video.default_thumb?.src || video.thumbnail || "/placeholder.svg"
+                      }
                       alt={video.title}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading="lazy"
@@ -1192,7 +1267,7 @@ export function PornLibrary() {
       : savedVideos
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-6 pb-24 m3-page-enter">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white sm:text-3xl">Library</h2>
       </div>
@@ -1204,7 +1279,7 @@ export function PornLibrary() {
             setActiveTab("playlists")
             setSelectedPlaylist(null)
           }}
-          className={`rounded-full p-3 transition-colors ${
+          className={`rounded-full p-3 transition-colors m3-button m3-ripple ${
             activeTab === "playlists" && !selectedPlaylist
               ? "bg-violet-600 text-white"
               : "bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -1218,7 +1293,7 @@ export function PornLibrary() {
             setActiveTab("saved")
             setSelectedPlaylist(null)
           }}
-          className={`rounded-full p-3 transition-colors ${
+          className={`rounded-full p-3 transition-colors m3-button m3-ripple ${
             activeTab === "saved" && !selectedPlaylist
               ? "bg-violet-600 text-white"
               : "bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -1232,7 +1307,7 @@ export function PornLibrary() {
             setActiveTab("history")
             setSelectedPlaylist(null)
           }}
-          className={`rounded-full p-3 transition-colors ${
+          className={`rounded-full p-3 transition-colors m3-button m3-ripple ${
             activeTab === "history" ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
           }`}
           title="History"
@@ -1243,16 +1318,16 @@ export function PornLibrary() {
 
       {/* Playlist List */}
       {activeTab === "playlists" && !selectedPlaylist && (
-        <div className="space-y-3">
+        <div className="space-y-3 m3-stagger">
           <button
             onClick={() => setShowCreatePlaylist(true)}
-            className="w-full rounded-lg border-2 border-dashed border-slate-700 p-6 text-center text-slate-400 transition-colors hover:border-violet-500 hover:text-violet-400"
+            className="w-full rounded-lg border-2 border-dashed border-slate-700 p-6 text-center text-slate-400 transition-colors hover:border-violet-500 hover:text-violet-400 m3-card"
           >
             <Plus className="mx-auto mb-2 h-8 w-8" />
             Create New Playlist
           </button>
           {playlists.map((playlist) => (
-            <div key={playlist.id} className="flex items-center justify-between rounded-lg bg-slate-800 p-4">
+            <div key={playlist.id} className="flex items-center justify-between rounded-lg bg-slate-800 p-4 m3-card">
               <button onClick={() => setSelectedPlaylist(playlist.id)} className="flex-1 text-left">
                 <h3 className="font-medium text-white">{playlist.name}</h3>
                 <p className="text-sm text-slate-400">{playlist.videoIds.length} videos</p>
