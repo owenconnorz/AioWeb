@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic } from "lucide-react"
+import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -32,7 +32,11 @@ const GENRES = [
   { id: "country", name: "Country", color: "from-orange-400 to-yellow-500" },
 ]
 
-export function MusicBrowser() {
+interface MusicBrowserProps {
+  onBack?: () => void
+}
+
+export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<"home" | "explore" | "library">("home")
   const [shelves, setShelves] = useState<Shelf[]>([])
@@ -51,12 +55,51 @@ export function MusicBrowser() {
   const [isRepeat, setIsRepeat] = useState(false)
   const [isShuffle, setIsShuffle] = useState(false)
   const [showPlayer, setShowPlayer] = useState(false)
+  const [showFullPlayer, setShowFullPlayer] = useState(false)
+  
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   
   // Library state
   const [likedTracks, setLikedTracks] = useState<Track[]>([])
   const [recentlyPlayed, setRecentlyPlayed] = useState<Track[]>([])
   
   const playerRef = useRef<HTMLIFrameElement>(null)
+  
+  // Swipe gesture handlers
+  const minSwipeDistance = 50
+  
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientY)
+  }
+  
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY)
+  }
+  
+  const onTouchEndMini = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isSwipeUp = distance > minSwipeDistance
+    if (isSwipeUp) {
+      setShowFullPlayer(true)
+    }
+    setTouchStart(null)
+    setTouchEnd(null)
+  }
+  
+  const onTouchEndFull = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchEnd - touchStart
+    const isSwipeDown = distance > minSwipeDistance
+    if (isSwipeDown) {
+      setShowFullPlayer(false)
+    }
+    setTouchStart(null)
+    setTouchEnd(null)
+  }
 
   // Handle SSR - mount check
   useEffect(() => {
@@ -311,17 +354,27 @@ export function MusicBrowser() {
   // SSR safety - don't render until mounted
   if (!mounted) {
     return (
-      <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px] bg-gradient-to-b from-slate-900 to-black rounded-xl overflow-hidden items-center justify-center">
+      <div className="flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-red-500" />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px] bg-gradient-to-b from-slate-900 to-black rounded-xl overflow-hidden">
+    <div className="flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/30">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-white hover:bg-white/10"
+              onClick={onBack}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
               <Play className="w-4 h-4 text-white fill-white ml-0.5" />
@@ -616,17 +669,30 @@ export function MusicBrowser() {
         </button>
       </div>
 
-      {/* Mini Player with YouTube Embed */}
+      {/* YouTube Embed for audio playback - hidden */}
       {showPlayer && currentTrack && (
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 border-t border-white/10">
-          {/* YouTube Embed for audio playback */}
-          <iframe
-            ref={playerRef}
-            src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1`}
-            className="w-full h-0"
-            allow="autoplay; encrypted-media"
-            style={{ height: 0, border: 0 }}
-          />
+        <iframe
+          ref={playerRef}
+          src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1`}
+          className="w-0 h-0 absolute"
+          allow="autoplay; encrypted-media"
+          style={{ height: 0, width: 0, border: 0, position: 'absolute', left: -9999 }}
+        />
+      )}
+
+      {/* Mini Player - Swipe up to expand */}
+      {showPlayer && currentTrack && !showFullPlayer && (
+        <div 
+          className="bg-gradient-to-r from-slate-900 to-slate-800 border-t border-white/10 cursor-pointer"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEndMini}
+          onClick={() => setShowFullPlayer(true)}
+        >
+          {/* Swipe indicator */}
+          <div className="flex justify-center pt-2">
+            <div className="w-10 h-1 bg-white/30 rounded-full" />
+          </div>
           
           <div className="flex items-center gap-3 p-3">
             {/* Track Info */}
@@ -642,23 +708,7 @@ export function MusicBrowser() {
             </div>
             
             {/* Controls */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => toggleLike(currentTrack)}
-              >
-                <Heart className={`h-4 w-4 ${isLiked(currentTrack) ? "fill-red-500 text-red-500" : ""}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={playPrev}
-              >
-                <SkipBack className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -675,15 +725,128 @@ export function MusicBrowser() {
               >
                 <SkipForward className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Player */}
+      {showFullPlayer && currentTrack && (
+        <div 
+          className="fixed inset-0 z-50 bg-gradient-to-b from-slate-800 to-black flex flex-col"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEndFull}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10"
+              onClick={() => setShowFullPlayer(false)}
+            >
+              <ChevronLeft className="h-6 w-6 rotate-[-90deg]" />
+            </Button>
+            <div className="text-center">
+              <p className="text-xs text-slate-400 uppercase tracking-wider">Now Playing</p>
+              <p className="text-sm text-white">{currentTrack.album || "Unknown Album"}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10"
+            >
+              <ListMusic className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Album Art */}
+          <div className="flex-1 flex items-center justify-center p-8">
+            <img
+              src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
+              alt={currentTrack.title}
+              className="w-full max-w-[320px] aspect-square rounded-lg shadow-2xl object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+
+          {/* Track Info */}
+          <div className="px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-bold text-white line-clamp-1">{currentTrack.title}</h2>
+                <p className="text-slate-400">{currentTrack.artist || currentTrack.subtitle}</p>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 hidden sm:flex"
-                onClick={() => setIsRepeat(!isRepeat)}
+                className="h-10 w-10"
+                onClick={() => toggleLike(currentTrack)}
               >
-                <Repeat className={`h-4 w-4 ${isRepeat ? "text-red-500" : ""}`} />
+                <Heart className={`h-6 w-6 ${isLiked(currentTrack) ? "fill-red-500 text-red-500" : ""}`} />
               </Button>
             </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="px-8 py-2">
+            <div className="w-full h-1 bg-white/20 rounded-full">
+              <div className="w-1/3 h-full bg-white rounded-full" />
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-slate-400">
+              <span>1:23</span>
+              <span>{currentTrack.duration || "3:45"}</span>
+            </div>
+          </div>
+
+          {/* Main Controls */}
+          <div className="flex items-center justify-center gap-6 py-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12"
+              onClick={() => setIsShuffle(!isShuffle)}
+            >
+              <ListMusic className={`h-5 w-5 ${isShuffle ? "text-red-500" : ""}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12"
+              onClick={playPrev}
+            >
+              <SkipBack className="h-7 w-7" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-16 w-16 bg-white text-black hover:bg-white/90 rounded-full"
+              onClick={togglePlay}
+            >
+              {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12"
+              onClick={playNext}
+            >
+              <SkipForward className="h-7 w-7" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12"
+              onClick={() => setIsRepeat(!isRepeat)}
+            >
+              <Repeat className={`h-5 w-5 ${isRepeat ? "text-red-500" : ""}`} />
+            </Button>
+          </div>
+
+          {/* Swipe down indicator */}
+          <div className="flex justify-center pb-8">
+            <div className="w-16 h-1 bg-white/30 rounded-full" />
           </div>
         </div>
       )}

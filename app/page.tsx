@@ -90,11 +90,9 @@ export default function Home() {
   )}
   
   {activeTab === "music" && (
-  <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
-  <CardContent className="p-4 sm:p-6">
-  <MusicBrowser />
-  </CardContent>
-  </Card>
+  <div className="fixed inset-0 z-40 bg-black">
+  <MusicBrowser onBack={() => setActiveTab("porn")} />
+  </div>
   )}
 
           {activeTab === "ai" && (
@@ -191,7 +189,7 @@ export default function Home() {
         </div>
       </div>
 
-      <nav className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 m3-slide-up">
+      <nav className={`fixed bottom-4 left-1/2 z-50 -translate-x-1/2 m3-slide-up ${activeTab === "music" ? "hidden" : ""}`}>
         <div className="glass-nav-pill flex items-center gap-1 rounded-full border border-white/20 bg-white/80 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-800/80 sm:gap-2 sm:p-2.5">
           <button
             onClick={() => setActiveTab("porn")}
