@@ -388,6 +388,20 @@
     to { transform: rotate(360deg); }
   }
 
+  /* Marquee animation for scrolling text */
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    display: inline-block;
+  }
+
   /* Bounce animation for attention */
   .m3-bounce {
     animation: m3-bounce 0.5s var(--m3-ease-emphasized);

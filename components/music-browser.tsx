@@ -903,9 +903,19 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
         >
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-white line-clamp-1">{currentTrack.title}</h2>
-              <p className="text-slate-400">{currentTrack.artist || currentTrack.subtitle}</p>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="overflow-hidden">
+                <h2 
+                  className="text-xl font-bold text-white whitespace-nowrap animate-marquee"
+                  style={{
+                    animation: currentTrack.title.length > 25 ? 'marquee 8s linear infinite' : 'none'
+                  }}
+                >
+                  {currentTrack.title}
+                  {currentTrack.title.length > 25 && <span className="px-8">{currentTrack.title}</span>}
+                </h2>
+              </div>
+              <p className="text-slate-400 truncate">{currentTrack.artist || currentTrack.subtitle}</p>
             </div>
             <Button
               variant="ghost"
