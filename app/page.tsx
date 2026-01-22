@@ -261,6 +261,7 @@ export default function Home() {
   const [highQuality, setHighQuality] = useState(true)
   const [showWatermark, setShowWatermark] = useState(false)
   const [darkMode, setDarkMode] = useState(true)
+  const [dynamicMusicTheme, setDynamicMusicTheme] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
@@ -291,6 +292,7 @@ export default function Home() {
         setHighQuality(settings.highQuality ?? true)
         setShowWatermark(settings.showWatermark ?? false)
         setDarkMode(settings.darkMode ?? true)
+        setDynamicMusicTheme(settings.dynamicMusicTheme ?? true)
       } else {
         const defaultSettings = {
           nsfwFilter: true,
@@ -298,6 +300,7 @@ export default function Home() {
           highQuality: true,
           showWatermark: false,
           darkMode: true,
+          dynamicMusicTheme: true,
         }
         localStorage.setItem("aiCreativeSuiteSettings", JSON.stringify(defaultSettings))
       }
@@ -691,20 +694,42 @@ export default function Home() {
 
         <div>
           <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Appearance</h3>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-slate-900 dark:text-white">Dark Mode</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Use dark theme</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Dark Mode</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Use dark theme</p>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={darkMode}
+                  onChange={(e) => handleDarkModeToggle(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+              </label>
             </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={darkMode}
-                onChange={(e) => handleDarkModeToggle(e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
-            </label>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Dynamic Music Theme</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Change player colors based on album art</p>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={dynamicMusicTheme}
+                  onChange={(e) => {
+                    setDynamicMusicTheme(e.target.checked)
+                    handleSaveSettings({ dynamicMusicTheme: e.target.checked })
+                    localStorage.setItem("dynamicMusicTheme", JSON.stringify(e.target.checked))
+                  }}
+                  className="peer sr-only"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+              </label>
+            </div>
           </div>
         </div>
 

@@ -65,7 +65,13 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [likedTracks, setLikedTracks] = useState<Track[]>([])
   const [recentlyPlayed, setRecentlyPlayed] = useState<Track[]>([])
   
+  // Dynamic theme state
+  const [dynamicThemeEnabled, setDynamicThemeEnabled] = useState(true)
+  const [dominantColor, setDominantColor] = useState<string>("#1e293b") // default slate-800
+  const [secondaryColor, setSecondaryColor] = useState<string>("#0f172a") // default slate-900
+  
   const playerRef = useRef<HTMLIFrameElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   
   // Swipe gesture handlers
   const minSwipeDistance = 50
@@ -105,6 +111,91 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   useEffect(() => {
     setMounted(true)
   }, [])
+  
+  // Load dynamic theme preference
+  useEffect(() => {
+    if (!mounted) return
+    try {
+      const saved = localStorage.getItem("dynamicMusicTheme")
+      if (saved !== null) {
+        setDynamicThemeEnabled(JSON.parse(saved))
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [mounted])
+  
+  // Extract dominant color from album art
+  const extractColors = useCallback((imageUrl: string) => {
+    if (!dynamicThemeEnabled || !imageUrl) {
+      setDominantColor("#1e293b")
+      setSecondaryColor("#0f172a")
+      return
+    }
+    
+    const img = new Image()
+    img.crossOrigin = "anonymous"
+    img.src = imageUrl
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) return
+        
+        // Use small size for faster processing
+        canvas.width = 50
+        canvas.height = 50
+        ctx.drawImage(img, 0, 0, 50, 50)
+        
+        const imageData = ctx.getImageData(0, 0, 50, 50).data
+        
+        // Simple color extraction - find average color
+        let r = 0, g = 0, b = 0, count = 0
+        
+        for (let i = 0; i < imageData.length; i += 4) {
+          // Skip very dark or very light pixels
+          const brightness = (imageData[i] + imageData[i + 1] + imageData[i + 2]) / 3
+          if (brightness > 30 && brightness < 220) {
+            r += imageData[i]
+            g += imageData[i + 1]
+            b += imageData[i + 2]
+            count++
+          }
+        }
+        
+        if (count > 0) {
+          r = Math.round(r / count)
+          g = Math.round(g / count)
+          b = Math.round(b / count)
+          
+          // Create darker version for secondary color
+          const darkerR = Math.round(r * 0.4)
+          const darkerG = Math.round(g * 0.4)
+          const darkerB = Math.round(b * 0.4)
+          
+          setDominantColor(`rgb(${r}, ${g}, ${b})`)
+          setSecondaryColor(`rgb(${darkerR}, ${darkerG}, ${darkerB})`)
+        }
+      } catch (e) {
+        // CORS error or other issue, use defaults
+        setDominantColor("#1e293b")
+        setSecondaryColor("#0f172a")
+      }
+    }
+    
+    img.onerror = () => {
+      setDominantColor("#1e293b")
+      setSecondaryColor("#0f172a")
+    }
+  }, [dynamicThemeEnabled])
+  
+  // Extract colors when track changes
+  useEffect(() => {
+    if (currentTrack?.thumbnail) {
+      extractColors(currentTrack.thumbnail)
+    }
+  }, [currentTrack, extractColors])
 
   // Load library from localStorage - only on client
   useEffect(() => {
@@ -644,31 +735,6 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
         )}
       </div>
 
-      {/* Tab Bar */}
-      <div className="flex items-center justify-around p-2 bg-black/50 border-t border-white/10">
-        <button
-          onClick={() => setActiveTab("home")}
-          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${activeTab === "home" ? "text-white" : "text-slate-400"}`}
-        >
-          <Home className="h-5 w-5" />
-          <span className="text-xs">Home</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("explore")}
-          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${activeTab === "explore" ? "text-white" : "text-slate-400"}`}
-        >
-          <Compass className="h-5 w-5" />
-          <span className="text-xs">Explore</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("library")}
-          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${activeTab === "library" ? "text-white" : "text-slate-400"}`}
-        >
-          <Library className="h-5 w-5" />
-          <span className="text-xs">Library</span>
-        </button>
-      </div>
-
       {/* YouTube Embed for audio playback - hidden */}
       {showPlayer && currentTrack && (
         <iframe
@@ -680,10 +746,15 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
         />
       )}
 
-      {/* Mini Player - Swipe up to expand */}
+      {/* Mini Player - Above tab bar, swipe up to expand */}
       {showPlayer && currentTrack && !showFullPlayer && (
         <div 
-          className="bg-gradient-to-r from-slate-900 to-slate-800 border-t border-white/10 cursor-pointer"
+          className="border-t border-white/10 cursor-pointer transition-colors duration-500"
+          style={{ 
+            background: dynamicThemeEnabled 
+              ? `linear-gradient(to right, ${secondaryColor}, ${dominantColor})`
+              : 'linear-gradient(to right, #0f172a, #1e293b)'
+          }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEndMini}
@@ -730,16 +801,52 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
         </div>
       )}
 
-      {/* Full Screen Player */}
+      {/* Tab Bar */}
+      <div className="flex items-center justify-around p-2 bg-black/50 border-t border-white/10">
+        <button
+          onClick={() => setActiveTab("home")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${activeTab === "home" ? "text-white" : "text-slate-400"}`}
+        >
+          <Home className="h-5 w-5" />
+          <span className="text-xs">Home</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("explore")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${activeTab === "explore" ? "text-white" : "text-slate-400"}`}
+        >
+          <Compass className="h-5 w-5" />
+          <span className="text-xs">Explore</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("library")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${activeTab === "library" ? "text-white" : "text-slate-400"}`}
+        >
+          <Library className="h-5 w-5" />
+          <span className="text-xs">Library</span>
+        </button>
+      </div>
+
+      {/* Full Screen Player - Solid background to cover everything */}
       {showFullPlayer && currentTrack && (
         <div 
-          className="fixed inset-0 z-50 bg-gradient-to-b from-slate-800 to-black flex flex-col"
+          className="fixed inset-0 z-[100] flex flex-col transition-colors duration-500"
+          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEndFull}
         >
+          {/* Gradient overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none transition-colors duration-500"
+            style={{ 
+              background: dynamicThemeEnabled 
+                ? `linear-gradient(to bottom, ${dominantColor}, ${secondaryColor}, black)`
+                : 'linear-gradient(to bottom, #1e293b, #0f172a, black)'
+            }}
+          />
+          
           {/* Header */}
-          <div className="flex items-center justify-between p-4">
+          <div className="relative z-10 flex items-center justify-between p-4">
             <Button
               variant="ghost"
               size="icon"
@@ -762,7 +869,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </div>
 
           {/* Album Art */}
-          <div className="flex-1 flex items-center justify-center p-8">
+          <div className="relative z-10 flex-1 flex items-center justify-center p-8">
             <img
               src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
               alt={currentTrack.title}
@@ -772,7 +879,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </div>
 
           {/* Track Info */}
-          <div className="px-8 py-4">
+          <div className="relative z-10 px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl font-bold text-white line-clamp-1">{currentTrack.title}</h2>
@@ -790,7 +897,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </div>
 
           {/* Progress Bar */}
-          <div className="px-8 py-2">
+          <div className="relative z-10 px-8 py-2">
             <div className="w-full h-1 bg-white/20 rounded-full">
               <div className="w-1/3 h-full bg-white rounded-full" />
             </div>
@@ -801,7 +908,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </div>
 
           {/* Main Controls */}
-          <div className="flex items-center justify-center gap-6 py-6">
+          <div className="relative z-10 flex items-center justify-center gap-6 py-6">
             <Button
               variant="ghost"
               size="icon"
@@ -845,7 +952,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </div>
 
           {/* Swipe down indicator */}
-          <div className="flex justify-center pb-8">
+          <div className="relative z-10 flex justify-center pb-8">
             <div className="w-16 h-1 bg-white/30 rounded-full" />
           </div>
         </div>
