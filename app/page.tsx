@@ -8,7 +8,8 @@ import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos, PornLibrary } from "@/components/porn-videos"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2 } from "lucide-react"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2, FileText } from "lucide-react"
+import { ChangelogModal, useChangelog, CURRENT_VERSION, CHANGELOG } from "@/components/changelog"
 
 
 export default function Home() {
@@ -17,6 +18,8 @@ export default function Home() {
   const [selectedAiModel, setSelectedAiModel] = useState("huggingface")
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [mounted, setMounted] = useState(false)
+  const [showFullChangelog, setShowFullChangelog] = useState(false)
+  const { showChangelog, hasNewUpdate, dismissChangelog, openChangelog } = useChangelog()
 
   useEffect(() => {
     setMounted(true)
@@ -144,13 +147,38 @@ export default function Home() {
             </Card>
           )}
 
-          {activeTab === "settings" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-              <CardContent className="p-4 sm:p-6">
-                <SettingsContent onDarkModeChange={setIsDarkMode} />
-              </CardContent>
-            </Card>
-          )}
+{activeTab === "settings" && (
+  <div className="space-y-4">
+  <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+  <CardContent className="p-4 sm:p-6">
+  <SettingsContent onDarkModeChange={setIsDarkMode} />
+  </CardContent>
+  </Card>
+  
+  {/* Changelog Section */}
+  <Card className="border-0 shadow-lg dark:bg-slate-800/50">
+  <CardContent className="p-4 sm:p-6">
+  <div className="flex items-center justify-between">
+  <div className="flex items-center gap-3">
+  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
+  <FileText className="h-5 w-5 text-white" />
+  </div>
+  <div>
+  <h3 className="font-semibold text-slate-900 dark:text-white">Version {CURRENT_VERSION}</h3>
+  <p className="text-sm text-slate-500 dark:text-slate-400">View changelog and updates</p>
+  </div>
+  </div>
+  <button
+  onClick={() => setShowFullChangelog(true)}
+  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors"
+  >
+  View Changelog
+  </button>
+  </div>
+  </CardContent>
+  </Card>
+  </div>
+  )}
         </div>
       </div>
 
@@ -191,13 +219,27 @@ export default function Home() {
             <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="nav-label">Settings</span>
           </button>
-        </div>
-      </nav>
-    </main>
+  </div>
+  </nav>
+  
+  {/* New Update Changelog Popup (shows once per version) */}
+  <ChangelogModal 
+    isOpen={showChangelog} 
+    onClose={dismissChangelog} 
+    showAllVersions={false} 
+  />
+  
+  {/* Full Changelog Modal (from Settings) */}
+  <ChangelogModal 
+    isOpen={showFullChangelog} 
+    onClose={() => setShowFullChangelog(false)} 
+    showAllVersions={true} 
+  />
+  </main>
   )
-}
-
-function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boolean) => void }) {
+  }
+  
+  function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boolean) => void }) {
   const [nsfwFilter, setNsfwFilter] = useState(true)
   const [autoSave, setAutoSave] = useState(false)
   const [highQuality, setHighQuality] = useState(true)

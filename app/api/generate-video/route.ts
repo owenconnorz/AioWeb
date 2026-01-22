@@ -16,22 +16,24 @@ export async function POST(req: Request) {
 
     const enhancedPrompt = learningContext ? `${prompt} (Style: ${learningContext})` : prompt
 
-    // Seedance 1.5 Pro - better at following complex text instructions
+    // Use minimax/video-01 (Hailuo) - reliable text-to-video and image-to-video model
     const input: Record<string, string | number> = {
       prompt: enhancedPrompt,
-      duration: 5,
-      aspect_ratio: "9:16",
     }
 
+    // If image is uploaded, use image-to-video mode
     if (uploadedImage && typeof uploadedImage === "string" && uploadedImage.length > 0) {
       let imageDataUri = uploadedImage
       if (!uploadedImage.startsWith("data:")) {
         imageDataUri = `data:image/jpeg;base64,${uploadedImage}`
       }
-      input.image = imageDataUri
+      input.first_frame_image = imageDataUri
     }
 
-    const response = await fetch("https://api.replicate.com/v1/models/bytedance/seedance-1.5-pro/predictions", {
+    console.log("[v0] Starting video generation with model: minimax/video-01")
+    console.log("[v0] Has uploaded image:", !!uploadedImage)
+
+    const response = await fetch("https://api.replicate.com/v1/models/minimax/video-01/predictions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${replicateToken}`,
@@ -41,6 +43,12 @@ export async function POST(req: Request) {
     })
 
     const prediction = await response.json()
+    console.log("[v0] Replicate response:", JSON.stringify(prediction).substring(0, 500))
+
+    if (!response.ok) {
+      console.error("[v0] Replicate API error:", prediction)
+      return Response.json({ error: prediction.detail || prediction.error || "Failed to start video generation" }, { status: response.status })
+    }
 
     if (prediction.error) {
       return Response.json({ error: prediction.error }, { status: 500 })
@@ -54,6 +62,7 @@ export async function POST(req: Request) {
     })
 
   } catch (error) {
+    console.error("[v0] Video generation error:", error)
     return Response.json(
       { error: error instanceof Error ? error.message : "Video generation failed" },
       { status: 500 },
