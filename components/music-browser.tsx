@@ -291,7 +291,17 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   }
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying)
+    const newState = !isPlaying
+    setIsPlaying(newState)
+    
+    // Send command to YouTube iframe
+    if (playerRef.current?.contentWindow) {
+      const command = newState ? 'playVideo' : 'pauseVideo'
+      playerRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: command }),
+        '*'
+      )
+    }
   }
 
   const playNext = () => {
@@ -307,6 +317,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     if (queue[nextIndex]) {
       setQueueIndex(nextIndex)
       setCurrentTrack(queue[nextIndex])
+      setIsPlaying(true) // Auto-play on skip
     }
   }
 
@@ -321,6 +332,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     if (queue[prevIndex]) {
       setQueueIndex(prevIndex)
       setCurrentTrack(queue[prevIndex])
+      setIsPlaying(true) // Auto-play on skip
     }
   }
 
@@ -739,8 +751,9 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       {/* YouTube Embed for audio playback - hidden */}
       {showPlayer && currentTrack && (
         <iframe
+          key={currentTrack.videoId}
           ref={playerRef}
-          src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1`}
+          src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
           className="w-0 h-0 absolute"
           allow="autoplay; encrypted-media"
           style={{ height: 0, width: 0, border: 0, position: 'absolute', left: -9999 }}
@@ -831,136 +844,150 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     {/* Full Screen Player - Rendered outside main container for proper fixed positioning */}
     {showFullPlayer && currentTrack && (
       <div 
-        className="fixed inset-0 z-[100] flex flex-col"
-        style={{ backgroundColor: '#000000' }}
+        className="fixed top-0 left-0 right-0 bottom-0 z-[9999] flex flex-col"
+        style={{ 
+          backgroundColor: dynamicThemeEnabled ? secondaryColor : '#000000',
+          minHeight: '100vh',
+          minHeight: '100dvh'
+        }}
         onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEndFull}
-        >
-          {/* Solid opaque background - must be completely opaque */}
-          <div className="absolute inset-0 bg-black" />
-          {/* Gradient overlay on top */}
-          <div 
-            className="absolute inset-0 pointer-events-none transition-colors duration-500"
-            style={{ 
-              background: dynamicThemeEnabled 
-                ? `linear-gradient(to bottom, ${dominantColor}dd, ${secondaryColor}ee, #000000)`
-                : 'linear-gradient(to bottom, #1e293bdd, #0f172aee, #000000)'
-            }}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEndFull}
+      >
+        {/* Gradient overlay - uses dynamic colors */}
+        <div 
+          className="absolute top-0 left-0 right-0 bottom-0 transition-all duration-700 ease-out"
+          style={{ 
+            background: dynamicThemeEnabled 
+              ? `linear-gradient(180deg, ${dominantColor} 0%, ${secondaryColor} 50%, ${secondaryColor} 100%)`
+              : 'linear-gradient(180deg, #1e293b 0%, #0f172a 50%, #000000 100%)'
+          }}
+        />
+        
+        {/* Header */}
+        <div className="relative z-10 flex items-center justify-between p-4 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 text-white"
+            onClick={() => setShowFullPlayer(false)}
+          >
+            <ChevronLeft className="h-6 w-6 rotate-[-90deg]" />
+          </Button>
+          <div className="text-center">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">Now Playing</p>
+            <p className="text-sm text-white">{currentTrack.album || "Unknown Album"}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 text-white"
+          >
+            <ListMusic className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Album Art */}
+        <div className="relative z-10 flex-1 flex items-center justify-center p-8 shrink-0 min-h-0">
+          <img
+            src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
+            alt={currentTrack.title}
+            className="w-full max-w-[320px] aspect-square rounded-lg shadow-2xl object-cover"
+            referrerPolicy="no-referrer"
           />
-          
-          {/* Header */}
-          <div className="relative z-10 flex items-center justify-between p-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10"
-              onClick={() => setShowFullPlayer(false)}
-            >
-              <ChevronLeft className="h-6 w-6 rotate-[-90deg]" />
-            </Button>
-            <div className="text-center">
-              <p className="text-xs text-slate-400 uppercase tracking-wider">Now Playing</p>
-              <p className="text-sm text-white">{currentTrack.album || "Unknown Album"}</p>
+        </div>
+
+        {/* Track Info */}
+        <div 
+          className="relative z-10 px-8 py-4 shrink-0"
+          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-white line-clamp-1">{currentTrack.title}</h2>
+              <p className="text-slate-400">{currentTrack.artist || currentTrack.subtitle}</p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10"
+              className="h-10 w-10 text-white"
+              onClick={() => toggleLike(currentTrack)}
             >
-              <ListMusic className="h-5 w-5" />
+              <Heart className={`h-6 w-6 ${isLiked(currentTrack) ? "fill-red-500 text-red-500" : ""}`} />
             </Button>
-          </div>
-
-          {/* Album Art */}
-          <div className="relative z-10 flex-1 flex items-center justify-center p-8">
-            <img
-              src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
-              alt={currentTrack.title}
-              className="w-full max-w-[320px] aspect-square rounded-lg shadow-2xl object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-
-          {/* Track Info */}
-          <div className="relative z-10 px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-bold text-white line-clamp-1">{currentTrack.title}</h2>
-                <p className="text-slate-400">{currentTrack.artist || currentTrack.subtitle}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10"
-                onClick={() => toggleLike(currentTrack)}
-              >
-                <Heart className={`h-6 w-6 ${isLiked(currentTrack) ? "fill-red-500 text-red-500" : ""}`} />
-              </Button>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="relative z-10 px-8 py-2">
-            <div className="w-full h-1 bg-white/20 rounded-full">
-              <div className="w-1/3 h-full bg-white rounded-full" />
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-slate-400">
-              <span>1:23</span>
-              <span>{currentTrack.duration || "3:45"}</span>
-            </div>
-          </div>
-
-          {/* Main Controls */}
-          <div className="relative z-10 flex items-center justify-center gap-6 py-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12"
-              onClick={() => setIsShuffle(!isShuffle)}
-            >
-              <ListMusic className={`h-5 w-5 ${isShuffle ? "text-red-500" : ""}`} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12"
-              onClick={playPrev}
-            >
-              <SkipBack className="h-7 w-7" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-16 w-16 bg-white text-black hover:bg-white/90 rounded-full"
-              onClick={togglePlay}
-            >
-              {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12"
-              onClick={playNext}
-            >
-              <SkipForward className="h-7 w-7" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12"
-              onClick={() => setIsRepeat(!isRepeat)}
-            >
-              <Repeat className={`h-5 w-5 ${isRepeat ? "text-red-500" : ""}`} />
-            </Button>
-          </div>
-
-          {/* Swipe down indicator */}
-          <div className="relative z-10 flex justify-center pb-8">
-            <div className="w-16 h-1 bg-white/30 rounded-full" />
           </div>
         </div>
-      )}
+
+        {/* Progress Bar */}
+        <div 
+          className="relative z-10 px-8 py-2 shrink-0"
+          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
+        >
+          <div className="w-full h-1 bg-white/20 rounded-full">
+            <div className="w-1/3 h-full bg-white rounded-full" />
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-slate-400">
+            <span>1:23</span>
+            <span>{currentTrack.duration || "3:45"}</span>
+          </div>
+        </div>
+
+        {/* Main Controls */}
+        <div 
+          className="relative z-10 flex items-center justify-center gap-6 py-6 shrink-0"
+          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 text-white"
+            onClick={() => setIsShuffle(!isShuffle)}
+          >
+            <ListMusic className={`h-5 w-5 ${isShuffle ? "text-red-500" : ""}`} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 text-white"
+            onClick={playPrev}
+          >
+            <SkipBack className="h-7 w-7" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-16 w-16 bg-white text-black hover:bg-white/90 rounded-full"
+            onClick={togglePlay}
+          >
+            {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 text-white"
+            onClick={playNext}
+          >
+            <SkipForward className="h-7 w-7" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 text-white"
+            onClick={() => setIsRepeat(!isRepeat)}
+          >
+            <Repeat className={`h-5 w-5 ${isRepeat ? "text-red-500" : ""}`} />
+          </Button>
+        </div>
+
+        {/* Swipe down indicator */}
+        <div 
+          className="relative z-10 flex justify-center pb-8 shrink-0"
+          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
+        >
+          <div className="w-16 h-1 bg-white/30 rounded-full" />
+        </div>
+      </div>
+    )}
     </>
   )
 }
