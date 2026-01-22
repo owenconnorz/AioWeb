@@ -196,6 +196,66 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       extractColors(currentTrack.thumbnail)
     }
   }, [currentTrack, extractColors])
+  
+  // Media Session API for Bluetooth/system media controls
+  useEffect(() => {
+    if (!mounted || !currentTrack || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    
+    // Set metadata
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack.title,
+      artist: currentTrack.artist || currentTrack.subtitle || 'Unknown Artist',
+      album: currentTrack.album || 'Unknown Album',
+      artwork: currentTrack.thumbnail ? [
+        { src: currentTrack.thumbnail, sizes: '320x320', type: 'image/jpeg' },
+        { src: currentTrack.thumbnail.replace('mqdefault', 'maxresdefault'), sizes: '1280x720', type: 'image/jpeg' }
+      ] : []
+    })
+    
+    // Set action handlers
+    navigator.mediaSession.setActionHandler('play', () => {
+      setIsPlaying(true)
+      if (playerRef.current?.contentWindow) {
+        playerRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'playVideo' }),
+          '*'
+        )
+      }
+    })
+    
+    navigator.mediaSession.setActionHandler('pause', () => {
+      setIsPlaying(false)
+      if (playerRef.current?.contentWindow) {
+        playerRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'pauseVideo' }),
+          '*'
+        )
+      }
+    })
+    
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      playPrev()
+    })
+    
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      playNext()
+    })
+    
+    // Update playback state
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
+    
+    return () => {
+      // Cleanup handlers on unmount
+      try {
+        navigator.mediaSession.setActionHandler('play', null)
+        navigator.mediaSession.setActionHandler('pause', null)
+        navigator.mediaSession.setActionHandler('previoustrack', null)
+        navigator.mediaSession.setActionHandler('nexttrack', null)
+      } catch (e) {
+        // Some browsers may not support null handlers
+      }
+    }
+  }, [mounted, currentTrack, isPlaying])
 
   // Load library from localStorage - only on client
   useEffect(() => {
