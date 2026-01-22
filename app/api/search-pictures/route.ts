@@ -17,6 +17,10 @@ export async function GET(request: NextRequest) {
     if (api === "redgifs") {
       return await fetchRedGifs(query, page)
     }
+    
+    if (api === "rule34") {
+      return await fetchRule34(query, page)
+    }
 
     return await fetchPornPics({ query, category, galleryId, page, endpointType })
   } catch (error) {
@@ -189,14 +193,18 @@ async function fetchPornPics({
   })
 }
 
-async function fetchRedGifs(query: string, page: number) {
+async function fetchRedGifs(query: string, page: number, retryCount = 0) {
   try {
     const now = Date.now()
-    if (!cachedToken || cachedToken.expires < now) {
+    // Always get a fresh token to avoid "WrongSender" errors
+    // Generate a unique session ID for this request
+    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
+    
+    if (!cachedToken || cachedToken.expires < now || retryCount > 0) {
       const authResponse = await fetch("https://api.redgifs.com/v2/auth/temporary", {
         method: "GET",
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "User-Agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AioWeb/${sessionId}`,
           Accept: "application/json",
         },
       })
@@ -210,11 +218,8 @@ async function fetchRedGifs(query: string, page: number) {
       const authData = await authResponse.json()
       cachedToken = {
         token: authData.token,
-        expires: now + 3600000,
+        expires: now + 1800000, // 30 minutes instead of 1 hour
       }
-      console.log("[v0] RedGifs new token obtained successfully")
-    } else {
-      console.log("[v0] RedGifs using cached token")
     }
 
     const accessToken = cachedToken.token
@@ -234,10 +239,10 @@ async function fetchRedGifs(query: string, page: number) {
     if (!response.ok) {
       const errorBody = await response.text()
       console.error("[v0] RedGifs API error:", response.status, errorBody)
-      if (response.status === 401) {
+      if (response.status === 401 && retryCount < 2) {
         cachedToken = null
-        console.log("[v0] Token invalid, retrying with fresh token...")
-        return fetchRedGifs(query, page)
+        // Retry with a fresh token, but limit retries to prevent infinite loop
+        return fetchRedGifs(query, page, retryCount + 1)
       }
       throw new Error(`RedGifs API returned ${response.status}`)
     }
@@ -248,14 +253,17 @@ async function fetchRedGifs(query: string, page: number) {
     const galleries =
       data.gifs?.map((gif: any) => {
         const thumbnail = gif.urls?.poster || gif.urls?.thumbnail || ""
-        const videoUrl = gif.urls?.sd || gif.urls?.hd || gif.urls?.mobile || gif.urls?.vthumbnail || ""
+        // Prefer HD video with audio, then SD, then others
+        const videoUrl = gif.urls?.hd || gif.urls?.sd || gif.urls?.mobile || gif.urls?.vthumbnail || ""
         const title = gif.tags && gif.tags.length > 0 ? gif.tags.join(", ") : gif.userName || gif.id || "Untitled"
+        // Check if video has audio
+        const hasAudio = gif.hasAudio === true || gif.has_audio === true
 
         console.log(
           "[v0] Processing gif:",
           gif.id,
-          "thumbnail:",
-          thumbnail?.substring(0, 80),
+          "hasAudio:",
+          hasAudio,
           "videoUrl:",
           videoUrl?.substring(0, 80),
         )
@@ -269,6 +277,8 @@ async function fetchRedGifs(query: string, page: number) {
           tags: gif.tags || [],
           photoCount: 1,
           isVideo: true,
+          hasAudio: hasAudio,
+          duration: gif.duration || 0,
         }
       }) || []
 
@@ -289,6 +299,63 @@ async function fetchRedGifs(query: string, page: number) {
     })
   } catch (error) {
     console.error("[v0] RedGifs error:", error)
+    throw error
+  }
+}
+
+// Rule34 API - official API endpoint
+async function fetchRule34(query: string, page: number) {
+  try {
+    const isPopular = !query || query === "popular"
+    const searchTags = isPopular ? "score:>=100" : query.replace(/\s+/g, "+")
+    
+    // Use official Rule34.xxx API with JSON response
+    const apiUrl = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=${encodeURIComponent(searchTags)}&limit=40&pid=${page - 1}&json=1`
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Rule34 API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    // API returns array directly or empty array
+    const posts = Array.isArray(data) ? data : []
+
+    const galleries = posts.map((post: any) => {
+      const fileUrl = post.file_url || ""
+      const isVideo = fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm")
+      const tags = typeof post.tags === "string" ? post.tags.split(" ").slice(0, 5) : []
+      
+      return {
+        id: post.id?.toString() || Math.random().toString(),
+        title: tags.join(", ") || "Rule34",
+        url: fileUrl,
+        thumbnail: post.preview_url || post.sample_url || "",
+        preview: post.sample_url || post.preview_url || "",
+        tags: tags,
+        photoCount: 1,
+        isVideo: isVideo,
+        hasAudio: isVideo,
+        score: post.score || 0,
+        width: post.width,
+        height: post.height,
+      }
+    })
+
+    return NextResponse.json({
+      galleries,
+      photos: [],
+      page,
+      total: galleries.length,
+    })
+  } catch (error) {
+    console.error("[v0] Rule34 error:", error)
     throw error
   }
 }

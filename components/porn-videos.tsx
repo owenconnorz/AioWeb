@@ -135,9 +135,9 @@ interface HistoryItem {
   apiSource: string
 }
 
-type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai"
+type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai" | "rule34"
 
-const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai"]
+const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai", "rule34"]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -441,7 +441,7 @@ export function PornVideos() {
     try {
       const searchParam = category || query || "popular"
       const apiEndpoint =
-        apiSource === "redgifs" || apiSource === "pornpics"
+        apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34"
           ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=1&refresh=${refreshKey}`
           : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=1&refresh=${refreshKey}`
 
@@ -471,7 +471,7 @@ export function PornVideos() {
     try {
       const searchParam = selectedCategory || searchQuery || "popular"
       const apiEndpoint =
-        apiSource === "redgifs" || apiSource === "pornpics"
+        apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34"
           ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=${nextPage}`
           : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=${nextPage}`
 
@@ -503,8 +503,8 @@ export function PornVideos() {
       const savedOrder = localStorage.getItem("porn_api_order")
       if (savedOrder) {
         let parsed = JSON.parse(savedOrder) as ApiSource[]
-        // Remove deprecated APIs like rule34 and jsonporn
-        parsed = parsed.filter(api => api !== "rule34" && api !== "jsonporn") as ApiSource[]
+        // Remove deprecated APIs like jsonporn
+        parsed = parsed.filter(api => api !== "jsonporn") as ApiSource[]
         // Merge any new APIs that aren't in the saved order
         const missingApis = DEFAULT_API_ORDER.filter(api => !parsed.includes(api))
         if (missingApis.length > 0) {
@@ -984,7 +984,7 @@ export function PornVideos() {
                   poster={getVideoUrl(video.default_thumb?.src || video.thumbnail || "")}
                   loop
                   playsInline
-                  muted
+                  controls
                   autoPlay={index === activeVideoIndex}
                   className="h-full w-full object-contain bg-black"
                 />
@@ -1069,11 +1069,13 @@ export function PornVideos() {
                           ? "PornPics"
                           : api === "chaturbate"
                             ? "Chaturbate"
-                  : api === "redtube"
-                    ? "Redtube"
-                                    : api === "hentai"
-                                      ? "Anime"
-                                      : api}
+                            : api === "redtube"
+                              ? "Redtube"
+                              : api === "hentai"
+                                ? "Anime"
+                                : api === "rule34"
+                                  ? "Rule34"
+                                  : api}
               </span>
             </button>
           ))}
@@ -1460,6 +1462,16 @@ export function PornVideos() {
                 src={selectedVideo.url || "/placeholder.svg"}
                 alt={selectedVideo.title}
                 className="max-h-full max-w-full object-contain"
+              />
+            ) : apiSource === "redgifs" || selectedVideo.url?.includes("redgifs") ? (
+              <video
+                src={getVideoUrl(selectedVideo.url || selectedVideo.embed)}
+                poster={getVideoUrl(selectedVideo.default_thumb?.src || selectedVideo.thumbnail || "")}
+                controls
+                autoPlay
+                loop
+                playsInline
+                className="h-full w-full object-contain"
               />
             ) : (
               <iframe
