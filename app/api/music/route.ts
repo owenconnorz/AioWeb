@@ -1,23 +1,17 @@
 import { NextResponse } from "next/server"
 
-// YouTube Music Innertube API
-const INNERTUBE_API_KEY = "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"
-const INNERTUBE_CLIENT_VERSION = "1.20240101.01.00"
+// YouTube Music Innertube API - using the public key that doesn't require auth
+const INNERTUBE_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
 
 const getInnertubeContext = () => ({
   client: {
     clientName: "WEB_REMIX",
-    clientVersion: INNERTUBE_CLIENT_VERSION,
+    clientVersion: "1.20241106.01.00",
     hl: "en",
     gl: "US",
-    experimentIds: [],
-    experimentsToken: "",
-    browserName: "Chrome",
-    browserVersion: "120.0.0.0",
-    osName: "Windows",
-    osVersion: "10.0",
     platform: "DESKTOP",
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36,gzip(gfe)",
+    acceptHeader: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   },
   user: {
     lockedSafetyMode: false,
@@ -25,23 +19,35 @@ const getInnertubeContext = () => ({
 })
 
 async function innertubeRequest(endpoint: string, body: any) {
-  const response = await fetch(
-    `https://music.youtube.com/youtubei/v1/${endpoint}?key=${INNERTUBE_API_KEY}&prettyPrint=false`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Origin": "https://music.youtube.com",
-        "Referer": "https://music.youtube.com/",
-      },
-      body: JSON.stringify({
-        context: getInnertubeContext(),
-        ...body,
-      }),
+  try {
+    const response = await fetch(
+      `https://music.youtube.com/youtubei/v1/${endpoint}?key=${INNERTUBE_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Origin": "https://music.youtube.com",
+          "Referer": "https://music.youtube.com/",
+          "X-Goog-Visitor-Id": "CgtQbTdfRHpfX3FqbyiQqL24BjIKCgJVUxIEGgAgFA%3D%3D",
+        },
+        body: JSON.stringify({
+          context: getInnertubeContext(),
+          ...body,
+        }),
+      }
+    )
+    
+    if (!response.ok) {
+      console.error("[v0] Innertube response not ok:", response.status)
+      return { error: response.status }
     }
-  )
-  return response.json()
+    
+    return response.json()
+  } catch (error) {
+    console.error("[v0] Innertube request failed:", error)
+    return { error: String(error) }
+  }
 }
 
 // Parse shelf content from YouTube Music response
@@ -122,6 +128,32 @@ function parseShelfContent(content: any): any[] {
   return items
 }
 
+// Fallback shelves when API fails
+function getFallbackShelves() {
+  return [
+    {
+      shelfTitle: "Popular Music",
+      items: [
+        { id: "1", videoId: "dQw4w9WgXcQ", title: "Never Gonna Give You Up", artist: "Rick Astley", thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg" },
+        { id: "2", videoId: "kJQP7kiw5Fk", title: "Despacito", artist: "Luis Fonsi ft. Daddy Yankee", thumbnail: "https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg" },
+        { id: "3", videoId: "fJ9rUzIMcZQ", title: "Bohemian Rhapsody", artist: "Queen", thumbnail: "https://i.ytimg.com/vi/fJ9rUzIMcZQ/mqdefault.jpg" },
+        { id: "4", videoId: "hTWKbfoikeg", title: "Smells Like Teen Spirit", artist: "Nirvana", thumbnail: "https://i.ytimg.com/vi/hTWKbfoikeg/mqdefault.jpg" },
+        { id: "5", videoId: "JGwWNGJdvx8", title: "Shape of You", artist: "Ed Sheeran", thumbnail: "https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg" },
+      ]
+    },
+    {
+      shelfTitle: "Trending",
+      items: [
+        { id: "6", videoId: "CevxZvSJLk8", title: "Rockstar", artist: "Post Malone", thumbnail: "https://i.ytimg.com/vi/CevxZvSJLk8/mqdefault.jpg" },
+        { id: "7", videoId: "RgKAFK5djSk", title: "See You Again", artist: "Wiz Khalifa ft. Charlie Puth", thumbnail: "https://i.ytimg.com/vi/RgKAFK5djSk/mqdefault.jpg" },
+        { id: "8", videoId: "OPf0YbXqDm0", title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", thumbnail: "https://i.ytimg.com/vi/OPf0YbXqDm0/mqdefault.jpg" },
+        { id: "9", videoId: "09R8_2nJtjg", title: "Sugar", artist: "Maroon 5", thumbnail: "https://i.ytimg.com/vi/09R8_2nJtjg/mqdefault.jpg" },
+        { id: "10", videoId: "lp-EO5I60KA", title: "Counting Stars", artist: "OneRepublic", thumbnail: "https://i.ytimg.com/vi/lp-EO5I60KA/mqdefault.jpg" },
+      ]
+    }
+  ]
+}
+
 // Get audio stream URL for a video
 async function getAudioStreamUrl(videoId: string) {
   try {
@@ -168,6 +200,15 @@ export async function GET(request: Request) {
           browseId: "FEmusic_home",
         })
         
+        // Check for API errors
+        if (data.error) {
+          // Return fallback trending music
+          return NextResponse.json({ 
+            shelves: getFallbackShelves(),
+            fallback: true 
+          })
+        }
+        
         const shelves: any[] = []
         const contents = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || []
         
@@ -176,7 +217,15 @@ export async function GET(request: Request) {
           shelves.push(...parsed)
         }
         
-        return NextResponse.json({ shelves, raw: data })
+        // If no shelves parsed, return fallback
+        if (shelves.length === 0) {
+          return NextResponse.json({ 
+            shelves: getFallbackShelves(),
+            fallback: true 
+          })
+        }
+        
+        return NextResponse.json({ shelves })
       }
       
       case "search": {

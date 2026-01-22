@@ -33,6 +33,7 @@ const GENRES = [
 ]
 
 export function MusicBrowser() {
+  const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<"home" | "explore" | "library">("home")
   const [shelves, setShelves] = useState<Shelf[]>([])
   const [searchResults, setSearchResults] = useState<Track[]>([])
@@ -57,22 +58,42 @@ export function MusicBrowser() {
   
   const playerRef = useRef<HTMLIFrameElement>(null)
 
-  // Load library from localStorage
+  // Handle SSR - mount check
   useEffect(() => {
-    const savedLiked = localStorage.getItem("ytmusic_liked")
-    const savedRecent = localStorage.getItem("ytmusic_recent")
-    if (savedLiked) setLikedTracks(JSON.parse(savedLiked))
-    if (savedRecent) setRecentlyPlayed(JSON.parse(savedRecent))
+    setMounted(true)
   }, [])
 
-  // Save library to localStorage
+  // Load library from localStorage - only on client
   useEffect(() => {
-    localStorage.setItem("ytmusic_liked", JSON.stringify(likedTracks))
-  }, [likedTracks])
+    if (!mounted) return
+    try {
+      const savedLiked = localStorage.getItem("ytmusic_liked")
+      const savedRecent = localStorage.getItem("ytmusic_recent")
+      if (savedLiked) setLikedTracks(JSON.parse(savedLiked))
+      if (savedRecent) setRecentlyPlayed(JSON.parse(savedRecent))
+    } catch (e) {
+      // localStorage not available
+    }
+  }, [mounted])
+
+  // Save library to localStorage - only on client after initial load
+  useEffect(() => {
+    if (!mounted) return
+    try {
+      localStorage.setItem("ytmusic_liked", JSON.stringify(likedTracks))
+    } catch (e) {
+      // localStorage not available
+    }
+  }, [likedTracks, mounted])
 
   useEffect(() => {
-    localStorage.setItem("ytmusic_recent", JSON.stringify(recentlyPlayed))
-  }, [recentlyPlayed])
+    if (!mounted) return
+    try {
+      localStorage.setItem("ytmusic_recent", JSON.stringify(recentlyPlayed))
+    } catch (e) {
+      // localStorage not available
+    }
+  }, [recentlyPlayed, mounted])
 
   // Load home feed
   const loadHomeFeed = useCallback(async () => {
@@ -283,6 +304,15 @@ export function MusicBrowser() {
             <TrackCard key={`${track.videoId || track.id}-${idx}`} track={track} trackList={shelf.items} />
           ))}
         </div>
+      </div>
+    )
+  }
+
+  // SSR safety - don't render until mounted
+  if (!mounted) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px] bg-gradient-to-b from-slate-900 to-black rounded-xl overflow-hidden items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-red-500" />
       </div>
     )
   }
