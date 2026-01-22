@@ -70,6 +70,10 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [dominantColor, setDominantColor] = useState<string>("#1e293b") // default slate-800
   const [secondaryColor, setSecondaryColor] = useState<string>("#0f172a") // default slate-900
   
+  // Playback time tracking
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  
   const playerRef = useRef<HTMLIFrameElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const silentAudioRef = useRef<HTMLAudioElement>(null)
