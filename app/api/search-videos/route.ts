@@ -16,6 +16,8 @@ interface XvidapiVideo {
         slug?: string
         title?: string
         link_embed?: string
+        link_m3u8?: string
+        link_mp4?: string
       }
     }
   }
@@ -23,76 +25,71 @@ interface XvidapiVideo {
   updated_at?: string
 }
 
-async function searchRule34(query: string, page = 1) {
+async function searchHentai(query: string, page = 1) {
+  // Use waifu.pics API - fast and reliable for anime images
+  const categories = ["waifu", "neko", "shinobu", "megumin", "bully", "cuddle", "cry", "hug", "awoo", "kiss", "lick", "pat", "smug", "bonk", "yeet", "blush", "smile", "wave", "highfive", "handhold", "nom", "bite", "glomp", "slap", "kill", "kick", "happy", "wink", "poke", "dance", "cringe"]
+  
+  // For popular, get random images from multiple categories
+  // For search, try to match category or use random
   const isPopular = query === "popular"
-  // Rule34.xxx API - uses pid for pagination (0-indexed), no auth required
-  const pid = page - 1
-  const tags = isPopular ? "" : query.replace(/\s+/g, "_").toLowerCase()
   
-  // Add randomization for popular queries
-  const randomPid = isPopular ? Math.floor(Math.random() * 50) : pid
-  
-  // Rule34.xxx API with JSON response
-  const apiUrl = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&limit=24&pid=${randomPid}${tags ? `&tags=${encodeURIComponent(tags)}` : ""}&json=1`
-
-  const response = await fetch(apiUrl, {
-    method: "GET",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      "Accept": "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Rule34 API error: ${response.status}`)
-  }
-
-  // Rule34 returns array directly, not wrapped in object
-  const text = await response.text()
-  let posts: any[] = []
-  
-  if (text && text.trim() && text !== "null" && text !== "[]") {
-    try {
-      const data = JSON.parse(text)
-      posts = Array.isArray(data) ? data : []
-    } catch {
-      posts = []
-    }
-  }
-
-  const transformedVideos = posts.map((post: any) => {
-    const isVideo = post.file_url?.endsWith('.mp4') || post.file_url?.endsWith('.webm')
-    const fileUrl = post.file_url || post.sample_url || post.preview_url
-    const tagsArray = typeof post.tags === 'string' ? post.tags.split(' ') : []
+  try {
+    // Fetch multiple images in parallel for better content variety
+    const promises = []
+    const count = 12
     
-    return {
-      id: post.id || `r34-${Date.now()}-${Math.random()}`,
-      title: tagsArray.slice(0, 5).join(" ") || "Rule34 Post",
-      keywords: post.tags || "",
-      views: Number.parseInt(post.score || "0", 10),
-      rate: Number.parseFloat(post.score || "0"),
-      url: fileUrl,
-      added: post.change ? new Date(post.change * 1000).toISOString() : "",
-      length_sec: 0,
-      length_min: isVideo ? "Video" : "Image",
-      embed: fileUrl,
-      default_thumb: {
-        src: post.preview_url || post.sample_url || fileUrl || "/placeholder.svg",
-        size: `${post.preview_width || 150}x${post.preview_height || 150}`,
-        width: Number.parseInt(post.preview_width || "150", 10),
-        height: Number.parseInt(post.preview_height || "150", 10),
-      },
-      thumbs: [],
-      isImage: !isVideo,
-      fullImage: fileUrl,
-      sampleImage: post.sample_url || fileUrl,
+    for (let i = 0; i < count; i++) {
+      const category = isPopular 
+        ? categories[Math.floor(Math.random() * categories.length)]
+        : categories.find(c => c.toLowerCase().includes(query.toLowerCase())) || categories[Math.floor(Math.random() * categories.length)]
+      
+      promises.push(
+        fetch(`https://api.waifu.pics/sfw/${category}`, {
+          method: "GET",
+          headers: { "Accept": "application/json" },
+        }).then(r => r.json()).catch(() => null)
+      )
     }
-  })
+    
+    const results = await Promise.all(promises)
+    
+    const transformedVideos = results
+      .filter(item => item && item.url)
+      .map((item: any, index: number) => {
+        const imageUrl = item.url
+        const isGif = imageUrl?.endsWith('.gif')
+        
+        return {
+          id: `waifu-${Date.now()}-${index}`,
+          title: `Anime ${isGif ? 'GIF' : 'Image'} ${index + 1}`,
+          keywords: "anime, waifu, kawaii",
+          views: Math.floor(Math.random() * 1000),
+          rate: Math.floor(Math.random() * 5),
+          url: imageUrl,
+          added: new Date().toISOString(),
+          length_sec: 0,
+          length_min: isGif ? "GIF" : "Image",
+          embed: imageUrl,
+          default_thumb: {
+            src: imageUrl || "/placeholder.svg",
+            size: "300x400",
+            width: 300,
+            height: 400,
+          },
+          thumbs: [],
+          isImage: true,
+          fullImage: imageUrl,
+          sampleImage: imageUrl,
+        }
+      })
 
-  return NextResponse.json({
-    videos: transformedVideos,
-    total: transformedVideos.length,
-  })
+    return NextResponse.json({
+      videos: transformedVideos,
+      total: transformedVideos.length,
+    })
+  } catch (error) {
+    throw new Error(`Anime API error: ${error}`)
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -116,8 +113,10 @@ export async function GET(request: NextRequest) {
       return await searchXvidapi(query, page)
     } else if (source === "redtube") {
       return await searchRedTube(query, page)
-    } else if (source === "rule34") {
-      return await searchRule34(query, page)
+    } else if (source === "hentai") {
+      return await searchHentai(query, page)
+    } else if (source === "jsonporn") {
+      return await searchJsonPorn(query, page)
     } else {
       return await searchEporner(query, page)
     }
@@ -191,6 +190,7 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
       thumbnail = video.poster
     }
 
+    let directVideoUrl = ""
     if (video.episodes?.server_data) {
       const firstServer = Object.values(video.episodes.server_data)[0]
       if (firstServer?.link_embed) {
@@ -200,6 +200,12 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
         if (parts.length > 0 && parts[0].includes(":")) {
           duration = parts[0]
         }
+      }
+      // Try to get direct video URL (m3u8 or mp4)
+      if (firstServer?.link_m3u8) {
+        directVideoUrl = firstServer.link_m3u8
+      } else if (firstServer?.link_mp4) {
+        directVideoUrl = firstServer.link_mp4
       }
     }
 
@@ -213,11 +219,12 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
       keywords: video.tag || "",
       views: 0,
       rate: 0,
-      url: embedUrl,
+      url: directVideoUrl || embedUrl,
       added: video.updated_at || video.created_at || "",
       length_sec: 0,
       length_min: duration,
       embed: embedUrl,
+      directUrl: directVideoUrl,
       default_thumb: thumbnail
         ? {
             src: thumbnail,
@@ -422,5 +429,73 @@ async function searchRedTube(query: string, page = 1) {
   return NextResponse.json({
     videos: transformedVideos,
     total: data.count || transformedVideos.length,
+  })
+}
+
+async function searchJsonPorn(query: string, page = 1) {
+  const apiKey = process.env.JSON_PORN_API_KEY
+  if (!apiKey) {
+    throw new Error("JSON_PORN_API_KEY is not configured")
+  }
+
+  const isPopular = query === "popular"
+  const searchQuery = isPopular ? "" : query
+  
+  // JSON Porn API via RapidAPI
+  const apiUrl = isPopular
+    ? `https://json-porn.p.rapidapi.com/porn?page=${page}&limit=24`
+    : `https://json-porn.p.rapidapi.com/search?q=${encodeURIComponent(searchQuery)}&page=${page}&limit=24`
+
+  console.log("[v0] JSON Porn API URL:", apiUrl)
+  
+  const response = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "X-RapidAPI-Key": apiKey,
+      "X-RapidAPI-Host": "json-porn.p.rapidapi.com",
+    },
+  })
+
+  console.log("[v0] JSON Porn API status:", response.status)
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error("[v0] JSON Porn API error:", errorText.substring(0, 500))
+    throw new Error(`JSON Porn API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log("[v0] JSON Porn API response keys:", Object.keys(data))
+  console.log("[v0] JSON Porn API response preview:", JSON.stringify(data).substring(0, 500))
+  
+  const videos = data.videos || data.data || data.results || data.items || data || []
+  console.log("[v0] JSON Porn videos count:", Array.isArray(videos) ? videos.length : 'not array')
+
+  const transformedVideos = (Array.isArray(videos) ? videos : []).map((video: any) => {
+    return {
+      id: video.id || video.video_id || `jsonporn-${Date.now()}-${Math.random()}`,
+      title: video.title || video.name || "Video",
+      keywords: video.tags?.join(", ") || video.categories?.join(", ") || "",
+      views: video.views || 0,
+      rate: video.rating || 0,
+      url: video.url || video.video_url || "",
+      added: video.date || video.created_at || "",
+      length_sec: video.duration || 0,
+      length_min: video.duration ? `${Math.floor(video.duration / 60)}:${String(video.duration % 60).padStart(2, '0')}` : "",
+      embed: video.embed_url || video.embed || video.url || "",
+      directUrl: video.video_url || video.mp4_url || video.stream_url || "",
+      default_thumb: {
+        src: video.thumbnail || video.thumb || video.preview || "/placeholder.svg",
+        size: "640x360",
+        width: 640,
+        height: 360,
+      },
+      thumbs: video.thumbnails || [],
+    }
+  })
+
+  return NextResponse.json({
+    videos: transformedVideos,
+    total: data.total || data.count || transformedVideos.length,
   })
 }

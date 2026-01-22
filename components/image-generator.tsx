@@ -166,11 +166,36 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
     })
   }
 
-  const handleDownload = (base64: string, index: number) => {
-    const link = document.createElement("a")
-    link.href = `data:image/png;base64,${base64}`
-    link.download = `generated-image-${index + 1}.png`
-    link.click()
+  const handleDownload = async (base64: string, index: number) => {
+    try {
+      // Convert base64 to blob for better mobile browser compatibility
+      const byteCharacters = atob(base64)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: "image/png" })
+      
+      // Create object URL from blob (more memory efficient)
+      const blobUrl = URL.createObjectURL(blob)
+      
+      const link = document.createElement("a")
+      link.href = blobUrl
+      link.download = `generated-image-${index + 1}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Clean up the blob URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+    } catch (err) {
+      // Fallback: open image in new tab if download fails
+      const newTab = window.open()
+      if (newTab) {
+        newTab.document.write(`<img src="data:image/png;base64,${base64}" />`)
+      }
+    }
   }
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {

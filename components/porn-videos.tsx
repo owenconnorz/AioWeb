@@ -61,9 +61,9 @@ interface HistoryItem {
   apiSource: string
 }
 
-type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "rule34"
+type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai"
 
-const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "rule34"]
+const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai"]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -425,7 +425,9 @@ export function PornVideos() {
     try {
       const savedOrder = localStorage.getItem("porn_api_order")
       if (savedOrder) {
-        const parsed = JSON.parse(savedOrder) as ApiSource[]
+        let parsed = JSON.parse(savedOrder) as ApiSource[]
+        // Remove deprecated APIs like rule34 and jsonporn
+        parsed = parsed.filter(api => api !== "rule34" && api !== "jsonporn") as ApiSource[]
         // Merge any new APIs that aren't in the saved order
         const missingApis = DEFAULT_API_ORDER.filter(api => !parsed.includes(api))
         if (missingApis.length > 0) {
@@ -434,6 +436,7 @@ export function PornVideos() {
           localStorage.setItem("porn_api_order", JSON.stringify(mergedOrder))
         } else {
           setApiOrder(parsed)
+          localStorage.setItem("porn_api_order", JSON.stringify(parsed))
         }
       }
     } catch (err) {
@@ -796,10 +799,44 @@ export function PornVideos() {
     }
 
     setSelectedVideo(video)
+    
+    // Request fullscreen and landscape orientation for better video viewing
+    setTimeout(() => {
+      const modalElement = document.getElementById('video-modal')
+      if (modalElement) {
+        try {
+          if (modalElement.requestFullscreen) {
+            modalElement.requestFullscreen()
+          } else if ((modalElement as any).webkitRequestFullscreen) {
+            (modalElement as any).webkitRequestFullscreen()
+          }
+          // Try to lock to landscape orientation
+          if (screen.orientation && (screen.orientation as any).lock) {
+            (screen.orientation as any).lock('landscape').catch(() => {})
+          }
+        } catch (e) {
+          // Fullscreen not supported or blocked
+        }
+      }
+    }, 100)
   }
 
   const closeVideo = () => {
     setSelectedVideo(null)
+    // Exit fullscreen when closing video
+    try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      } else if ((document as any).webkitFullscreenElement) {
+        (document as any).webkitExitFullscreen()
+      }
+      // Unlock orientation
+      if (screen.orientation && (screen.orientation as any).unlock) {
+        (screen.orientation as any).unlock()
+      }
+    } catch (e) {
+      // Fullscreen exit not supported
+    }
   }
 
   const isVideoSaved = (videoId: string) => {
@@ -956,10 +993,10 @@ export function PornVideos() {
                           : api === "chaturbate"
                             ? "Chaturbate"
                   : api === "redtube"
-                  ? "Redtube"
-                  : api === "rule34"
-                  ? "Rule34"
-                  : api}
+                    ? "Redtube"
+                                    : api === "hentai"
+                                      ? "Anime"
+                                      : api}
               </span>
             </button>
           ))}
@@ -1314,51 +1351,48 @@ export function PornVideos() {
 
       {/* Video Modal */}
       {selectedVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
-          <div className="w-full max-w-4xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white line-clamp-1">{selectedVideo.title}</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleShare(selectedVideo)}
-                  className="rounded-full bg-white/10 p-2 hover:bg-white/20"
-                >
-                  <Share2 className="h-5 w-5 text-white" />
-                </button>
-                <button onClick={closeVideo} className="rounded-full bg-white/10 p-2 hover:bg-white/20">
-                  <X className="h-6 w-6 text-white" />
-                </button>
-              </div>
+        <div 
+          id="video-modal"
+          className="fixed inset-0 z-50 flex flex-col bg-black"
+        >
+          {/* Header - compact for more video space */}
+          <div className="flex items-center justify-between p-2 bg-black/80">
+            <h2 className="text-sm font-medium text-white line-clamp-1 flex-1 mr-2">{selectedVideo.title}</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleShare(selectedVideo)}
+                className="rounded-full bg-white/10 p-1.5 hover:bg-white/20"
+              >
+                <Share2 className="h-4 w-4 text-white" />
+              </button>
+              <button onClick={closeVideo} className="rounded-full bg-white/10 p-1.5 hover:bg-white/20">
+                <X className="h-5 w-5 text-white" />
+              </button>
             </div>
-            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black flex items-center justify-center">
-              {selectedVideo.isImage ? (
-                <img
-                  src={selectedVideo.fullImage || selectedVideo.sampleImage || selectedVideo.url}
-                  alt={selectedVideo.title}
-                  className="max-h-full max-w-full object-contain"
-                />
-              ) : selectedVideo.url?.endsWith('.mp4') || selectedVideo.url?.endsWith('.webm') || apiSource === "rule34" ? (
-                <video
-                  src={selectedVideo.url || selectedVideo.embed}
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
-                  className="h-full w-full object-contain"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <iframe
-                  src={getEmbedUrl(selectedVideo)}
-                  className="h-full w-full"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; encrypted-media"
-                  title={selectedVideo.title}
-                />
-              )}
-            </div>
+          </div>
+          {/* Video container - fills remaining space */}
+          <div className="flex-1 w-full overflow-hidden bg-black flex items-center justify-center relative">
+            {selectedVideo.isImage ? (
+              <img
+                src={selectedVideo.fullImage || selectedVideo.sampleImage || selectedVideo.url}
+                alt={selectedVideo.title}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : selectedVideo.url?.endsWith('.gif') ? (
+              <img
+                src={selectedVideo.url || "/placeholder.svg"}
+                alt={selectedVideo.title}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <iframe
+                src={getEmbedUrl(selectedVideo)}
+                className="h-full w-full border-0"
+                allowFullScreen
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                title={selectedVideo.title}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1466,6 +1500,10 @@ export function PornLibrary() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+  }
+
+  const closeVideo = () => {
+    setSelectedVideo(null)
   }
 
   const displayVideos = selectedPlaylist
@@ -1628,24 +1666,25 @@ export function PornLibrary() {
         ))}
       {/* Video Modal */}
       {selectedVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
-          <div className="w-full max-w-4xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white line-clamp-1">{selectedVideo.title}</h2>
-              <button onClick={() => setSelectedVideo(null)} className="rounded-full bg-white/10 p-2 hover:bg-white/20">
-                <X className="h-6 w-6 text-white" />
-              </button>
-            </div>
-            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-              <iframe
-                src={selectedVideo.embed}
-                className="h-full w-full"
-                frameBorder="0"
-                allowFullScreen
-                allow="autoplay; encrypted-media"
-                title={selectedVideo.title}
-              />
-            </div>
+        <div 
+          id="video-modal-library"
+          className="fixed inset-0 z-50 flex flex-col bg-black"
+        >
+          <div className="flex items-center justify-between p-2 bg-black/80">
+            <h2 className="text-sm font-medium text-white line-clamp-1 flex-1 mr-2">{selectedVideo.title}</h2>
+            <button onClick={closeVideo} className="rounded-full bg-white/10 p-1.5 hover:bg-white/20">
+              <X className="h-5 w-5 text-white" />
+            </button>
+          </div>
+          <div className="flex-1 w-full overflow-hidden bg-black flex items-center justify-center">
+            <iframe
+              src={selectedVideo.embed}
+              className="h-full w-full"
+              frameBorder="0"
+              allowFullScreen
+              allow="autoplay; encrypted-media; fullscreen"
+              title={selectedVideo.title}
+            />
           </div>
         </div>
       )}

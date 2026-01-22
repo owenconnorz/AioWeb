@@ -215,7 +215,7 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
     "chaturbate",
     "pornpics",
     "redtube",
-    "rule34",
+    "hentai",
   ])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [touchStartY, setTouchStartY] = useState<number | null>(null)
@@ -247,13 +247,13 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
       const savedApiOrder = localStorage.getItem("porn_api_order")
       if (savedApiOrder) {
         const parsed = JSON.parse(savedApiOrder)
-        const newApis = ["chaturbate", "redtube", "rule34"]
+        const newApis = ["chaturbate", "redtube", "hentai"]
         for (const api of newApis) {
           if (!parsed.includes(api)) {
             parsed.push(api)
           }
         }
-        const workingApis = ["xvidapi", "eporner", "redgifs", "cam4", "chaturbate", "pornpics", "redtube", "rule34"]
+        const workingApis = ["xvidapi", "eporner", "redgifs", "cam4", "chaturbate", "pornpics", "redtube", "hentai"]
         const filteredOrder = parsed.filter((api: string) => workingApis.includes(api))
         setApiOrder(filteredOrder)
       }
@@ -454,8 +454,8 @@ function SettingsContent({ onDarkModeChange }: { onDarkModeChange: (value: boole
         return "Chaturbate"
       case "redtube":
         return "RedTube"
-      case "rule34":
-        return "Rule34"
+      case "hentai":
+        return "Anime"
       default:
         return api
     }
