@@ -72,6 +72,8 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   
   const playerRef = useRef<HTMLIFrameElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const silentAudioRef = useRef<HTMLAudioElement>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
   
   // Swipe gesture handlers
   const minSwipeDistance = 50
@@ -196,6 +198,42 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       extractColors(currentTrack.thumbnail)
     }
   }, [currentTrack, extractColors])
+  
+  // Initialize silent audio for Media Session API
+  // This tricks the browser into letting us control media session even though YouTube iframe plays audio
+  useEffect(() => {
+    if (!mounted || typeof window === 'undefined') return
+    
+    // Create a silent audio context
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      }
+    } catch (e) {
+      console.log("[v0] AudioContext not supported")
+    }
+    
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close()
+        audioContextRef.current = null
+      }
+    }
+  }, [mounted])
+  
+  // Play silent audio to activate media session
+  useEffect(() => {
+    if (!mounted || !showPlayer || !silentAudioRef.current) return
+    
+    const audio = silentAudioRef.current
+    
+    if (isPlaying) {
+      // Play silent audio to keep media session active
+      audio.play().catch(() => {})
+    } else {
+      audio.pause()
+    }
+  }, [mounted, showPlayer, isPlaying])
   
   // Media Session API for Bluetooth/system media controls
   useEffect(() => {
@@ -807,6 +845,15 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </>
         )}
       </div>
+
+      {/* Silent audio element for Media Session API - enables Bluetooth/system controls */}
+      <audio
+        ref={silentAudioRef}
+        loop
+        playsInline
+        src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"
+        style={{ display: 'none' }}
+      />
 
       {/* YouTube Embed for audio playback - hidden */}
       {showPlayer && currentTrack && (
