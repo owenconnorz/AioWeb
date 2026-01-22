@@ -452,7 +452,8 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black overflow-hidden">
+    <>
+    <div className={`flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black overflow-hidden ${showFullPlayer ? 'invisible' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/30">
         <div className="flex items-center gap-3">
@@ -825,12 +826,14 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           <span className="text-xs">Library</span>
         </button>
       </div>
+    </div>
 
-      {/* Full Screen Player - Solid background to cover everything */}
-      {showFullPlayer && currentTrack && (
-        <div 
-          className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
-          onTouchStart={onTouchStart}
+    {/* Full Screen Player - Rendered outside main container for proper fixed positioning */}
+    {showFullPlayer && currentTrack && (
+      <div 
+        className="fixed inset-0 z-[100] flex flex-col"
+        style={{ backgroundColor: '#000000' }}
+        onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEndFull}
         >
@@ -958,6 +961,6 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
