@@ -829,19 +829,20 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       {/* Full Screen Player - Solid background to cover everything */}
       {showFullPlayer && currentTrack && (
         <div 
-          className="fixed inset-0 z-[100] flex flex-col transition-colors duration-500"
-          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
+          className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEndFull}
         >
-          {/* Gradient overlay */}
+          {/* Solid opaque background - must be completely opaque */}
+          <div className="absolute inset-0 bg-black" />
+          {/* Gradient overlay on top */}
           <div 
             className="absolute inset-0 pointer-events-none transition-colors duration-500"
             style={{ 
               background: dynamicThemeEnabled 
-                ? `linear-gradient(to bottom, ${dominantColor}, ${secondaryColor}, black)`
-                : 'linear-gradient(to bottom, #1e293b, #0f172a, black)'
+                ? `linear-gradient(to bottom, ${dominantColor}dd, ${secondaryColor}ee, #000000)`
+                : 'linear-gradient(to bottom, #1e293bdd, #0f172aee, #000000)'
             }}
           />
           
