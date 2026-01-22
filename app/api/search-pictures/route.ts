@@ -196,29 +196,28 @@ async function fetchPornPics({
 async function fetchRedGifs(query: string, page: number, retryCount = 0) {
   try {
     const now = Date.now()
-    // Always get a fresh token to avoid "WrongSender" errors
-    // Generate a unique session ID for this request
-    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
+    // Use consistent User-Agent for both auth and API requests
+    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     
+    // Always get fresh token on retry or if expired/missing
     if (!cachedToken || cachedToken.expires < now || retryCount > 0) {
       const authResponse = await fetch("https://api.redgifs.com/v2/auth/temporary", {
         method: "GET",
         headers: {
-          "User-Agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AioWeb/${sessionId}`,
-          Accept: "application/json",
+          "User-Agent": userAgent,
+          "Accept": "application/json",
         },
       })
 
       if (!authResponse.ok) {
         const errorText = await authResponse.text()
-        console.error("[v0] RedGifs auth failed:", authResponse.status, errorText)
         throw new Error(`RedGifs auth failed: ${authResponse.status}`)
       }
 
       const authData = await authResponse.json()
       cachedToken = {
         token: authData.token,
-        expires: now + 1800000, // 30 minutes instead of 1 hour
+        expires: now + 300000, // 5 minutes - shorter cache to avoid WrongSender
       }
     }
 
@@ -230,9 +229,9 @@ async function fetchRedGifs(query: string, page: number, retryCount = 0) {
 
     const response = await fetch(endpoint, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": userAgent,
+        "Accept": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
       },
     })
 
@@ -303,48 +302,48 @@ async function fetchRedGifs(query: string, page: number, retryCount = 0) {
   }
 }
 
-// Rule34 API - official API endpoint
+// Danbooru API - public API that doesn't require authentication for basic access
 async function fetchRule34(query: string, page: number) {
   try {
     const isPopular = !query || query === "popular"
-    const searchTags = isPopular ? "score:>=100" : query.replace(/\s+/g, "+")
+    // For popular, use order:score to get highest rated content
+    const searchTags = isPopular ? "order:score" : query.replace(/\s+/g, "_")
     
-    // Use official Rule34.xxx API with JSON response
-    const apiUrl = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=${encodeURIComponent(searchTags)}&limit=40&pid=${page - 1}&json=1`
+    // Use Danbooru public API
+    const apiUrl = `https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(searchTags)}&limit=40&page=${page}`
     
     const response = await fetch(apiUrl, {
       headers: {
         "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
     })
 
     if (!response.ok) {
-      throw new Error(`Rule34 API error: ${response.status}`)
+      throw new Error(`Danbooru API error: ${response.status}`)
     }
 
-    const data = await response.json()
-    // API returns array directly or empty array
-    const posts = Array.isArray(data) ? data : []
+    const posts = await response.json()
+    // Danbooru returns array directly
 
-    const galleries = posts.map((post: any) => {
-      const fileUrl = post.file_url || ""
+    const galleries = (Array.isArray(posts) ? posts : []).map((post: any) => {
+      const fileUrl = post.file_url || post.large_file_url || ""
       const isVideo = fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm")
-      const tags = typeof post.tags === "string" ? post.tags.split(" ").slice(0, 5) : []
+      const tags = post.tag_string ? post.tag_string.split(" ").slice(0, 5) : []
       
       return {
         id: post.id?.toString() || Math.random().toString(),
-        title: tags.join(", ") || "Rule34",
+        title: tags.join(", ") || "Danbooru",
         url: fileUrl,
-        thumbnail: post.preview_url || post.sample_url || "",
-        preview: post.sample_url || post.preview_url || "",
+        thumbnail: post.preview_file_url || post.large_file_url || "",
+        preview: post.large_file_url || post.preview_file_url || "",
         tags: tags,
         photoCount: 1,
         isVideo: isVideo,
         hasAudio: isVideo,
         score: post.score || 0,
-        width: post.width,
-        height: post.height,
+        width: post.image_width,
+        height: post.image_height,
       }
     })
 
@@ -355,7 +354,7 @@ async function fetchRule34(query: string, page: number) {
       total: galleries.length,
     })
   } catch (error) {
-    console.error("[v0] Rule34 error:", error)
+    console.error("[v0] Danbooru error:", error)
     throw error
   }
 }

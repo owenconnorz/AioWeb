@@ -113,11 +113,13 @@ export async function GET(request: NextRequest) {
       return await searchXvidapi(query, page)
     } else if (source === "redtube") {
       return await searchRedTube(query, page)
-    } else if (source === "hentai") {
-      return await searchHentai(query, page)
-    } else if (source === "jsonporn") {
-      return await searchJsonPorn(query, page)
-    } else {
+  } else if (source === "hentai") {
+  return await searchHentai(query, page)
+  } else if (source === "pornhub") {
+  return await searchPornhub(query, page)
+  } else if (source === "jsonporn") {
+  return await searchJsonPorn(query, page)
+  } else {
       return await searchEporner(query, page)
     }
   } catch (error) {
@@ -498,4 +500,97 @@ async function searchJsonPorn(query: string, page = 1) {
     videos: transformedVideos,
     total: data.total || data.count || transformedVideos.length,
   })
+}
+
+// Pornhub API - using unofficial public API
+async function searchPornhub(query: string, page = 1) {
+  try {
+    const isPopular = query === "popular"
+    
+    // Use the public API endpoint
+    const apiBase = "https://node-1-sync.obj3ct32.com:8443/api"
+    
+    // Get trending videos for popular, or fetch video details
+    let videoIds: string[] = []
+    
+    if (isPopular) {
+      // Fetch trending video IDs
+      const trendingRes = await fetch(`${apiBase}/trending`, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      })
+      
+      if (!trendingRes.ok) {
+        throw new Error(`Pornhub trending API error: ${trendingRes.status}`)
+      }
+      
+      const trendingData = await trendingRes.json()
+      videoIds = trendingData.video_ids || trendingData.videos || []
+    } else {
+      // For search, we'll use random videos as the API doesn't have a search endpoint
+      const randomRes = await fetch(`${apiBase}/random`, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      })
+      
+      if (randomRes.ok) {
+        const randomData = await randomRes.json()
+        videoIds = [randomData.video_id || randomData.id].filter(Boolean)
+      }
+    }
+    
+    // Fetch video details for each ID (limit to 20 to avoid too many requests)
+    const limitedIds = videoIds.slice(0, 20)
+    const videoPromises = limitedIds.map(async (id: string) => {
+      try {
+        const res = await fetch(`${apiBase}/video/${id}`, {
+          headers: {
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          },
+        })
+        if (res.ok) {
+          return await res.json()
+        }
+        return null
+      } catch {
+        return null
+      }
+    })
+    
+    const videoResults = await Promise.all(videoPromises)
+    const videos = videoResults.filter(Boolean)
+    
+    const transformedVideos = videos.map((video: any) => ({
+      video_id: video.video_id || video.id || Math.random().toString(),
+      title: video.title || "Pornhub Video",
+      keywords: video.tags?.join(", ") || video.categories?.join(", ") || "",
+      views: video.views || 0,
+      rate: video.rating || 0,
+      url: video.url || `https://www.pornhub.com/view_video.php?viewkey=${video.video_id}`,
+      added: video.upload_date || "",
+      length_sec: video.duration || 0,
+      length_min: video.duration_formatted || "",
+      embed: `https://www.pornhub.com/embed/${video.video_id}`,
+      default_thumb: {
+        src: video.thumbnail || video.thumb || "/placeholder.svg",
+        size: "640x360",
+        width: 640,
+        height: 360,
+      },
+      thumbs: video.thumbnails || [],
+    }))
+    
+    return NextResponse.json({
+      videos: transformedVideos,
+      total: transformedVideos.length,
+    })
+  } catch (error) {
+    console.error("[v0] Pornhub API error:", error)
+    return NextResponse.json({ videos: [], total: 0 })
+  }
 }

@@ -8,8 +8,9 @@ import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos, PornLibrary } from "@/components/porn-videos"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2, FileText } from "lucide-react"
-import { ChangelogModal, useChangelog, CURRENT_VERSION, CHANGELOG } from "@/components/changelog"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2, FileText, Music } from "lucide-react"
+import { MusicBrowser } from "@/components/music-browser"
+import { ChangelogModal, useChangelog, CURRENT_VERSION, CHANGELOG, BUILD_INFO } from "@/components/changelog"
 
 
 export default function Home() {
@@ -80,13 +81,21 @@ export default function Home() {
             </Card>
           )}
 
-          {activeTab === "library" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
-              <CardContent className="p-4 sm:p-6">
-                <PornLibrary />
-              </CardContent>
-            </Card>
-          )}
+  {activeTab === "library" && (
+  <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
+  <CardContent className="p-4 sm:p-6">
+  <PornLibrary />
+  </CardContent>
+  </Card>
+  )}
+  
+  {activeTab === "music" && (
+  <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
+  <CardContent className="p-4 sm:p-6">
+  <MusicBrowser />
+  </CardContent>
+  </Card>
+  )}
 
           {activeTab === "ai" && (
             <Card className="border-0 shadow-lg dark:bg-slate-800/50 m3-expand">
@@ -164,7 +173,7 @@ export default function Home() {
   <FileText className="h-5 w-5 text-white" />
   </div>
   <div>
-  <h3 className="font-semibold text-slate-900 dark:text-white">Version {CURRENT_VERSION}</h3>
+  <h3 className="font-semibold text-slate-900 dark:text-white">Version {BUILD_INFO}</h3>
   <p className="text-sm text-slate-500 dark:text-slate-400">View changelog and updates</p>
   </div>
   </div>
@@ -193,23 +202,32 @@ export default function Home() {
             <span className="nav-label">Porn</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab("library")}
-            className={`nav-item m3-ripple ${activeTab === "library" ? "active" : ""}`}
-            aria-label="Library"
-          >
-            <BookmarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">Library</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("ai")}
-            className={`nav-item m3-ripple ${activeTab === "ai" ? "active" : ""}`}
-            aria-label="AI Tools"
-          >
-            <Wand2 className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="nav-label">AI</span>
-          </button>
+  <button
+  onClick={() => setActiveTab("library")}
+  className={`nav-item m3-ripple ${activeTab === "library" ? "active" : ""}`}
+  aria-label="Library"
+  >
+  <BookmarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+  <span className="nav-label">Library</span>
+  </button>
+  
+  <button
+  onClick={() => setActiveTab("music")}
+  className={`nav-item m3-ripple ${activeTab === "music" ? "active" : ""}`}
+  aria-label="Music"
+  >
+  <Music className="h-5 w-5 sm:h-6 sm:w-6" />
+  <span className="nav-label">Music</span>
+  </button>
+  
+  <button
+  onClick={() => setActiveTab("ai")}
+  className={`nav-item m3-ripple ${activeTab === "ai" ? "active" : ""}`}
+  aria-label="AI Tools"
+  >
+  <Wand2 className="h-5 w-5 sm:h-6 sm:w-6" />
+  <span className="nav-label">AI</span>
+  </button>
 
           <button
             onClick={() => setActiveTab("settings")}
@@ -258,7 +276,6 @@ export default function Home() {
     "pornpics",
     "redtube",
     "hentai",
-    "rule34",
   ])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [touchStartY, setTouchStartY] = useState<number | null>(null)
@@ -296,7 +313,7 @@ export default function Home() {
             parsed.push(api)
           }
         }
-        const workingApis = ["xvidapi", "eporner", "redgifs", "cam4", "chaturbate", "pornpics", "redtube", "hentai", "rule34"]
+        const workingApis = ["xvidapi", "eporner", "redgifs", "cam4", "chaturbate", "pornpics", "redtube", "hentai"]
         const filteredOrder = parsed.filter((api: string) => workingApis.includes(api))
         setApiOrder(filteredOrder)
       }
@@ -499,8 +516,6 @@ export default function Home() {
         return "RedTube"
   case "hentai":
   return "Anime"
-  case "rule34":
-  return "Rule34"
   default:
   return api
   }

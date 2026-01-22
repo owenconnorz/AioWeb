@@ -135,9 +135,9 @@ interface HistoryItem {
   apiSource: string
 }
 
-type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai" | "rule34"
+type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai"
 
-const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai", "rule34"]
+const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai"]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -503,8 +503,8 @@ export function PornVideos() {
       const savedOrder = localStorage.getItem("porn_api_order")
       if (savedOrder) {
         let parsed = JSON.parse(savedOrder) as ApiSource[]
-        // Remove deprecated APIs like jsonporn
-        parsed = parsed.filter(api => api !== "jsonporn") as ApiSource[]
+        // Remove deprecated APIs
+        parsed = parsed.filter(api => api !== "jsonporn" && api !== "rule34" && api !== "pornhub") as ApiSource[]
         // Merge any new APIs that aren't in the saved order
         const missingApis = DEFAULT_API_ORDER.filter(api => !parsed.includes(api))
         if (missingApis.length > 0) {
@@ -949,12 +949,16 @@ export function PornVideos() {
     }
   }
 
-  const getVideoUrl = (url: string) => {
-    if (apiSource === "redgifs" && url.includes("redgifs.com")) {
-      return `/api/proxy-media?url=${encodeURIComponent(url)}`
-    }
-    return url
+const getVideoUrl = (url: string) => {
+  console.log("[v0] getVideoUrl called with:", url?.substring(0, 100), "apiSource:", apiSource)
+  if (!url) return ""
+  // Proxy RedGifs URLs to handle CORS
+  if (apiSource === "redgifs" && url.includes("redgifs.com")) {
+    return `/api/proxy-media?url=${encodeURIComponent(url)}`
   }
+  // Rule34 URLs are direct and don't need proxying
+  return url
+}
 
   const getEmbedUrl = (video: Video) => {
     return video.embed
@@ -1463,7 +1467,7 @@ export function PornVideos() {
                 alt={selectedVideo.title}
                 className="max-h-full max-w-full object-contain"
               />
-            ) : apiSource === "redgifs" || selectedVideo.url?.includes("redgifs") ? (
+            ) : apiSource === "redgifs" || apiSource === "rule34" || selectedVideo.url?.includes("redgifs") || selectedVideo.url?.endsWith(".mp4") || selectedVideo.url?.endsWith(".webm") ? (
               <video
                 src={getVideoUrl(selectedVideo.url || selectedVideo.embed)}
                 poster={getVideoUrl(selectedVideo.default_thumb?.src || selectedVideo.thumbnail || "")}
@@ -1472,6 +1476,7 @@ export function PornVideos() {
                 loop
                 playsInline
                 className="h-full w-full object-contain"
+                onError={(e) => console.log("[v0] Video error:", e, "src:", (e.target as HTMLVideoElement).src)}
               />
             ) : (
               <iframe

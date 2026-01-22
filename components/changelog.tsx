@@ -2,8 +2,35 @@
 import { useState, useEffect } from "react"
 import { X, Sparkles, ChevronDown, ChevronUp } from "lucide-react"
 
-// Changelog data - Update this when you publish new versions
-export const CHANGELOG = [
+// Build timestamp - automatically updates on each deployment
+// This creates a unique version identifier for each build
+const BUILD_TIMESTAMP = process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString()
+const BUILD_ID = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || "local"
+
+// Generate semantic version from changelog + build info
+const generateVersion = () => {
+  const major = CHANGELOG.length > 0 ? 1 : 0
+  const minor = CHANGELOG.length
+  const buildDate = new Date(BUILD_TIMESTAMP)
+  const patch = buildDate.getDate()
+  return `${major}.${minor}.${patch}`
+}
+
+// Changelog data - Add new entries at the TOP when you publish updates
+// The system will automatically show the popup when new entries are added
+export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.3.0",
+    date: "2026-01-22",
+    title: "Rule34 & Sound Support",
+    changes: [
+      "Added Rule34 API with official endpoint",
+      "Added sound support for RedGifs videos",
+      "Fixed video playback for direct video URLs",
+      "Automatic version detection on deployment",
+      "Improved changelog system",
+    ],
+  },
   {
     version: "1.2.0",
     date: "2026-01-22",
@@ -11,7 +38,6 @@ export const CHANGELOG = [
     changes: [
       "Added built-in ad blocker for video playback",
       "Fixed video modal to display fullscreen properly",
-      "Removed deprecated Rule34 and JSONPorn APIs",
       "Improved video loading experience",
       "Added changelog system",
     ],
@@ -43,7 +69,17 @@ export const CHANGELOG = [
   },
 ]
 
-export const CURRENT_VERSION = CHANGELOG[0].version
+interface ChangelogEntry {
+  version: string
+  date: string
+  title: string
+  changes: string[]
+}
+
+// Current version is the first entry in the changelog
+// Adding a new entry at the top will automatically trigger the popup
+export const CURRENT_VERSION = CHANGELOG[0]?.version || "1.0.0"
+export const BUILD_INFO = `${CURRENT_VERSION} (${BUILD_ID})`
 
 interface ChangelogModalProps {
   isOpen: boolean
