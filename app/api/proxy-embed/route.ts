@@ -20,8 +20,8 @@ export async function GET(request: Request) {
     if (targetUrl.includes("redtube.com") || targetUrl.includes("embed.redtube.com")) {
       referer = "https://www.redtube.com/"
       origin = "https://www.redtube.com"
-      // RedTube requires specific cookies and headers for embed access
-      cookie = "platform=pc; age_verified=1; accessAgeDisclaimerPH=1"
+      // RedTube requires specific cookies and headers for embed access - use Japan location to bypass age verification
+      cookie = "platform=pc; age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerRT=1; countryCode=JP"
     }
 
     const headers: Record<string, string> = {
@@ -30,9 +30,11 @@ export async function GET(request: Request) {
       Referer: referer,
       Origin: origin,
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Language": "ja-JP,ja;q=0.9,en;q=0.8",
       "Accept-Encoding": "gzip, deflate, br",
       "Cache-Control": "no-cache",
+      "X-Forwarded-For": "103.5.140.1",
+      "CF-IPCountry": "JP",
       "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
       "Sec-Ch-Ua-Mobile": "?0",
       "Sec-Ch-Ua-Platform": '"Windows"',
