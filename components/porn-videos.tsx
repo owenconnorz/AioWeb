@@ -840,6 +840,11 @@ export function PornVideos() {
 
   const addToPlaylist = (playlistId: string, videoToAdd: Video) => {
     try {
+      console.log("[v0] addToPlaylist called")
+      console.log("[v0] playlistId:", playlistId)
+      console.log("[v0] videoToAdd:", videoToAdd?.title, videoToAdd?.id)
+      console.log("[v0] current playlists:", playlists.length)
+      
       const videoId = videoToAdd.id
 
       // Also save the video to savedVideos so it persists across sessions
@@ -853,11 +858,12 @@ export function PornVideos() {
       const updatedPlaylists = playlists.map((playlist) => {
         if (playlist.id === playlistId) {
           const isAlreadyAdded = playlist.videoIds.includes(videoId)
+          console.log("[v0] Found playlist:", playlist.name, "isAlreadyAdded:", isAlreadyAdded)
           
           // Initialize videos array if it doesn't exist (for backwards compatibility)
           const currentVideos = playlist.videos || []
           
-          return {
+          const updated = {
             ...playlist,
             videoIds: isAlreadyAdded
               ? playlist.videoIds.filter((id) => id !== videoId)
@@ -866,15 +872,19 @@ export function PornVideos() {
               ? currentVideos.filter((v) => v.id !== videoId)
               : [...currentVideos, videoToAdd],
           }
+          console.log("[v0] Updated playlist videoIds count:", updated.videoIds.length)
+          console.log("[v0] Updated playlist videos count:", updated.videos.length)
+          return updated
         }
         return playlist
       })
 
+      console.log("[v0] Setting playlists and saving to localStorage")
       setPlaylists(updatedPlaylists)
       localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
       setShowAddToPlaylist(null)
     } catch (err) {
-      console.error("Error adding to playlist:", err)
+      console.error("[v0] Error adding to playlist:", err)
     }
   }
 
@@ -1505,10 +1515,10 @@ const getVideoUrl = (url: string) => {
       {/* Add to Playlist Modal */}
       {showAddToPlaylist && (
         <div 
-          className="fixed inset-0 z-[9999] overflow-y-auto bg-black/95"
+          className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4"
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
           onClick={(e) => e.target === e.currentTarget && setShowAddToPlaylist(null)}
         >
-          <div className="min-h-screen px-4 flex items-center justify-center">
             <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-white">Add to Playlist</h3>
@@ -1542,7 +1552,6 @@ const getVideoUrl = (url: string) => {
               <Plus className="mr-2 inline h-4 w-4" />
               Create New Playlist
             </button>
-            </div>
           </div>
         </div>
       )}
@@ -1550,11 +1559,11 @@ const getVideoUrl = (url: string) => {
       {/* Create Playlist Modal */}
       {showCreatePlaylist && (
         <div 
-          className="fixed inset-0 z-[9999] overflow-y-auto bg-black/95"
+          className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4"
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
           onClick={(e) => e.target === e.currentTarget && setShowCreatePlaylist(false)}
         >
-          <div className="min-h-screen px-4 flex items-center justify-center">
-            <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6">
+          <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6">
             <h3 className="mb-4 text-xl font-semibold text-white">Create New Playlist</h3>
             <Input
               type="text"
@@ -1570,7 +1579,6 @@ const getVideoUrl = (url: string) => {
               <Button onClick={createPlaylist} className="flex-1 bg-violet-600 hover:bg-violet-700">
                 Create
               </Button>
-            </div>
             </div>
           </div>
         </div>
