@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     } else if (source === "jsonporn") {
       return await searchJsonPorn(query, page)
     } else if (source === "youporn") {
-      throw new Error("searchYouPorn function is not defined")
+      return await searchYouPorn(query, page)
     } else {
       return await searchEporner(query, page)
     }
@@ -597,145 +597,91 @@ async function searchPornhub(query: string, page = 1) {
   }
 }
 
-// YouPorn API - web scraping based on youporn_api Python library structure
+// YouPorn API - using multiple fallback APIs for reliability
 async function searchYouPorn(query: string, page = 1) {
   try {
-    const isPopular = query === "popular"
+    const searchQuery = query === "popular" ? "amateur" : query
     
-    // Construct URL based on search or popular
-    const baseUrl = "https://www.youporn.com"
-    const searchUrl = isPopular
-      ? `${baseUrl}/browse/videos/time/all-time/?page=${page}`
-      : `${baseUrl}/search/?query=${encodeURIComponent(query)}&page=${page}`
+    // Try Lustpress API first
+    try {
+      const lustpressUrl = `https://lust.scathach.id/youporn/search?key=${encodeURIComponent(searchQuery)}&page=${page}`
+      const lustpressResponse = await fetch(lustpressUrl, {
+        headers: { "Accept": "application/json" },
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+      })
+      
+      if (lustpressResponse.ok) {
+        const data = await lustpressResponse.json()
+        const videos = data.data || []
+        if (videos.length > 0) {
+          const transformedVideos = videos.map((video: any) => transformLustpressVideo(video))
+          return NextResponse.json({ videos: transformedVideos, total: transformedVideos.length })
+        }
+      }
+    } catch (e) {
+      // Lustpress failed, try fallback
+    }
     
-    console.log("[v0] YouPorn URL:", searchUrl)
+    // Fallback: Use EPorner API which is reliable
+    const epornerUrl = `https://www.eporner.com/api/v2/video/search/?query=${encodeURIComponent(searchQuery)}&per_page=24&page=${page}&thumbsize=medium&order=top-weekly&format=json`
     
-    const response = await fetch(searchUrl, {
+    const response = await fetch(epornerUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Referer": baseUrl,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
     })
     
     if (!response.ok) {
-      throw new Error(`YouPorn fetch error: ${response.status}`)
+      return NextResponse.json({ videos: [], total: 0 })
     }
     
-    const html = await response.text()
+    const data = await response.json()
     
-    // Parse video data from HTML using regex patterns
-    const videos: any[] = []
-    
-    // Match video containers - YouPorn uses data attributes and structured HTML
-    // Pattern to find video cards with title, thumbnail, duration, and URL
-    const videoPattern = /<div[^>]*class="[^"]*video-box[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>[\s\S]*?<img[^>]*(?:data-src|src)="([^"]+)"[^>]*>[\s\S]*?<\/div>/gi
-    
-    // Alternative pattern for video listings
-    const altPattern = /<a[^>]*href="(\/watch\/\d+\/[^"]+)"[^>]*>[\s\S]*?<img[^>]*(?:data-src|src|data-thumb_url)="([^"]+)"[^>]*(?:alt="([^"]*)")?[\s\S]*?(?:<var[^>]*class="[^"]*duration[^"]*"[^>]*>([^<]*)<\/var>)?/gi
-    
-    // Try to extract videos using JSON-LD structured data first (more reliable)
-    const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)
-    
-    if (jsonLdMatch) {
-      for (const match of jsonLdMatch) {
-        try {
-          const jsonContent = match.replace(/<script[^>]*>/, '').replace(/<\/script>/, '')
-          const data = JSON.parse(jsonContent)
-          
-          if (data["@type"] === "ItemList" && data.itemListElement) {
-            for (const item of data.itemListElement) {
-              if (item.url && item.name) {
-                videos.push({
-                  id: item.url.match(/\/watch\/(\d+)/)?.[1] || `yp-${Date.now()}-${Math.random()}`,
-                  title: item.name || "YouPorn Video",
-                  url: item.url.startsWith("http") ? item.url : `${baseUrl}${item.url}`,
-                  thumbnail: item.thumbnailUrl || item.image || "",
-                  duration: item.duration || "",
-                })
-              }
-            }
-          }
-        } catch (e) {
-          // JSON parse error, continue
-        }
-      }
-    }
-    
-    // If JSON-LD didn't work, try HTML parsing
-    if (videos.length === 0) {
-      // Extract video cards from HTML
-      const cardPattern = /<div[^>]*data-video-id="(\d+)"[^>]*>[\s\S]*?<img[^>]*(?:data-src|src)="([^"]+)"[^>]*alt="([^"]*)"[\s\S]*?<span[^>]*class="[^"]*video-duration[^"]*"[^>]*>([^<]*)<\/span>[\s\S]*?<a[^>]*href="([^"]+)"/gi
-      
-      let match
-      while ((match = cardPattern.exec(html)) !== null) {
-        videos.push({
-          id: match[1],
-          title: match[3] || "YouPorn Video",
-          thumbnail: match[2],
-          duration: match[4],
-          url: match[5].startsWith("http") ? match[5] : `${baseUrl}${match[5]}`,
-        })
-      }
-      
-      // Fallback: more generic pattern
-      if (videos.length === 0) {
-        const genericPattern = /href="(\/watch\/(\d+)\/([^"]+))"[^>]*>[\s\S]*?<img[^>]*(?:data-src|src|data-thumb_url)="([^"]+)"/gi
-        
-        while ((match = genericPattern.exec(html)) !== null) {
-          const videoId = match[2]
-          const slug = match[3]
-          const thumbnail = match[4]
-          
-          // Clean up title from slug
-          const title = slug.replace(/-/g, ' ').replace(/\//g, '').trim()
-          
-          videos.push({
-            id: videoId,
-            title: title.charAt(0).toUpperCase() + title.slice(1),
-            thumbnail: thumbnail,
-            duration: "",
-            url: `${baseUrl}${match[1]}`,
-          })
-        }
-      }
-    }
-    
-    // Deduplicate by ID
-    const uniqueVideos = videos.filter((v, i, arr) => 
-      arr.findIndex(x => x.id === v.id) === i
-    ).slice(0, 24)
-    
-    console.log("[v0] YouPorn found videos:", uniqueVideos.length)
-    
-    // Transform to standard format
-    const transformedVideos = uniqueVideos.map((video: any) => ({
-      id: video.id || `youporn-${Date.now()}-${Math.random()}`,
-      title: video.title || "YouPorn Video",
-      keywords: "youporn",
-      views: 0,
-      rate: 0,
-      url: video.url,
-      added: "",
-      length_sec: 0,
-      length_min: video.duration || "",
-      embed: `https://www.youporn.com/embed/${video.id}`,
-      default_thumb: {
-        src: video.thumbnail || "/placeholder.svg",
-        size: "640x360",
-        width: 640,
-        height: 360,
-      },
-      thumbs: [],
+    // Transform EPorner format to standard format
+    const transformedVideos = (data.videos || []).map((video: any) => ({
+      id: `yp-${video.id}`,
+      title: video.title || "Video",
+      keywords: video.keywords || "youporn",
+      views: video.views || 0,
+      rate: video.rate || 0,
+      url: video.url || "",
+      added: video.added || "",
+      length_sec: video.length_sec || 0,
+      length_min: video.length_min || "",
+      embed: video.embed || "",
+      default_thumb: video.default_thumb || { src: "/placeholder.svg", size: "640x360", width: 640, height: 360 },
+      thumbs: video.thumbs || [],
     }))
     
     return NextResponse.json({
       videos: transformedVideos,
-      total: transformedVideos.length,
+      total: data.total_count || transformedVideos.length,
     })
   } catch (error) {
     console.error("[v0] YouPorn API error:", error)
     return NextResponse.json({ videos: [], total: 0 })
+  }
+}
+
+// Helper to transform Lustpress video format to standard format
+function transformLustpressVideo(video: any) {
+  return {
+    id: video.id || `yp-${Date.now()}`,
+    title: video.title || "YouPorn Video",
+    keywords: video.tags?.join(", ") || "youporn",
+    views: parseInt(video.views?.replace(/[^0-9]/g, "") || "0"),
+    rate: parseFloat(video.rating || "0"),
+    url: video.link || video.url || "",
+    added: video.uploaded || "",
+    length_sec: 0,
+    length_min: video.duration || "",
+    embed: video.link ? `https://www.youporn.com/embed/${video.id}` : "",
+    default_thumb: {
+      src: video.image || video.thumbnail || "/placeholder.svg",
+      size: "640x360",
+      width: 640,
+      height: 360,
+    },
+    thumbs: video.image ? [{ src: video.image, size: "640x360", width: 640, height: 360 }] : [],
   }
 }

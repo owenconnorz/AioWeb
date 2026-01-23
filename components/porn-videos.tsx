@@ -94,6 +94,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  LayoutGrid,
+  List,
 } from "lucide-react"
 import {
   Pagination,
@@ -576,6 +578,18 @@ export function PornVideos() {
     loadLibraryData()
     setLoadedIframes(new Set([0]))
   }, [apiSource])
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showAddToPlaylist || showCreatePlaylist || selectedVideo) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showAddToPlaylist, showCreatePlaylist, selectedVideo])
 
   useEffect(() => {
     if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource === "chaturbate")) return
@@ -1418,25 +1432,33 @@ const getVideoUrl = (url: string) => {
 
       {/* Add to Playlist Modal */}
       {showAddToPlaylist && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+          onClick={(e) => e.target === e.currentTarget && setShowAddToPlaylist(null)}
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-white">Add to Playlist</h3>
-              <button onClick={() => setShowAddToPlaylist(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowAddToPlaylist(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-white">
                 <X className="h-6 w-6" />
               </button>
             </div>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {playlists.map((playlist) => (
-                <button
-                  key={playlist.id}
-                  onClick={() => addToPlaylist(playlist.id, showAddToPlaylist)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 p-3 text-left transition-colors hover:bg-slate-700"
-                >
-                  <span className="text-white">{playlist.name}</span>
-                  <span className="ml-2 text-sm text-slate-400">({playlist.videoIds.length} videos)</span>
-                </button>
-              ))}
+              {playlists.length === 0 ? (
+                <p className="text-center text-slate-400 py-4">No playlists yet. Create one below!</p>
+              ) : (
+                playlists.map((playlist) => (
+                  <button
+                    key={playlist.id}
+                    onClick={() => addToPlaylist(playlist.id, showAddToPlaylist)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 p-3 text-left transition-colors hover:bg-slate-700"
+                  >
+                    <span className="text-white">{playlist.name}</span>
+                    <span className="ml-2 text-sm text-slate-400">({playlist.videoIds.length} videos)</span>
+                  </button>
+                ))
+              )}
             </div>
             <button
               onClick={() => {
@@ -1702,6 +1724,7 @@ export function PornLibrary() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState("")
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
 
   useEffect(() => {
     loadLibraryData()
@@ -1781,6 +1804,27 @@ export function PornLibrary() {
     <div className="space-y-6 pb-24 m3-page-enter">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white sm:text-3xl">Library</h2>
+        {/* View Toggle */}
+        <div className="flex items-center gap-1 rounded-lg bg-slate-800 p-1">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`rounded-md p-2 transition-colors ${
+              viewMode === "list" ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"
+            }`}
+            title="List View"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`rounded-md p-2 transition-colors ${
+              viewMode === "grid" ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"
+            }`}
+            title="Grid View"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -1873,59 +1917,119 @@ export function PornLibrary() {
         </div>
       )}
 
-      {/* Video Grid */}
+      {/* Video Count */}
+      {(activeTab === "saved" || selectedPlaylist || activeTab === "history") && displayVideos.length > 0 && (
+        <p className="text-sm text-slate-400">{displayVideos.length} video{displayVideos.length !== 1 ? 's' : ''}</p>
+      )}
+
+      {/* Video Grid/List */}
       {(activeTab === "saved" || selectedPlaylist || activeTab === "history") &&
         (displayVideos.length === 0 ? (
           <div className="rounded-lg bg-slate-800/50 p-8 text-center text-slate-400">
             {activeTab === "history" ? "No watch history yet" : "No saved videos yet"}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={
+            viewMode === "grid" 
+              ? "grid grid-cols-2 gap-3" 
+              : "flex flex-col gap-4"
+          }>
             {displayVideos.map((video, index) => (
-              <div
-                key={`${video.id}-${index}`}
-                className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50"
-                onClick={() => setSelectedVideo(video)}
-              >
-                <div className="relative aspect-video overflow-hidden">
-                  <img
-                    src={video.default_thumb?.src || video.thumbnail || "/placeholder.svg"}
-                    alt={video.title}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Play className="h-12 w-12 text-white" />
-                  </div>
-                  {(video.length_min && video.length_min !== "Unknown" || video.length_sec > 0) && (
-                    <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
-                      {video.length_min && video.length_min !== "Unknown" 
-                        ? video.length_min 
-                        : `${Math.floor(video.length_sec / 60)}:${String(video.length_sec % 60).padStart(2, '0')}`}
+              viewMode === "grid" ? (
+                /* Grid View - 2 columns side by side */
+                <div
+                  key={`${video.id}-${index}`}
+                  className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50"
+                  onClick={() => setSelectedVideo(video)}
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <img
+                      src={video.default_thumb?.src || video.thumbnail || "/placeholder.svg"}
+                      alt={video.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Play className="h-8 w-8 text-white" />
                     </div>
-                  )}
-                  {activeTab !== "history" && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeVideo(video.id)
-                      }}
-                      className="absolute top-2 right-2 rounded-full bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </button>
-                  )}
+                    {(video.length_min && video.length_min !== "Unknown" || video.length_sec > 0) && (
+                      <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
+                        {video.length_min && video.length_min !== "Unknown" 
+                          ? video.length_min 
+                          : `${Math.floor(video.length_sec / 60)}:${String(video.length_sec % 60).padStart(2, '0')}`}
+                      </div>
+                    )}
+                    {activeTab !== "history" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeVideo(video.id)
+                        }}
+                        className="absolute top-1 right-1 rounded-full bg-black/50 p-1.5 opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3 w-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <h3 className="line-clamp-2 text-xs font-medium text-white">{video.title}</h3>
+                    {activeTab === "history" && watchHistory[index] && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(watchHistory[index].watchedAt)}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="p-3">
-                  <h3 className="line-clamp-2 text-sm font-medium text-white">{video.title}</h3>
-                  {activeTab === "history" && watchHistory[index] && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                      <Clock className="h-3 w-3" />
-                      {formatDate(watchHistory[index].watchedAt)}
-                    </p>
-                  )}
+              ) : (
+                /* List View - Full width cards */
+                <div
+                  key={`${video.id}-${index}`}
+                  className="group cursor-pointer overflow-hidden rounded-xl bg-slate-800/50 flex gap-3"
+                  onClick={() => setSelectedVideo(video)}
+                >
+                  <div className="relative w-40 shrink-0 aspect-video overflow-hidden rounded-l-xl">
+                    <img
+                      src={video.default_thumb?.src || video.thumbnail || "/placeholder.svg"}
+                      alt={video.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Play className="h-8 w-8 text-white" />
+                    </div>
+                    {(video.length_min && video.length_min !== "Unknown" || video.length_sec > 0) && (
+                      <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
+                        {video.length_min && video.length_min !== "Unknown" 
+                          ? video.length_min 
+                          : `${Math.floor(video.length_sec / 60)}:${String(video.length_sec % 60).padStart(2, '0')}`}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 py-2 pr-2 flex flex-col justify-between">
+                    <div>
+                      <h3 className="line-clamp-2 text-sm font-medium text-white">{video.title}</h3>
+                      {activeTab === "history" && watchHistory[index] && (
+                        <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                          <Clock className="h-3 w-3" />
+                          {formatDate(watchHistory[index].watchedAt)}
+                        </p>
+                      )}
+                    </div>
+                    {activeTab !== "history" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeVideo(video.id)
+                        }}
+                        className="self-end rounded-full bg-slate-700/50 p-2 text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )
             ))}
           </div>
         ))}
