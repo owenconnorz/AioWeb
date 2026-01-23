@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { createPortal } from "react-dom"
 
 // Ad blocker - blocks popups, redirects, and common ad domains
 const useAdBlocker = () => {
@@ -840,11 +841,6 @@ export function PornVideos() {
 
   const addToPlaylist = (playlistId: string, videoToAdd: Video) => {
     try {
-      console.log("[v0] addToPlaylist called")
-      console.log("[v0] playlistId:", playlistId)
-      console.log("[v0] videoToAdd:", videoToAdd?.title, videoToAdd?.id)
-      console.log("[v0] current playlists:", playlists.length)
-      
       const videoId = videoToAdd.id
 
       // Also save the video to savedVideos so it persists across sessions
@@ -858,12 +854,11 @@ export function PornVideos() {
       const updatedPlaylists = playlists.map((playlist) => {
         if (playlist.id === playlistId) {
           const isAlreadyAdded = playlist.videoIds.includes(videoId)
-          console.log("[v0] Found playlist:", playlist.name, "isAlreadyAdded:", isAlreadyAdded)
           
           // Initialize videos array if it doesn't exist (for backwards compatibility)
           const currentVideos = playlist.videos || []
           
-          const updated = {
+          return {
             ...playlist,
             videoIds: isAlreadyAdded
               ? playlist.videoIds.filter((id) => id !== videoId)
@@ -872,14 +867,10 @@ export function PornVideos() {
               ? currentVideos.filter((v) => v.id !== videoId)
               : [...currentVideos, videoToAdd],
           }
-          console.log("[v0] Updated playlist videoIds count:", updated.videoIds.length)
-          console.log("[v0] Updated playlist videos count:", updated.videos.length)
-          return updated
         }
         return playlist
       })
 
-      console.log("[v0] Setting playlists and saving to localStorage")
       setPlaylists(updatedPlaylists)
       localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
       setShowAddToPlaylist(null)
@@ -1357,6 +1348,7 @@ const getVideoUrl = (url: string) => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
+                        e.preventDefault()
                         setShowAddToPlaylist(video)
                       }}
                       className="absolute top-2 right-12 rounded-full bg-black/50 p-2 opacity-100"
@@ -1512,14 +1504,13 @@ const getVideoUrl = (url: string) => {
         </>
       )}
 
-      {/* Add to Playlist Modal */}
-      {showAddToPlaylist && (
+      {/* Add to Playlist Modal - Using Portal */}
+      {typeof document !== 'undefined' && showAddToPlaylist && createPortal(
         <div 
           className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4"
-          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
           onClick={(e) => e.target === e.currentTarget && setShowAddToPlaylist(null)}
         >
-            <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-white">Add to Playlist</h3>
               <button onClick={() => setShowAddToPlaylist(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-white">
@@ -1553,14 +1544,14 @@ const getVideoUrl = (url: string) => {
               Create New Playlist
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Create Playlist Modal */}
-      {showCreatePlaylist && (
+      {/* Create Playlist Modal - Using Portal */}
+      {typeof document !== 'undefined' && showCreatePlaylist && createPortal(
         <div 
           className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4"
-          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
           onClick={(e) => e.target === e.currentTarget && setShowCreatePlaylist(false)}
         >
           <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6">
@@ -1581,7 +1572,8 @@ const getVideoUrl = (url: string) => {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* PornPics Gallery Viewer */}
