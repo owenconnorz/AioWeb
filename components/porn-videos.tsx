@@ -357,6 +357,7 @@ export function PornVideos() {
   // Enable ad blocking
   useAdBlocker()
   
+  const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(false)
@@ -593,6 +594,11 @@ export function PornVideos() {
     loadLibraryData()
     setLoadedIframes(new Set([0]))
   }, [apiSource])
+
+  // Set mounted state for portal rendering
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -1505,7 +1511,7 @@ const getVideoUrl = (url: string) => {
       )}
 
       {/* Add to Playlist Modal - Using Portal */}
-      {typeof document !== 'undefined' && showAddToPlaylist && createPortal(
+      {isMounted && showAddToPlaylist && createPortal(
         <div 
           className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && setShowAddToPlaylist(null)}
@@ -1549,7 +1555,7 @@ const getVideoUrl = (url: string) => {
       )}
 
       {/* Create Playlist Modal - Using Portal */}
-      {typeof document !== 'undefined' && showCreatePlaylist && createPortal(
+      {isMounted && showCreatePlaylist && createPortal(
         <div 
           className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && setShowCreatePlaylist(false)}
