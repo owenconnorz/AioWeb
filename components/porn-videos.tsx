@@ -1509,11 +1509,26 @@ const getVideoUrl = (url: string) => {
       {/* Add to Playlist Modal */}
       {showAddToPlaylist && (
         <div 
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95"
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="fixed z-[9999] bg-black/95"
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw',
+            height: '100vh',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
           onClick={(e) => e.target === e.currentTarget && setShowAddToPlaylist(null)}
         >
-          <div className="w-[90%] max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl mx-auto my-auto">
+          <div 
+            className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+            style={{ margin: 'auto' }}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-white">Add to Playlist</h3>
               <button onClick={() => setShowAddToPlaylist(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-white">
@@ -1552,8 +1567,24 @@ const getVideoUrl = (url: string) => {
 
       {/* Create Playlist Modal */}
       {showCreatePlaylist && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6">
+        <div 
+          className="fixed z-[9999] bg-black/95"
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw',
+            height: '100vh',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={(e) => e.target === e.currentTarget && setShowCreatePlaylist(false)}
+        >
+          <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6" style={{ margin: 'auto' }}>
             <h3 className="mb-4 text-xl font-semibold text-white">Create New Playlist</h3>
             <Input
               type="text"
@@ -1563,7 +1594,7 @@ const getVideoUrl = (url: string) => {
               className="mb-4 border-slate-700 bg-slate-800 text-white"
             />
             <div className="flex gap-2">
-              <Button onClick={() => setShowCreatePlaylist(false)} variant="outline" className="flex-1">
+              <Button onClick={() => setShowCreatePlaylist(false)} variant="outline" className="flex-1 bg-transparent">
                 Cancel
               </Button>
               <Button onClick={createPlaylist} className="flex-1 bg-violet-600 hover:bg-violet-700">
