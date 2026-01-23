@@ -15,25 +15,39 @@ export async function GET(request: Request) {
     // Determine the appropriate referer based on the target URL
     let referer = "https://www.google.com/"
     let origin = "https://www.google.com"
+    let cookie = ""
 
-    if (targetUrl.includes("redtube.com")) {
+    if (targetUrl.includes("redtube.com") || targetUrl.includes("embed.redtube.com")) {
       referer = "https://www.redtube.com/"
       origin = "https://www.redtube.com"
+      // RedTube requires specific cookies and headers for embed access
+      cookie = "platform=pc; age_verified=1; accessAgeDisclaimerPH=1"
     }
 
-    const response = await fetch(targetUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Referer: referer,
-        Origin: origin,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Sec-Fetch-Dest": "iframe",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "cross-site",
-      },
-    })
+    const headers: Record<string, string> = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      Referer: referer,
+      Origin: origin,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Cache-Control": "no-cache",
+      "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"Windows"',
+      "Sec-Fetch-Dest": "iframe",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "same-site",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1",
+    }
+
+    if (cookie) {
+      headers["Cookie"] = cookie
+    }
+
+    const response = await fetch(targetUrl, { headers })
 
     if (!response.ok) {
       return new Response(JSON.stringify({ error: `Failed to fetch embed: ${response.status}` }), {
@@ -48,12 +62,20 @@ export async function GET(request: Request) {
     const baseUrl = new URL(targetUrl)
     html = html.replace(/src="\/([^"]+)"/g, `src="${baseUrl.origin}/$1"`)
     html = html.replace(/href="\/([^"]+)"/g, `href="${baseUrl.origin}/$1"`)
+    
+    // For RedTube embeds, also rewrite protocol-relative URLs
+    if (targetUrl.includes("redtube.com")) {
+      html = html.replace(/src="\/\/([^"]+)"/g, 'src="https://$1"')
+      html = html.replace(/href="\/\/([^"]+)"/g, 'href="https://$1"')
+    }
 
     return new Response(html, {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Credentials": "true",
+        "X-Frame-Options": "ALLOWALL",
         "Cache-Control": "public, max-age=3600",
       },
     })

@@ -1280,47 +1280,53 @@ const getVideoUrl = (url: string) => {
   return url
 }
 
-  const getEmbedUrl = (video: Video, quality?: string) => {
-    let embedUrl = video.embed
+const getEmbedUrl = (video: Video, quality?: string) => {
+  let embedUrl = video.embed
+  const isRedTube = embedUrl?.includes("redtube.com")
+  
+  // Add quality parameter based on API source
+  if (quality && quality !== "auto") {
+    const qualityNum = quality.replace('p', '')
     
-    // Add quality parameter based on API source
-    if (quality && quality !== "auto") {
-      const qualityNum = quality.replace('p', '')
-      
-      // EPorner embed format
-      if (embedUrl.includes("eporner.com")) {
-        embedUrl = embedUrl.includes('?') 
-          ? `${embedUrl}&quality=${qualityNum}` 
-          : `${embedUrl}?quality=${qualityNum}`
-      }
-      // XVideos/XvidAPI embed format
-      else if (embedUrl.includes("xvideos.com") || embedUrl.includes("flashservice")) {
-        embedUrl = embedUrl.includes('?') 
-          ? `${embedUrl}&q=${qualityNum}p` 
-          : `${embedUrl}?q=${qualityNum}p`
-      }
-      // Pornhub embed format
-      else if (embedUrl.includes("pornhub.com")) {
-        embedUrl = embedUrl.includes('?') 
-          ? `${embedUrl}&quality=${qualityNum}` 
-          : `${embedUrl}?quality=${qualityNum}`
-      }
-      // RedTube embed format
-      else if (embedUrl.includes("redtube.com")) {
-        embedUrl = embedUrl.includes('?') 
-          ? `${embedUrl}&quality=${qualityNum}` 
-          : `${embedUrl}?quality=${qualityNum}`
-      }
-      // YouPorn embed format
-      else if (embedUrl.includes("youporn.com")) {
-        embedUrl = embedUrl.includes('?') 
-          ? `${embedUrl}&quality=${qualityNum}` 
-          : `${embedUrl}?quality=${qualityNum}`
-      }
+    // EPorner embed format
+    if (embedUrl.includes("eporner.com")) {
+      embedUrl = embedUrl.includes('?') 
+        ? `${embedUrl}&quality=${qualityNum}` 
+        : `${embedUrl}?quality=${qualityNum}`
     }
-    
-    return embedUrl
+    // XVideos/XvidAPI embed format
+    else if (embedUrl.includes("xvideos.com") || embedUrl.includes("flashservice")) {
+      embedUrl = embedUrl.includes('?') 
+        ? `${embedUrl}&q=${qualityNum}p` 
+        : `${embedUrl}?q=${qualityNum}p`
+    }
+    // Pornhub embed format
+    else if (embedUrl.includes("pornhub.com")) {
+      embedUrl = embedUrl.includes('?') 
+        ? `${embedUrl}&quality=${qualityNum}` 
+        : `${embedUrl}?quality=${qualityNum}`
+    }
+    // RedTube embed format
+    else if (isRedTube) {
+      embedUrl = embedUrl.includes('?')
+        ? `${embedUrl}&quality=${qualityNum}`
+        : `${embedUrl}?quality=${qualityNum}`
+    }
+    // YouPorn embed format
+    else if (embedUrl.includes("youporn.com")) {
+      embedUrl = embedUrl.includes('?') 
+        ? `${embedUrl}&quality=${qualityNum}` 
+        : `${embedUrl}?quality=${qualityNum}`
+    }
   }
+  
+  // Proxy RedTube embeds to fix 403 errors (after adding quality params)
+  if (isRedTube) {
+    embedUrl = `/api/proxy-embed?url=${encodeURIComponent(embedUrl)}`
+  }
+  
+  return embedUrl
+}
 
   // Feed View for live cams
   if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")) {
