@@ -369,7 +369,7 @@ export function PornVideos() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState("")
-  const [showAddToPlaylist, setShowAddToPlaylist] = useState<string | null>(null)
+  const [showAddToPlaylist, setShowAddToPlaylist] = useState<Video | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [page, setPage] = useState(1)
@@ -838,13 +838,9 @@ export function PornVideos() {
     }
   }
 
-  const addToPlaylist = (playlistId: string, videoId: string) => {
+  const addToPlaylist = (playlistId: string, videoToAdd: Video) => {
     try {
-      const videoToAdd = videos.find((v) => v.id === videoId)
-      if (!videoToAdd) {
-        console.error("Video not found:", videoId)
-        return
-      }
+      const videoId = videoToAdd.id
 
       // Also save the video to savedVideos so it persists across sessions
       const isAlreadySaved = savedVideos.some((v) => v.id === videoId)
@@ -1351,7 +1347,7 @@ const getVideoUrl = (url: string) => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        setShowAddToPlaylist(video.id)
+                        setShowAddToPlaylist(video)
                       }}
                       className="absolute top-2 right-12 rounded-full bg-black/50 p-2 opacity-100"
                     >
@@ -1527,7 +1523,7 @@ const getVideoUrl = (url: string) => {
                 playlists.map((playlist) => (
                   <button
                     key={playlist.id}
-                    onClick={() => addToPlaylist(playlist.id, showAddToPlaylist)}
+                    onClick={() => showAddToPlaylist && addToPlaylist(playlist.id, showAddToPlaylist)}
                     className="w-full rounded-lg border border-slate-700 bg-slate-800 p-3 text-left transition-colors hover:bg-slate-700"
                   >
                     <span className="text-white">{playlist.name}</span>
