@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       enhancedPrompt = `${prompt}. Style inspiration: ${learningContext}`
     }
 
+    // Only add SFW modifier when filter is ON
     if (nsfwFilter) {
       enhancedPrompt += ". Safe for work, family-friendly content only"
     }
@@ -104,70 +105,84 @@ export async function POST(req: Request) {
     }
 
     // Text-to-image generation (no uploaded image)
-    // Use public spaces that don't require authentication first
-    const t2iSpaces = [
-      { 
-        name: "stabilityai/stable-diffusion-3.5-large",
+    // NSFW-capable spaces (used when nsfwFilter is OFF)
+    const nsfwSpaces = [
+      {
+        name: "Heartsync/NSFW-Uncensored-image",
         endpoint: "/infer",
-        requiresAuth: true,
+        args: (prompt: string) => [prompt, "low quality, blurry, distorted", 0, true, 1024, 1024, 7.5, 30],
       },
+      {
+        name: "Heartsync/NSFW-Uncensored",
+        endpoint: "/infer", 
+        args: (prompt: string) => [prompt, "low quality, blurry", 0, true, 1024, 1024, 7.5, 30],
+      },
+      {
+        name: "Heartsync/NSFW-image",
+        endpoint: "/infer",
+        args: (prompt: string) => [prompt, "low quality, blurry", 0, true, 1024, 1024, 7.5, 30],
+      },
+      {
+        name: "grayscale1/nsfw-generator",
+        endpoint: "/predict",
+        args: (prompt: string) => [prompt, "low quality", 0, true, 1024, 1024],
+      },
+    ]
+    
+    // SFW spaces (used when nsfwFilter is ON)
+    const sfwSpaces = [
       { 
         name: "black-forest-labs/FLUX.1-schnell",
         endpoint: "/infer",
-        requiresAuth: true,
+        args: (prompt: string) => [prompt, 0, true, 1024, 1024, 4, 1],
+      },
+      { 
+        name: "stabilityai/stable-diffusion-3-medium",
+        endpoint: "/infer",
+        args: (prompt: string) => [prompt, "low quality, blurry", 0, true, 1024, 1024, 4.5, 28],
       },
       {
-        name: "prodia/sdxl-stable-diffusion-xl",
+        name: "multimodalart/FLUX.1-merged",
         endpoint: "/predict",
-        requiresAuth: false,
-      },
-      {
-        name: "hysts/SD-XL",
-        endpoint: "/run",
-        requiresAuth: false,
+        args: (prompt: string) => [prompt, 0, true, 1024, 1024, 4],
       },
     ]
+    
+    // Choose spaces based on NSFW filter setting
+    const t2iSpaces = nsfwFilter ? sfwSpaces : [...nsfwSpaces, ...sfwSpaces]
+
+    console.log("[v0] Starting image generation with prompt:", enhancedPrompt.substring(0, 100), "NSFW filter:", nsfwFilter)
 
     for (const space of t2iSpaces) {
       try {
-        // Try without auth first for public spaces, then with auth
-        let client;
-        try {
-          if (space.requiresAuth) {
-            client = await Client.connect(space.name, { hf_token: hfApiKey })
-          } else {
-            client = await Client.connect(space.name)
-          }
-        } catch (connectError) {
-          // If connection fails, try the opposite auth approach
-          try {
-            if (space.requiresAuth) {
-              client = await Client.connect(space.name)
-            } else {
-              client = await Client.connect(space.name, { hf_token: hfApiKey })
-            }
-          } catch {
-            throw connectError
-          }
-        }
+        console.log("[v0] Trying space:", space.name)
+        
+        const client = await Client.connect(space.name, { hf_token: hfApiKey })
+        
+        console.log("[v0] Connected to space:", space.name)
         
         // Try to get API info to find correct endpoint
         let endpoint = space.endpoint
+        let args = space.args(enhancedPrompt)
+        
         try {
           const apiInfo = await client.view_api()
+          console.log("[v0] API endpoints:", Object.keys(apiInfo.named_endpoints || {}))
           const endpoints = Object.keys(apiInfo.named_endpoints || {})
-          endpoint = endpoints.find(e => 
-            e.includes("infer") || e.includes("generate") || e.includes("run") || e.includes("predict")
-          ) || space.endpoint || endpoints[0]
-        } catch {
-          // Use default endpoint if view_api fails
+          if (endpoints.length > 0 && !endpoints.includes(endpoint)) {
+            endpoint = endpoints.find(e => 
+              e.includes("infer") || e.includes("generate") || e.includes("query") || e.includes("predict")
+            ) || endpoints[0]
+            console.log("[v0] Using endpoint:", endpoint)
+          }
+        } catch (apiErr) {
+          console.log("[v0] Could not get API info, using default endpoint")
         }
         
-        const result = await client.predict(endpoint, [
-          enhancedPrompt,
-          "blurry, low quality, distorted", // negative prompt
-          Math.floor(Math.random() * 1000000), // seed
-        ])
+        console.log("[v0] Calling predict with endpoint:", endpoint)
+        const result = await client.predict(endpoint, args)
+        
+        console.log("[v0] Result received:", JSON.stringify(result?.data?.[0]).substring(0, 200))
         
         if (result?.data?.[0]) {
           const resultImage = result.data[0]
@@ -176,6 +191,7 @@ export async function POST(req: Request) {
             const imgResponse = await fetch(resultImage)
             const imgBuffer = await imgResponse.arrayBuffer()
             const base64Result = Buffer.from(imgBuffer).toString("base64")
+            console.log("[v0] Success from space:", space.name)
             return Response.json({
               images: [{ base64: base64Result, mediaType: "image/png" }],
               prompt: enhancedPrompt,
@@ -186,13 +202,25 @@ export async function POST(req: Request) {
             const imgResponse = await fetch(resultImage.url)
             const imgBuffer = await imgResponse.arrayBuffer()
             const base64Result = Buffer.from(imgBuffer).toString("base64")
+            console.log("[v0] Success from space:", space.name)
             return Response.json({
               images: [{ base64: base64Result, mediaType: "image/png" }],
               prompt: enhancedPrompt,
             })
           }
+          
+          // Handle base64 directly in result
+          if (typeof resultImage === "string" && resultImage.length > 100) {
+            const base64Part = resultImage.includes(",") ? resultImage.split(",")[1] : resultImage
+            console.log("[v0] Success (base64) from space:", space.name)
+            return Response.json({
+              images: [{ base64: base64Part, mediaType: "image/png" }],
+              prompt: enhancedPrompt,
+            })
+          }
         }
       } catch (spaceError) {
+        console.log("[v0] Space error:", space.name, spaceError instanceof Error ? spaceError.message : String(spaceError))
         continue
       }
     }

@@ -304,17 +304,97 @@ export async function GET(request: Request) {
       }
       
       case "playlist": {
+        // For RDCLAK (radio) playlists, we need to use the "next" endpoint instead
+        const isRadioPlaylist = browseId?.startsWith("VLRDCLAK") || browseId?.startsWith("RDCLAK")
+        const playlistId = browseId?.startsWith("VL") ? browseId.substring(2) : browseId
+        
+        if (isRadioPlaylist && playlistId) {
+          // Use next endpoint for radio playlists - need to get first video from playlist
+          const nextData = await innertubeRequest("next", {
+            playlistId: playlistId,
+            isAudioOnly: true,
+          })
+          
+          const items = nextData.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.musicQueueRenderer?.content?.playlistPanelRenderer?.contents || []
+          
+          const tracks = items.map((item: any) => {
+            if (item.playlistPanelVideoRenderer) {
+              const renderer = item.playlistPanelVideoRenderer
+              return {
+                type: "track",
+                id: renderer.videoId,
+                videoId: renderer.videoId,
+                title: renderer.title?.runs?.[0]?.text || "Unknown",
+                artist: renderer.shortBylineText?.runs?.[0]?.text || renderer.longBylineText?.runs?.[0]?.text || "",
+                duration: renderer.lengthText?.runs?.[0]?.text || "",
+                thumbnail: renderer.thumbnail?.thumbnails?.slice(-1)[0]?.url || "",
+              }
+            }
+            return null
+          }).filter(Boolean)
+          
+          // Get playlist title from header if available
+          const playlistTitle = nextData.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.musicQueueRenderer?.header?.musicQueueHeaderRenderer?.title?.runs?.[0]?.text
+          
+          return NextResponse.json({
+            title: playlistTitle || "Playlist",
+            description: "",
+            thumbnail: tracks[0]?.thumbnail || "",
+            tracks,
+          })
+        }
+        
+        // For regular playlists, use browse endpoint
         const data = await innertubeRequest("browse", {
-          browseId: browseId || "VLRDCLAK5uy_kmPRjHDEANtt6CD4i4A", // Default to a popular playlist
+          browseId: browseId || "VLRDCLAK5uy_kmPRjHDEANtt6CD4i4A",
         })
         
-        const header = data.header?.musicDetailHeaderRenderer || data.header?.musicEditablePlaylistDetailHeaderRenderer?.header?.musicDetailHeaderRenderer
-        const contents = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.musicPlaylistShelfRenderer?.contents || []
+        // Try multiple header formats
+        const header = data.header?.musicDetailHeaderRenderer || 
+                      data.header?.musicEditablePlaylistDetailHeaderRenderer?.header?.musicDetailHeaderRenderer ||
+                      data.header?.musicImmersiveHeaderRenderer
+        
+        // Try multiple content paths for different playlist types
+        const sectionList = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || []
+        let contents: any[] = []
+        
+        // Path 1: musicPlaylistShelfRenderer
+        for (const section of sectionList) {
+          if (section.musicPlaylistShelfRenderer?.contents) {
+            contents = section.musicPlaylistShelfRenderer.contents
+            break
+          }
+          // Path 2: musicShelfRenderer (for radio playlists)
+          if (section.musicShelfRenderer?.contents) {
+            contents = section.musicShelfRenderer.contents
+            break
+          }
+          // Path 3: musicCarouselShelfRenderer
+          if (section.musicCarouselShelfRenderer?.contents) {
+            contents = section.musicCarouselShelfRenderer.contents
+            break
+          }
+        }
+        
+        // Path 4: Direct twoColumnBrowseResultsRenderer (albums)
+        if (contents.length === 0) {
+          const secondaryContents = data.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents || []
+          for (const section of secondaryContents) {
+            if (section.musicShelfRenderer?.contents) {
+              contents = section.musicShelfRenderer.contents
+              break
+            }
+          }
+        }
         
         const tracks = contents.map((item: any) => {
+          const renderer = item.musicResponsiveListItemRenderer || item.musicTwoRowItemRenderer
+          if (!renderer) return null
+          
+          // Handle musicResponsiveListItemRenderer
           if (item.musicResponsiveListItemRenderer) {
-            const renderer = item.musicResponsiveListItemRenderer
-            const videoId = renderer.playlistItemData?.videoId
+            const videoId = renderer.playlistItemData?.videoId || 
+                           renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
             
             return {
               type: "track",
@@ -327,13 +407,28 @@ export async function GET(request: Request) {
               thumbnail: renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || "",
             }
           }
+          
+          // Handle musicTwoRowItemRenderer
+          if (item.musicTwoRowItemRenderer) {
+            const videoId = renderer.navigationEndpoint?.watchEndpoint?.videoId
+            return {
+              type: "track",
+              id: videoId,
+              videoId,
+              title: renderer.title?.runs?.[0]?.text || "Unknown",
+              artist: renderer.subtitle?.runs?.[0]?.text || "",
+              thumbnail: renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || "",
+            }
+          }
+          
           return null
         }).filter(Boolean)
         
         return NextResponse.json({
-          title: header?.title?.runs?.[0]?.text || "Playlist",
-          description: header?.description?.runs?.[0]?.text || "",
-          thumbnail: header?.thumbnail?.croppedSquareThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || "",
+          title: header?.title?.runs?.[0]?.text || header?.title?.text || "Playlist",
+          description: header?.description?.runs?.[0]?.text || header?.subtitle?.runs?.map((r: any) => r.text).join("") || "",
+          thumbnail: header?.thumbnail?.croppedSquareThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || 
+                    header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || "",
           tracks,
         })
       }

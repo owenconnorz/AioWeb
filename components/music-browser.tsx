@@ -16,6 +16,8 @@ interface Track {
   duration?: string
   thumbnail: string
   type?: string
+  browseId?: string
+  playlistId?: string
 }
 
 interface Shelf {
@@ -90,6 +92,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [showEqualizerMenu, setShowEqualizerMenu] = useState(false)
   const [isSeeking, setIsSeeking] = useState(false)
   const [expandedShelf, setExpandedShelf] = useState<Shelf | null>(null)
+  const [loadingPlaylist, setLoadingPlaylist] = useState(false)
   
   const progressBarRef = useRef<HTMLDivElement>(null)
   
@@ -481,10 +484,50 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     }
   }, [])
 
-  useEffect(() => {
-    loadHomeFeed()
+useEffect(() => {
+  loadHomeFeed()
   }, [loadHomeFeed])
-
+  
+  // Load playlist/album content
+  const loadPlaylistContent = async (track: Track) => {
+    console.log("[v0] loadPlaylistContent called with track:", JSON.stringify(track))
+    const browseId = track.browseId || (track.playlistId ? `VL${track.playlistId}` : null)
+    console.log("[v0] browseId resolved to:", browseId)
+    
+    if (!browseId) {
+      console.log("[v0] No browseId found, playing track directly")
+      playTrack(track)
+      return
+    }
+    
+    setLoadingPlaylist(true)
+    try {
+      const url = `/api/music?action=playlist&browseId=${encodeURIComponent(browseId)}`
+      console.log("[v0] Fetching playlist from:", url)
+      const response = await fetch(url)
+      const data = await response.json()
+      console.log("[v0] Playlist API response:", JSON.stringify(data).substring(0, 500))
+      
+      if (data.tracks && data.tracks.length > 0) {
+        console.log("[v0] Setting expanded shelf with", data.tracks.length, "tracks")
+        setExpandedShelf({
+          shelfTitle: data.title || track.title,
+          items: data.tracks
+        })
+      } else {
+        console.log("[v0] No tracks in response, playing track directly")
+        // If no tracks returned, it might be a regular track, just play it
+        playTrack(track)
+      }
+    } catch (err) {
+      console.log("[v0] Fetch error:", err)
+      // If fetch fails, try to play the track directly
+      playTrack(track)
+    } finally {
+      setLoadingPlaylist(false)
+    }
+  }
+  
   // Search
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
@@ -726,46 +769,67 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     setShowSpeedMenu(false)
   }
 
-  // Track card component
-  const TrackCard = ({ track, trackList, size = "normal" }: { track: Track; trackList?: Track[]; size?: "normal" | "small" }) => (
-    <button
-      onClick={() => playTrack(track, trackList)}
-      className={`group relative flex flex-col items-start text-left transition-all hover:bg-white/5 rounded-lg p-2 ${size === "small" ? "w-32" : "w-40 sm:w-44"}`}
-    >
-      <div className={`relative ${size === "small" ? "w-28 h-28" : "w-36 h-36 sm:w-40 sm:h-40"} rounded-lg overflow-hidden bg-slate-800`}>
-        {track.thumbnail ? (
-          <img
-            src={track.thumbnail || "/placeholder.svg"}
-            alt={track.title}
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center">
-            <ListMusic className="w-12 h-12 text-white/50" />
+  // Track card component - handles both regular tracks and playlists/albums
+  const TrackCard = ({ track, trackList, size = "normal" }: { track: Track; trackList?: Track[]; size?: "normal" | "small" }) => {
+    // Check if this is a playlist/album (has browseId or playlistId but no direct videoId)
+    const isPlaylist = (track.type === "playlist" || track.type === "album" || (!track.videoId && (track.browseId || track.playlistId)))
+    
+    const handleClick = () => {
+      if (isPlaylist) {
+        // Open playlist to show its contents
+        loadPlaylistContent(track)
+      } else {
+        // Regular track - play it
+        playTrack(track, trackList)
+      }
+    }
+    
+    return (
+      <button
+        onClick={handleClick}
+        className={`group relative flex flex-col items-start text-left transition-all hover:bg-white/5 rounded-lg p-2 ${size === "small" ? "w-32" : "w-40 sm:w-44"}`}
+      >
+        <div className={`relative ${size === "small" ? "w-28 h-28" : "w-36 h-36 sm:w-40 sm:h-40"} rounded-lg overflow-hidden bg-slate-800`}>
+          {track.thumbnail ? (
+            <img
+              src={track.thumbnail || "/placeholder.svg"}
+              alt={track.title}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center">
+              <ListMusic className="w-12 h-12 text-white/50" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center">
+              {isPlaylist ? <ListMusic className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 text-white fill-white" />}
+            </div>
           </div>
-        )}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center">
-            <Play className="w-6 h-6 text-white fill-white" />
-          </div>
+          {/* Playlist indicator badge */}
+          {isPlaylist && (
+            <div className="absolute top-2 right-2 bg-black/60 rounded-md px-1.5 py-0.5">
+              <ListMusic className="w-3 h-3 text-white" />
+            </div>
+          )}
+          {currentTrack?.videoId === track.videoId && isPlaying && !isPlaylist && (
+            <div className="absolute bottom-2 left-2 flex items-center gap-0.5">
+              <span className="w-1 h-3 bg-red-500 rounded-full animate-pulse" />
+              <span className="w-1 h-4 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
+              <span className="w-1 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
+            </div>
+          )}
         </div>
-        {currentTrack?.videoId === track.videoId && isPlaying && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-0.5">
-            <span className="w-1 h-3 bg-red-500 rounded-full animate-pulse" />
-            <span className="w-1 h-4 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
-            <span className="w-1 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
-          </div>
-        )}
-      </div>
-      <h4 className={`mt-2 font-medium text-white line-clamp-2 ${size === "small" ? "text-xs" : "text-sm"}`}>
-        {track.title}
-      </h4>
-      <p className={`text-slate-400 line-clamp-1 ${size === "small" ? "text-xs" : "text-xs"}`}>
-        {track.artist || track.subtitle || ""}
-      </p>
-    </button>
-  )
+        <h4 className={`mt-2 font-medium text-white line-clamp-2 ${size === "small" ? "text-xs" : "text-sm"}`}>
+          {track.title}
+        </h4>
+        <p className={`text-slate-400 line-clamp-1 ${size === "small" ? "text-xs" : "text-xs"}`}>
+          {track.artist || track.subtitle || ""}
+        </p>
+      </button>
+    )
+  }
 
   // Shelf component with horizontal scroll
   const ShelfSection = ({ shelf }: { shelf: Shelf }) => {
@@ -1694,9 +1758,152 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       </div>
     )}
     
+    {/* Loading overlay for playlist fetch */}
+    {loadingPlaylist && (
+      <div className="fixed inset-0 z-[75] bg-black/80 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 animate-spin text-red-500" />
+          <p className="text-white text-sm">Loading playlist...</p>
+        </div>
+      </div>
+    )}
+
+    {/* Expanded Shelf View (Playlist/Album Detail Page) */}
+    {expandedShelf && (
+      <div className="fixed top-0 left-0 right-0 bottom-0 z-[100] bg-black flex flex-col" style={{ height: '100dvh' }}>
+        {/* Header */}
+        <div className="flex items-center gap-4 p-4 border-b border-white/10">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20"
+            onClick={() => setExpandedShelf(null)}
+          >
+            <ArrowLeft className="h-5 w-5 text-white" />
+          </Button>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-white">{expandedShelf.shelfTitle}</h2>
+            <p className="text-sm text-slate-400">{expandedShelf.items.length} songs</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20"
+            onClick={() => {
+              if (expandedShelf.items.length > 0) {
+                playTrack(expandedShelf.items[0], expandedShelf.items)
+              }
+            }}
+          >
+            <Play className="h-5 w-5 text-white fill-white" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20"
+            onClick={() => {
+              const shuffled = [...expandedShelf.items].sort(() => Math.random() - 0.5)
+              if (shuffled.length > 0) {
+                setIsShuffle(true)
+                playTrack(shuffled[0], shuffled)
+              }
+            }}
+          >
+            <Shuffle className="h-5 w-5 text-white" />
+          </Button>
+        </div>
+        
+        {/* Cover Art Banner */}
+        {expandedShelf.items[0]?.thumbnail && (
+          <div className="relative h-48 overflow-hidden">
+            <img
+              src={expandedShelf.items[0].thumbnail || "/placeholder.svg"}
+              alt={expandedShelf.shelfTitle}
+              className="w-full h-full object-cover blur-xl opacity-50"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
+            <div className="absolute bottom-4 left-4 flex items-end gap-4">
+              <img
+                src={expandedShelf.items[0].thumbnail || "/placeholder.svg"}
+                alt={expandedShelf.shelfTitle}
+                className="w-24 h-24 rounded-lg shadow-2xl object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div>
+                <p className="text-slate-400 text-sm">Playlist</p>
+                <h3 className="text-2xl font-bold text-white">{expandedShelf.shelfTitle}</h3>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Track List */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-1">
+            {expandedShelf.items.map((track, idx) => (
+              <button
+                key={`expanded-${track.videoId || track.id}-${idx}`}
+                onClick={() => playTrack(track, expandedShelf.items)}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  currentTrack?.videoId === track.videoId 
+                    ? "bg-white/20" 
+                    : "hover:bg-white/10"
+                }`}
+              >
+                <span className="text-slate-500 w-6 text-sm text-center">{idx + 1}</span>
+                <img
+                  src={track.thumbnail || "/placeholder.svg"}
+                  alt={track.title}
+                  className="w-12 h-12 rounded object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="flex-1 text-left min-w-0">
+                  <h4 className={`font-medium line-clamp-1 ${
+                    currentTrack?.videoId === track.videoId ? "text-red-400" : "text-white"
+                  }`}>
+                    {track.title}
+                  </h4>
+                  <p className="text-sm text-slate-400 line-clamp-1">
+                    {track.artist || track.subtitle}
+                  </p>
+                </div>
+                <span className="text-sm text-slate-500 shrink-0">{track.duration}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleLike(track)
+                  }}
+                >
+                  <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : "text-slate-400"}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    addToQueue(track)
+                  }}
+                >
+                  <Plus className="h-4 w-4 text-slate-400" />
+                </Button>
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Bottom padding for mini player */}
+        {showPlayer && <div className="h-20" />}
+      </div>
+    )}
+
     {/* Create Playlist Modal */}
     {showPlaylistModal && (
-      <div className="fixed inset-0 z-[10001] bg-black/80 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[80] bg-black/80 flex items-center justify-center p-4">
         <div className="bg-slate-800 rounded-xl p-6 w-full max-w-sm">
           <h3 className="text-lg font-bold text-white mb-4">Create Playlist</h3>
           <Input
