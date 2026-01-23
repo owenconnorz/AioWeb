@@ -123,7 +123,6 @@ export async function GET(request: NextRequest) {
       return await searchEporner(query, page)
     }
   } catch (error) {
-    console.error("[v0] Error searching videos:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to search videos" },
       { status: 500 },
@@ -147,7 +146,6 @@ async function searchEporner(query: string, page = 1) {
   }
 
   const data = await response.json()
-  console.log(`[v0] eporner API response page ${page}:`, data.count, "videos")
 
   return NextResponse.json({
     videos: data.videos || [],
@@ -177,7 +175,6 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
   }
 
   const data = await response.json()
-  console.log(`[v0] xvidapi page ${page}:`, (data.list || []).length, "videos")
 
   const transformedVideos = (data.list || []).slice(0, 12).map((video: XvidapiVideo) => {
     const videoId = video.slug || video.id != null ? String(video.id) : `temp-${Date.now()}-${Math.random()}`
@@ -213,8 +210,6 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
 
     const title = video.name || video.origin_name || "Untitled"
 
-    console.log(`[v0] Transformed video ${videoId}: thumbnail=${thumbnail}, embed=${embedUrl}`)
-
     return {
       id: videoId,
       title: title,
@@ -239,8 +234,6 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
     }
   })
 
-  console.log(`[v0] Returning ${transformedVideos.length} transformed videos`)
-
   return NextResponse.json({
     videos: transformedVideos,
     total: data.total || 0,
@@ -249,7 +242,6 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
 
 async function searchCam4(page = 1) {
   const apiUrl = `https://api.cam4pays.com/api/v1/cams/online.json?aff_id=66db08bf0f40da23bf28e055&prog=rs&gender=female&limit=50&order_by=viewers_desc`
-  console.log(`[v0] Fetching Cam4 API:`, apiUrl)
 
   const response = await fetch(apiUrl, {
     method: "GET",
@@ -259,12 +251,10 @@ async function searchCam4(page = 1) {
   })
 
   if (!response.ok) {
-    console.log(`[v0] Cam4 API error status:`, response.status)
     throw new Error(`Cam4 API error: ${response.status}`)
   }
 
   const data = await response.json()
-  console.log(`[v0] Cam4 API response:`, Array.isArray(data) ? data.length : 0, "cams")
 
   const transformedVideos = (Array.isArray(data) ? data : []).map((cam: any) => {
     return {
@@ -288,8 +278,6 @@ async function searchCam4(page = 1) {
     }
   })
 
-  console.log(`[v0] Returning ${transformedVideos.length} live cams`)
-
   return NextResponse.json({
     videos: transformedVideos,
     total: transformedVideos.length,
@@ -298,7 +286,6 @@ async function searchCam4(page = 1) {
 
 async function searchChaturbate(page = 1) {
   const apiUrl = `https://chaturbate.com/affiliates/api/onlinerooms/?wm=aBtQT&format=json&limit=50&offset=${(page - 1) * 50}&gender=f`
-  console.log(`[v0] Fetching Chaturbate API:`, apiUrl)
 
   const response = await fetch(apiUrl, {
     method: "GET",
@@ -309,23 +296,12 @@ async function searchChaturbate(page = 1) {
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    console.log(`[v0] Chaturbate API error:`, response.status, errorText.substring(0, 200))
     throw new Error(`Chaturbate API error: ${response.status}`)
   }
 
   const data = await response.json()
-  console.log(
-    `[v0] Chaturbate API response:`,
-    data.results?.length || (Array.isArray(data) ? data.length : 0),
-    "models",
-  )
 
   const models = data.results || (Array.isArray(data) ? data : [])
-
-  if (models.length > 0) {
-    console.log(`[v0] Chaturbate first model sample:`, JSON.stringify(models[0]).substring(0, 500))
-  }
 
   const transformedVideos = models.map((model: any) => {
     const username = model.username || model.room_slug || `model-${Date.now()}`
@@ -355,8 +331,6 @@ async function searchChaturbate(page = 1) {
     }
   })
 
-  console.log(`[v0] Returning ${transformedVideos.length} Chaturbate live models`)
-
   return NextResponse.json({
     videos: transformedVideos,
     total: transformedVideos.length,
@@ -376,8 +350,6 @@ async function searchRedTube(query: string, page = 1) {
     apiUrl += `&ordering=${ordering}&period=weekly`
   }
 
-  console.log(`[v0] Fetching RedTube API:`, apiUrl)
-
   const response = await fetch(apiUrl, {
     method: "GET",
     headers: {
@@ -387,13 +359,10 @@ async function searchRedTube(query: string, page = 1) {
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    console.log(`[v0] RedTube API error:`, response.status, errorText.substring(0, 200))
     throw new Error(`RedTube API error: ${response.status}`)
   }
 
   const data = await response.json()
-  console.log(`[v0] RedTube API response:`, data.videos?.length || 0, "videos")
 
   if (data.code && data.message) {
     throw new Error(data.message)
@@ -425,8 +394,6 @@ async function searchRedTube(query: string, page = 1) {
       thumbs: video.thumbs || [],
     }
   })
-
-  console.log(`[v0] Returning ${transformedVideos.length} RedTube videos`)
 
   return NextResponse.json({
     videos: transformedVideos,
@@ -580,7 +547,6 @@ async function searchPornhub(query: string, page = 1) {
       total: transformedVideos.length,
     })
   } catch (error) {
-    console.error("[v0] Pornhub API error:", error)
     return NextResponse.json({ videos: [], total: 0 })
   }
 }

@@ -1243,11 +1243,8 @@ export function PornVideos() {
 
 const getVideoUrl = (url: string) => {
   if (!url) return ""
-  // Proxy RedGifs URLs to handle CORS
-  if (apiSource === "redgifs" && url.includes("redgifs.com")) {
-    return `/api/proxy-media?url=${encodeURIComponent(url)}`
-  }
-  // Rule34 URLs are direct and don't need proxying
+  // RedGifs URLs work directly without proxy - much faster loading
+  // Rule34 and other URLs are also direct
   return url
 }
 
@@ -1314,10 +1311,12 @@ const getVideoUrl = (url: string) => {
                     iframeRefs.current[index] = el as any
                   }}
                   src={getVideoUrl(video.url || video.embed)}
-                  poster={getVideoUrl(video.default_thumb?.src || video.thumbnail || "")}
+                  poster={video.thumbnail || ""}
+                  preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
                   loop
                   playsInline
                   controls
+                  muted={index !== activeVideoIndex}
                   autoPlay={index === activeVideoIndex}
                   className="h-full w-full object-contain bg-black"
                 />
@@ -1965,14 +1964,14 @@ const getVideoUrl = (url: string) => {
               />
             ) : apiSource === "redgifs" || apiSource === "rule34" || selectedVideo.url?.includes("redgifs") || selectedVideo.url?.endsWith(".mp4") || selectedVideo.url?.endsWith(".webm") ? (
               <video
-                src={getVideoUrl(selectedVideo.url || selectedVideo.embed)}
-                poster={getVideoUrl(selectedVideo.default_thumb?.src || selectedVideo.thumbnail || "")}
+                src={selectedVideo.url || selectedVideo.embed}
+                poster={selectedVideo.thumbnail || ""}
+                preload="auto"
                 controls
                 autoPlay
                 loop
                 playsInline
                 className="h-full w-full object-contain"
-
               />
             ) : (
               <iframe

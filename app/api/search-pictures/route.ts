@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
 
     return await fetchPornPics({ query, category, galleryId, page, endpointType })
   } catch (error) {
-    console.error("[v0] Error fetching pictures:", error)
     return NextResponse.json(
       {
         error: "Failed to fetch galleries",
@@ -229,8 +228,6 @@ async function fetchRedGifs(query: string, page: number, retryCount = 0) {
     })
 
     if (!response.ok) {
-      const errorBody = await response.text()
-      console.error("[v0] RedGifs API error:", response.status, errorBody)
       if (response.status === 401 && retryCount < 2) {
         cachedToken = null
         // Retry with a fresh token, but limit retries to prevent infinite loop
@@ -245,25 +242,19 @@ async function fetchRedGifs(query: string, page: number, retryCount = 0) {
     const galleries =
       data.gifs?.map((gif: any) => {
         const thumbnail = gif.urls?.poster || gif.urls?.thumbnail || ""
-        // Prefer HD video with audio, then SD, then others
-        const videoUrl = gif.urls?.hd || gif.urls?.sd || gif.urls?.mobile || gif.urls?.vthumbnail || ""
+        // Use SD for faster loading, with mobile as fallback (smaller file sizes)
+        const videoUrl = gif.urls?.sd || gif.urls?.mobile || gif.urls?.hd || gif.urls?.vthumbnail || ""
+        // Also provide HD URL for quality toggle
+        const hdUrl = gif.urls?.hd || gif.urls?.sd || ""
         const title = gif.tags && gif.tags.length > 0 ? gif.tags.join(", ") : gif.userName || gif.id || "Untitled"
         // Check if video has audio
         const hasAudio = gif.hasAudio === true || gif.has_audio === true
-
-        console.log(
-          "[v0] Processing gif:",
-          gif.id,
-          "hasAudio:",
-          hasAudio,
-          "videoUrl:",
-          videoUrl?.substring(0, 80),
-        )
 
         return {
           id: gif.id || Math.random().toString(),
           title: title,
           url: videoUrl,
+          hdUrl: hdUrl,
           thumbnail: thumbnail,
           preview: thumbnail,
           tags: gif.tags || [],
@@ -271,17 +262,10 @@ async function fetchRedGifs(query: string, page: number, retryCount = 0) {
           isVideo: true,
           hasAudio: hasAudio,
           duration: gif.duration || 0,
+          // Mark as RedGifs so we can skip proxy
+          source: "redgifs",
         }
       }) || []
-
-    console.log(
-      "[v0] Processed galleries:",
-      galleries.length,
-      "first thumbnail:",
-      galleries[0]?.thumbnail?.substring(0, 80),
-      "first video:",
-      galleries[0]?.url?.substring(0, 80),
-    )
 
     return NextResponse.json({
       galleries,
@@ -290,7 +274,6 @@ async function fetchRedGifs(query: string, page: number, retryCount = 0) {
       total: galleries.length,
     })
   } catch (error) {
-    console.error("[v0] RedGifs error:", error)
     throw error
   }
 }
@@ -347,7 +330,6 @@ async function fetchRule34(query: string, page: number) {
       total: galleries.length,
     })
   } catch (error) {
-    console.error("[v0] Danbooru error:", error)
     throw error
   }
 }
