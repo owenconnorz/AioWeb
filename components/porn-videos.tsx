@@ -279,7 +279,7 @@ const safeStorage = {
 
   type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai" | "youporn"
   
-  const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "youporn", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai"]
+  const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "youporn", "redtube", "redgifs", "cam4", "pornpics", "chaturbate", "hentai"]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -1243,9 +1243,9 @@ const getEmbedUrl = (video: Video, quality?: string) => {
     }
   }
   
-  // Use custom player for RedTube to bypass geo-restrictions
+  // RedTube embed.redtube.com blocks embedding from external origins
+  // Route through our proxy which fetches the embed code via API and serves it properly
   if (isRedTube) {
-    // Extract video ID from embed URL (e.g., https://embed.redtube.com/?id=12345)
     const idMatch = embedUrl.match(/[?&]id=(\d+)/) || embedUrl.match(/redtube\.com\/(\d+)/)
     const videoId = idMatch?.[1]
     if (videoId) {

@@ -11,15 +11,54 @@ export async function GET(request: NextRequest) {
       return new Response("Video ID required", { status: 400 })
     }
 
-    // Fetch video info from our API
-    const apiUrl = new URL("/api/redtube-embed", request.url)
-    apiUrl.searchParams.set("video_id", videoId)
+    // Use the official RedTube API getVideoEmbedCode endpoint
+    // This returns a BASE64 encoded embed HTML that should work properly
+    const apiUrl = `https://api.redtube.com/?data=redtube.Videos.getVideoEmbedCode&video_id=${videoId}&output=json`
     
-    const response = await fetch(apiUrl.toString())
+    const response = await fetch(apiUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+      },
+    })
+
     const data = await response.json()
 
-    if (data.player_html) {
-      return new Response(data.player_html, {
+    if (data.embed?.code) {
+      // Decode the BASE64 embed code
+      const decodedEmbed = Buffer.from(data.embed.code, "base64").toString("utf-8")
+      
+      // Extract iframe src from decoded HTML
+      const srcMatch = decodedEmbed.match(/src="([^"]+)"/)
+      let embedSrc = srcMatch?.[1] || `https://embed.redtube.com/?id=${videoId}`
+      
+      // Fix http to https
+      embedSrc = embedSrc.replace(/^http:/, "https:")
+      
+      // Create a full HTML page with the embed
+      const playerHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+            iframe { width: 100%; height: 100%; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe 
+            src="${embedSrc}" 
+            allowfullscreen 
+            allow="autoplay; fullscreen; encrypted-media"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+        </body>
+        </html>
+      `
+
+      return new Response(playerHtml, {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "Access-Control-Allow-Origin": "*",
@@ -28,7 +67,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fallback: create a player that fetches video directly
+    // Fallback: redirect to RedTube directly
     const fallbackHtml = `
       <!DOCTYPE html>
       <html>
@@ -36,55 +75,20 @@ export async function GET(request: NextRequest) {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
-          .loading { color: #fff; text-align: center; padding: 20px; }
-          .spinner { width: 50px; height: 50px; border: 4px solid #333; border-top-color: #f00; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-          @keyframes spin { to { transform: rotate(360deg); } }
-          video { width: 100%; height: 100%; max-height: 100vh; object-fit: contain; }
-          .error { color: #fff; padding: 20px; text-align: center; }
-          .error a { color: #f44; text-decoration: none; display: inline-block; margin-top: 15px; padding: 12px 24px; background: #f44; color: #fff; border-radius: 8px; }
-          .error p { color: #999; margin-top: 10px; font-size: 14px; }
+          body { background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, sans-serif; }
+          .container { text-align: center; padding: 20px; }
+          h2 { color: #fff; margin-bottom: 10px; }
+          p { color: #999; margin-bottom: 20px; font-size: 14px; }
+          a { color: #fff; text-decoration: none; display: inline-block; padding: 12px 24px; background: #c00; border-radius: 8px; font-weight: 500; }
+          a:hover { background: #e00; }
         </style>
       </head>
       <body>
-        <div id="player" class="loading">
-          <div class="spinner"></div>
-          <p>Loading video...</p>
+        <div class="container">
+          <h2>Video Unavailable</h2>
+          <p>This video cannot be embedded. Click below to watch on RedTube.</p>
+          <a href="https://www.redtube.com/${videoId}" target="_blank" rel="noopener">Watch on RedTube</a>
         </div>
-        <script>
-          async function loadVideo() {
-            try {
-              const response = await fetch('/api/redtube-embed?video_id=${videoId}');
-              const data = await response.json();
-              
-              if (data.stream_url) {
-                document.getElementById('player').innerHTML = \`
-                  <video controls autoplay playsinline poster="\${data.thumbnail || ''}">
-                    \${data.qualities?.map(q => \`<source src="\${q.url}" type="video/mp4">\`).join('') || ''}
-                    <source src="\${data.stream_url}" type="video/mp4">
-                  </video>
-                \`;
-              } else {
-                // No direct stream available, offer external link
-                document.getElementById('player').innerHTML = \`
-                  <div class="error">
-                    <p>Video requires VPN to access from your location.</p>
-                    <p>RedTube has blocked this content in certain US states.</p>
-                    <a href="https://www.redtube.com/${videoId}" target="_blank" rel="noopener">Open on RedTube</a>
-                  </div>
-                \`;
-              }
-            } catch (e) {
-              document.getElementById('player').innerHTML = \`
-                <div class="error">
-                  <p>Failed to load video</p>
-                  <a href="https://www.redtube.com/${videoId}" target="_blank" rel="noopener">Open on RedTube</a>
-                </div>
-              \`;
-            }
-          }
-          loadVideo();
-        </script>
       </body>
       </html>
     `
