@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { CacheClearer } from "@/components/cache-clearer"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -55,6 +56,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={`font-sans antialiased`}>
+        <CacheClearer />
         {children}
         <Analytics />
       </body>
