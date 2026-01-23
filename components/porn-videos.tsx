@@ -162,48 +162,191 @@ interface HistoryItem {
   apiSource: string
 }
 
-// Safe storage helper for mobile browsers
+// Cookie helper functions
+const cookieStorage = {
+  set: (name: string, value: string, days: number = 365): void => {
+    if (typeof document === 'undefined') return
+    const expires = new Date()
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
+    // For large data, we need to compress or split
+    const encodedValue = encodeURIComponent(value)
+    document.cookie = `${name}=${encodedValue};expires=${expires.toUTCString()};path=/;SameSite=Lax`
+  },
+  get: (name: string): string | null => {
+    if (typeof document === 'undefined') return null
+    const nameEQ = `${name}=`
+    const cookies = document.cookie.split(';')
+    for (let cookie of cookies) {
+      cookie = cookie.trim()
+      if (cookie.indexOf(nameEQ) === 0) {
+        return decodeURIComponent(cookie.substring(nameEQ.length))
+      }
+    }
+    return null
+  },
+  remove: (name: string): void => {
+    if (typeof document === 'undefined') return
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
+  }
+}
+
+// IndexedDB helper for large data storage
+const indexedDBStorage = {
+  dbName: 'PornAppDB',
+  storeName: 'appData',
+  
+  async openDB(): Promise<IDBDatabase | null> {
+    if (typeof window === 'undefined' || !window.indexedDB) return null
+    
+    return new Promise((resolve) => {
+      const request = indexedDB.open(this.dbName, 1)
+      request.onerror = () => resolve(null)
+      request.onsuccess = () => resolve(request.result)
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          db.createObjectStore(this.storeName, { keyPath: 'key' })
+        }
+      }
+    })
+  },
+  
+  async getItem(key: string): Promise<string | null> {
+    const db = await this.openDB()
+    if (!db) return null
+    
+    return new Promise((resolve) => {
+      const transaction = db.transaction([this.storeName], 'readonly')
+      const store = transaction.objectStore(this.storeName)
+      const request = store.get(key)
+      request.onerror = () => resolve(null)
+      request.onsuccess = () => resolve(request.result?.value || null)
+    })
+  },
+  
+  async setItem(key: string, value: string): Promise<boolean> {
+    const db = await this.openDB()
+    if (!db) return false
+    
+    return new Promise((resolve) => {
+      const transaction = db.transaction([this.storeName], 'readwrite')
+      const store = transaction.objectStore(this.storeName)
+      const request = store.put({ key, value })
+      request.onerror = () => resolve(false)
+      request.onsuccess = () => resolve(true)
+    })
+  },
+  
+  async removeItem(key: string): Promise<void> {
+    const db = await this.openDB()
+    if (!db) return
+    
+    const transaction = db.transaction([this.storeName], 'readwrite')
+    const store = transaction.objectStore(this.storeName)
+    store.delete(key)
+  }
+}
+
+// Safe storage helper with multiple fallbacks: localStorage -> IndexedDB -> cookies
 const safeStorage = {
   getItem: (key: string): string | null => {
     try {
+      // Try localStorage first
       if (typeof window !== 'undefined' && window.localStorage) {
-        return localStorage.getItem(key)
+        const value = localStorage.getItem(key)
+        if (value) return value
       }
     } catch (e) {
       console.warn('localStorage not available:', e)
     }
+    
+    // Try cookies as fallback for small data
+    try {
+      const cookieValue = cookieStorage.get(key)
+      if (cookieValue) return cookieValue
+    } catch (e) {
+      console.warn('Cookie storage not available:', e)
+    }
+    
     return null
   },
+  
   setItem: (key: string, value: string): boolean => {
+    let saved = false
+    
+    // Try localStorage first
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem(key, value)
-        return true
+        saved = true
       }
     } catch (e) {
       console.warn('localStorage not available:', e)
       // Try to clear some space if quota exceeded
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         try {
-          // Clear watch history first (least important)
           localStorage.removeItem('porn_watch_history')
           localStorage.setItem(key, value)
-          return true
+          saved = true
         } catch (e2) {
           console.error('Failed to save even after clearing history:', e2)
         }
       }
     }
-    return false
+    
+    // Also save to IndexedDB as backup (async, fire and forget)
+    indexedDBStorage.setItem(key, value).catch(() => {})
+    
+    // For critical small data (playlists metadata), also save to cookies
+    if (key === 'porn_playlists' || key === 'porn_saved_videos') {
+      try {
+        // Only save if data is small enough for cookies (< 4KB)
+        if (value.length < 4000) {
+          cookieStorage.set(key, value)
+        }
+      } catch (e) {
+        console.warn('Cookie storage failed:', e)
+      }
+    }
+    
+    return saved
   },
+  
   removeItem: (key: string): void => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.removeItem(key)
       }
     } catch (e) {
-      console.warn('localStorage not available:', e)
+      console.warn('localStorage removeItem failed:', e)
     }
+    
+    // Also remove from other storage
+    cookieStorage.remove(key)
+    indexedDBStorage.removeItem(key).catch(() => {})
+  },
+  
+  // Async method to get from IndexedDB (for recovery)
+  async getItemAsync(key: string): Promise<string | null> {
+    // Try sync storage first
+    const syncValue = this.getItem(key)
+    if (syncValue) return syncValue
+    
+    // Try IndexedDB
+    try {
+      const idbValue = await indexedDBStorage.getItem(key)
+      if (idbValue) {
+        // Restore to localStorage if possible
+        try {
+          localStorage.setItem(key, idbValue)
+        } catch (e) {}
+        return idbValue
+      }
+    } catch (e) {
+      console.warn('IndexedDB retrieval failed:', e)
+    }
+    
+    return null
   }
 }
 
