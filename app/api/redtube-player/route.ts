@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
     })
 
     const data = await response.json()
+    
+    // Debug: Log the API response structure
+    console.log("[v0] RedTube API response:", JSON.stringify(data))
 
     if (data.embed?.code) {
       // Decode the BASE64 embed code
@@ -67,7 +70,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fallback: redirect to RedTube directly
+    // Fallback: show debug info and redirect option
+    const apiDebugInfo = JSON.stringify(data, null, 2)
     const fallbackHtml = `
       <!DOCTYPE html>
       <html>
@@ -76,17 +80,20 @@ export async function GET(request: NextRequest) {
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, sans-serif; }
-          .container { text-align: center; padding: 20px; }
+          .container { text-align: center; padding: 20px; max-width: 600px; }
           h2 { color: #fff; margin-bottom: 10px; }
           p { color: #999; margin-bottom: 20px; font-size: 14px; }
           a { color: #fff; text-decoration: none; display: inline-block; padding: 12px 24px; background: #c00; border-radius: 8px; font-weight: 500; }
           a:hover { background: #e00; }
+          pre { background: #222; color: #0f0; padding: 10px; border-radius: 8px; text-align: left; overflow: auto; max-height: 200px; font-size: 10px; margin-top: 20px; }
         </style>
       </head>
       <body>
         <div class="container">
-          <h2>Video Unavailable</h2>
-          <p>This video cannot be embedded. Click below to watch on RedTube.</p>
+          <h2>Debug: API Response</h2>
+          <p>Video ID: ${videoId}</p>
+          <pre>${apiDebugInfo}</pre>
+          <br/>
           <a href="https://www.redtube.com/${videoId}" target="_blank" rel="noopener">Watch on RedTube</a>
         </div>
       </body>
