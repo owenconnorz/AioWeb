@@ -74,6 +74,23 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   
+  // Helper to parse duration string (e.g., "3:45") to seconds
+  const parseDuration = (durationStr: string | undefined): number => {
+    if (!durationStr) return 210 // default 3:30
+    const parts = durationStr.split(':')
+    if (parts.length === 2) {
+      return parseInt(parts[0]) * 60 + parseInt(parts[1])
+    }
+    return 210
+  }
+  
+  // Helper to format seconds to mm:ss
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+  
   const playerRef = useRef<HTMLIFrameElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const silentAudioRef = useRef<HTMLAudioElement>(null)
@@ -87,7 +104,15 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     setTouchStart(e.targetTouches[0].clientY)
   }
   
-  const onTouchMove = (e: React.TouchEvent) => {
+  const onTouchMoveMini = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY)
+  }
+  
+  const onTouchMoveFull = (e: React.TouchEvent) => {
+    // Prevent browser pull-to-refresh when swiping down
+    if (e.targetTouches[0].clientY > (touchStart || 0)) {
+      e.preventDefault()
+    }
     setTouchEnd(e.targetTouches[0].clientY)
   }
   
@@ -202,6 +227,34 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       extractColors(currentTrack.thumbnail)
     }
   }, [currentTrack, extractColors])
+  
+  // Reset time when track changes and set duration
+  useEffect(() => {
+    if (currentTrack) {
+      setCurrentTime(0)
+      setDuration(parseDuration(currentTrack.duration))
+    }
+  }, [currentTrack])
+  
+  // Track playback time while playing
+  useEffect(() => {
+    if (!isPlaying || !currentTrack) return
+    
+    const trackDuration = parseDuration(currentTrack.duration)
+    
+    const interval = setInterval(() => {
+      setCurrentTime(prev => {
+        if (prev >= trackDuration) {
+          // Auto-play next track when current finishes
+          playNext()
+          return 0
+        }
+        return prev + 1
+      })
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [isPlaying, currentTrack])
   
   // Initialize silent audio for Media Session API
   // This tricks the browser into letting us control media session even though YouTube iframe plays audio
@@ -881,7 +934,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
               : 'linear-gradient(to right, #0f172a, #1e293b)'
           }}
           onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
+          onTouchMove={onTouchMoveMini}
           onTouchEnd={onTouchEndMini}
           onClick={() => setShowFullPlayer(true)}
         >
@@ -955,14 +1008,15 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     {/* Full Screen Player - Rendered outside main container for proper fixed positioning */}
     {showFullPlayer && currentTrack && (
       <div 
-        className="fixed top-0 left-0 right-0 bottom-0 z-[9999] flex flex-col"
+        className="fixed top-0 left-0 right-0 bottom-0 z-[9999] flex flex-col overscroll-none"
         style={{ 
           backgroundColor: dynamicThemeEnabled ? secondaryColor : '#000000',
           minHeight: '100vh',
-          minHeight: '100dvh'
+          minHeight: '100dvh',
+          touchAction: 'pan-x pinch-zoom'
         }}
         onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
+        onTouchMove={onTouchMoveFull}
         onTouchEnd={onTouchEndFull}
       >
         {/* Gradient overlay - uses dynamic colors */}
