@@ -1353,7 +1353,7 @@ const getVideoUrl = (url: string) => {
                         e.stopPropagation()
                         setShowAddToPlaylist(video.id)
                       }}
-                      className="absolute top-2 right-12 rounded-full bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100"
+                      className="absolute top-2 right-12 rounded-full bg-black/50 p-2 opacity-100"
                     >
                       <Plus className="h-4 w-4 text-white" />
                     </button>
@@ -1509,11 +1509,11 @@ const getVideoUrl = (url: string) => {
       {/* Add to Playlist Modal */}
       {showAddToPlaylist && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4"
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={(e) => e.target === e.currentTarget && setShowAddToPlaylist(null)}
         >
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-[90%] max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl mx-auto my-auto">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-white">Add to Playlist</h3>
               <button onClick={() => setShowAddToPlaylist(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-white">

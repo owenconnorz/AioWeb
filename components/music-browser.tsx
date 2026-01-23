@@ -89,6 +89,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [equalizer, setEqualizer] = useState("normal")
   const [showEqualizerMenu, setShowEqualizerMenu] = useState(false)
   const [isSeeking, setIsSeeking] = useState(false)
+  const [expandedShelf, setExpandedShelf] = useState<Shelf | null>(null)
   
   const progressBarRef = useRef<HTMLDivElement>(null)
   
@@ -793,7 +794,13 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     return (
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-white">{shelf.shelfTitle}</h3>
+          <button 
+            onClick={() => setExpandedShelf(shelf)}
+            className="text-xl font-bold text-white hover:text-red-400 transition-colors text-left flex items-center gap-2"
+          >
+            {shelf.shelfTitle}
+            <ChevronRight className="h-5 w-5 text-slate-400" />
+          </button>
           <div className="flex gap-2">
             {canScrollLeft && (
               <Button
