@@ -20,6 +20,28 @@ const generateVersion = () => {
 // The system will automatically show the popup when new entries are added
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.5.0",
+    date: "2026-01-23",
+    title: "Quality Selector & Library Fixes",
+    changes: [
+      "Added video quality selector (Auto, 1080p, 720p, 480p, 360p, 240p)",
+      "Fixed library playlists not showing all saved videos",
+      "Improved playlist data persistence across sessions",
+      "Added list/grid view toggle for library",
+      "Fixed Add to Playlist modal positioning",
+    ],
+  },
+  {
+    version: "1.4.0",
+    date: "2026-01-23",
+    title: "YouPorn API Integration",
+    changes: [
+      "Added YouPorn as a new video source",
+      "Multi-fallback API system for better reliability",
+      "Improved video embed quality parameters",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-01-22",
     title: "Rule34 & Sound Support",

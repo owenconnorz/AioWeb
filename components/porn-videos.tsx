@@ -96,6 +96,8 @@ import {
   ChevronsRight,
   LayoutGrid,
   List,
+  Settings,
+  Check,
 } from "lucide-react"
 import {
   Pagination,
@@ -106,6 +108,11 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination"
+
+interface VideoQuality {
+  label: string
+  url: string
+}
 
 interface Video {
   id: string
@@ -133,6 +140,10 @@ interface Video {
   thumbnail?: string
   isGallery?: boolean
   isCategory?: boolean
+  qualities?: VideoQuality[]
+  isImage?: boolean
+  fullImage?: string
+  sampleImage?: string
 }
 
 interface Playlist {
@@ -350,6 +361,8 @@ export function PornVideos() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
+  const [selectedQuality, setSelectedQuality] = useState<string>("auto")
+  const [showQualityMenu, setShowQualityMenu] = useState(false)
   const [apiSource, setApiSource] = useState<ApiSource>("xvidapi")
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [savedVideos, setSavedVideos] = useState<Video[]>([])
@@ -742,12 +755,25 @@ export function PornVideos() {
       const savedVideosData = localStorage.getItem("porn_saved_videos")
       const historyData = localStorage.getItem("porn_watch_history")
 
+      const loadedSavedVideos = savedVideosData ? JSON.parse(savedVideosData) : []
+      setSavedVideos(loadedSavedVideos)
+      
       if (savedPlaylistsData) {
-        setPlaylists(JSON.parse(savedPlaylistsData))
+        const loadedPlaylists = JSON.parse(savedPlaylistsData)
+        // Ensure playlists have videos array (for backwards compatibility)
+        const migratedPlaylists = loadedPlaylists.map((playlist: Playlist) => {
+          if (playlist.videos && playlist.videos.length > 0) {
+            return playlist
+          }
+          // Try to populate from savedVideos
+          const playlistVideos = playlist.videoIds
+            .map((id: string) => loadedSavedVideos.find((v: Video) => v.id === id))
+            .filter(Boolean) as Video[]
+          return { ...playlist, videos: playlistVideos }
+        })
+        setPlaylists(migratedPlaylists)
       }
-      if (savedVideosData) {
-        setSavedVideos(JSON.parse(savedVideosData))
-      }
+      
       if (historyData) {
         setWatchHistory(JSON.parse(historyData))
       }
@@ -798,6 +824,7 @@ export function PornVideos() {
         id: Date.now().toString(),
         name: newPlaylistName,
         videoIds: [],
+        videos: [],
         createdAt: new Date().toISOString(),
       }
 
@@ -814,24 +841,34 @@ export function PornVideos() {
   const addToPlaylist = (playlistId: string, videoId: string) => {
     try {
       const videoToAdd = videos.find((v) => v.id === videoId)
+      if (!videoToAdd) {
+        console.error("Video not found:", videoId)
+        return
+      }
 
-      const playlist = playlists.find((p) => p.id === playlistId)
-      if (videoToAdd && playlist && !playlist.videoIds.includes(videoId)) {
-        if (!savedVideos.some((v) => v.id === videoId)) {
-          const updatedSavedVideos = [videoToAdd, ...savedVideos]
-          setSavedVideos(updatedSavedVideos)
-          localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
-        }
+      // Also save the video to savedVideos so it persists across sessions
+      const isAlreadySaved = savedVideos.some((v) => v.id === videoId)
+      if (!isAlreadySaved) {
+        const updatedSavedVideos = [...savedVideos, videoToAdd]
+        setSavedVideos(updatedSavedVideos)
+        localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
       }
 
       const updatedPlaylists = playlists.map((playlist) => {
         if (playlist.id === playlistId) {
           const isAlreadyAdded = playlist.videoIds.includes(videoId)
+          
+          // Initialize videos array if it doesn't exist (for backwards compatibility)
+          const currentVideos = playlist.videos || []
+          
           return {
             ...playlist,
             videoIds: isAlreadyAdded
               ? playlist.videoIds.filter((id) => id !== videoId)
               : [...playlist.videoIds, videoId],
+            videos: isAlreadyAdded
+              ? currentVideos.filter((v) => v.id !== videoId)
+              : [...currentVideos, videoToAdd],
           }
         }
         return playlist
@@ -1026,8 +1063,46 @@ const getVideoUrl = (url: string) => {
   return url
 }
 
-  const getEmbedUrl = (video: Video) => {
-    return video.embed
+  const getEmbedUrl = (video: Video, quality?: string) => {
+    let embedUrl = video.embed
+    
+    // Add quality parameter based on API source
+    if (quality && quality !== "auto") {
+      const qualityNum = quality.replace('p', '')
+      
+      // EPorner embed format
+      if (embedUrl.includes("eporner.com")) {
+        embedUrl = embedUrl.includes('?') 
+          ? `${embedUrl}&quality=${qualityNum}` 
+          : `${embedUrl}?quality=${qualityNum}`
+      }
+      // XVideos/XvidAPI embed format
+      else if (embedUrl.includes("xvideos.com") || embedUrl.includes("flashservice")) {
+        embedUrl = embedUrl.includes('?') 
+          ? `${embedUrl}&q=${qualityNum}p` 
+          : `${embedUrl}?q=${qualityNum}p`
+      }
+      // Pornhub embed format
+      else if (embedUrl.includes("pornhub.com")) {
+        embedUrl = embedUrl.includes('?') 
+          ? `${embedUrl}&quality=${qualityNum}` 
+          : `${embedUrl}?quality=${qualityNum}`
+      }
+      // RedTube embed format
+      else if (embedUrl.includes("redtube.com")) {
+        embedUrl = embedUrl.includes('?') 
+          ? `${embedUrl}&quality=${qualityNum}` 
+          : `${embedUrl}?quality=${qualityNum}`
+      }
+      // YouPorn embed format
+      else if (embedUrl.includes("youporn.com")) {
+        embedUrl = embedUrl.includes('?') 
+          ? `${embedUrl}&quality=${qualityNum}` 
+          : `${embedUrl}?quality=${qualityNum}`
+      }
+    }
+    
+    return embedUrl
   }
 
   // Feed View for live cams
@@ -1063,7 +1138,7 @@ const getVideoUrl = (url: string) => {
                   ref={(el) => {
                     iframeRefs.current[index] = el
                   }}
-                  src={getEmbedUrl(video)}
+                  src={getEmbedUrl(video, selectedQuality)}
                   className="h-full w-full"
                   frameBorder="0"
                   allowFullScreen
@@ -1636,19 +1711,53 @@ const getVideoUrl = (url: string) => {
           <div className="flex items-center justify-between p-2 bg-black/80">
             <h2 className="text-sm font-medium text-white line-clamp-1 flex-1 mr-2">{selectedVideo.title}</h2>
             <div className="flex items-center gap-1">
+              {/* Quality Selector */}
+              {!selectedVideo.isImage && !selectedVideo.url?.endsWith('.gif') && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowQualityMenu(!showQualityMenu)}
+                    className="rounded-full bg-white/10 p-1.5 hover:bg-white/20 flex items-center gap-1"
+                  >
+                    <Settings className="h-4 w-4 text-white" />
+                    <span className="text-xs text-white">{selectedQuality}</span>
+                  </button>
+                  {showQualityMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-slate-900 border border-slate-700 shadow-xl z-50 overflow-hidden">
+                      <div className="p-1">
+                        <p className="px-2 py-1 text-xs text-slate-400">Quality</p>
+                        {["auto", "1080p", "720p", "480p", "360p", "240p"].map((quality) => (
+                          <button
+                            key={quality}
+                            onClick={() => {
+                              setSelectedQuality(quality)
+                              setShowQualityMenu(false)
+                            }}
+                            className={`w-full flex items-center justify-between px-2 py-1.5 text-sm rounded hover:bg-slate-800 ${
+                              selectedQuality === quality ? "text-violet-400" : "text-white"
+                            }`}
+                          >
+                            <span>{quality === "auto" ? "Auto" : quality}</span>
+                            {selectedQuality === quality && <Check className="h-3 w-3" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <button
                 onClick={() => handleShare(selectedVideo)}
                 className="rounded-full bg-white/10 p-1.5 hover:bg-white/20"
               >
                 <Share2 className="h-4 w-4 text-white" />
               </button>
-              <button onClick={closeVideo} className="rounded-full bg-white/10 p-1.5 hover:bg-white/20">
+              <button onClick={() => { closeVideo(); setShowQualityMenu(false); }} className="rounded-full bg-white/10 p-1.5 hover:bg-white/20">
                 <X className="h-5 w-5 text-white" />
               </button>
             </div>
           </div>
           {/* Video container - fills remaining space */}
-          <div className="flex-1 w-full overflow-hidden bg-black flex items-center justify-center relative">
+          <div className="flex-1 w-full overflow-hidden bg-black flex items-center justify-center relative" onClick={() => setShowQualityMenu(false)}>
             {selectedVideo.isImage ? (
               <img
                 src={selectedVideo.fullImage || selectedVideo.sampleImage || selectedVideo.url}
@@ -1674,7 +1783,7 @@ const getVideoUrl = (url: string) => {
               />
             ) : (
               <iframe
-                src={getEmbedUrl(selectedVideo)}
+                src={getEmbedUrl(selectedVideo, selectedQuality)}
                 className="h-full w-full border-0"
                 allowFullScreen
                 allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
@@ -1737,8 +1846,31 @@ export function PornLibrary() {
       const savedPlaylistsData = localStorage.getItem("porn_playlists")
       const historyData = localStorage.getItem("porn_watch_history")
 
-      if (savedVideosData) setSavedVideos(JSON.parse(savedVideosData))
-      if (savedPlaylistsData) setPlaylists(JSON.parse(savedPlaylistsData))
+      const loadedSavedVideos = savedVideosData ? JSON.parse(savedVideosData) : []
+      setSavedVideos(loadedSavedVideos)
+      
+      if (savedPlaylistsData) {
+        const loadedPlaylists = JSON.parse(savedPlaylistsData)
+        // Migrate old playlists that don't have videos array
+        const migratedPlaylists = loadedPlaylists.map((playlist: Playlist) => {
+          // If playlist already has videos array with content, use it
+          if (playlist.videos && playlist.videos.length > 0) {
+            return playlist
+          }
+          // Otherwise, try to populate videos from savedVideos using videoIds
+          const playlistVideos = playlist.videoIds
+            .map((id: string) => loadedSavedVideos.find((v: Video) => v.id === id))
+            .filter(Boolean) as Video[]
+          return {
+            ...playlist,
+            videos: playlistVideos
+          }
+        })
+        setPlaylists(migratedPlaylists)
+        // Save migrated playlists back to localStorage
+        localStorage.setItem("porn_playlists", JSON.stringify(migratedPlaylists))
+      }
+      
       if (historyData) setWatchHistory(JSON.parse(historyData))
     } catch (err) {
       console.error("Error loading library data:", err)
@@ -1770,6 +1902,7 @@ export function PornLibrary() {
       id: Date.now().toString(),
       name: newPlaylistName,
       videoIds: [],
+      videos: [],
       createdAt: new Date().toISOString(),
     }
 
@@ -1783,7 +1916,10 @@ export function PornLibrary() {
   const getPlaylistVideos = (playlistId: string) => {
     const playlist = playlists.find((p) => p.id === playlistId)
     if (!playlist) return []
-    return savedVideos.filter((v) => playlist.videoIds.includes(v.id))
+    // Return videos stored directly in the playlist, or fallback to filtering savedVideos for backwards compatibility
+    return playlist.videos && playlist.videos.length > 0 
+      ? playlist.videos 
+      : savedVideos.filter((v) => playlist.videoIds.includes(v.id))
   }
 
   const formatDate = (dateString: string) => {
