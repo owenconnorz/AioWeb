@@ -139,8 +139,9 @@ interface Playlist {
   id: string
   name: string
   videoIds: string[]
+  videos: Video[] // Store full video data
   createdAt: string
-}
+  }
 
 interface HistoryItem {
   video: Video
