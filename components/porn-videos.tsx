@@ -161,6 +161,51 @@ interface HistoryItem {
   apiSource: string
 }
 
+// Safe storage helper for mobile browsers
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return localStorage.getItem(key)
+      }
+    } catch (e) {
+      console.warn('localStorage not available:', e)
+    }
+    return null
+  },
+  setItem: (key: string, value: string): boolean => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(key, value)
+        return true
+      }
+    } catch (e) {
+      console.warn('localStorage not available:', e)
+      // Try to clear some space if quota exceeded
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        try {
+          // Clear watch history first (least important)
+          localStorage.removeItem('porn_watch_history')
+          localStorage.setItem(key, value)
+          return true
+        } catch (e2) {
+          console.error('Failed to save even after clearing history:', e2)
+        }
+      }
+    }
+    return false
+  },
+  removeItem: (key: string): void => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem(key)
+      }
+    } catch (e) {
+      console.warn('localStorage not available:', e)
+    }
+  }
+}
+
   type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai" | "youporn"
   
   const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "youporn", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai"]
@@ -569,7 +614,7 @@ export function PornVideos() {
 
   useEffect(() => {
     try {
-      const savedOrder = localStorage.getItem("porn_api_order")
+      const savedOrder = safeStorage.getItem("porn_api_order")
       if (savedOrder) {
         let parsed = JSON.parse(savedOrder) as ApiSource[]
         // Remove deprecated APIs
@@ -579,10 +624,10 @@ export function PornVideos() {
         if (missingApis.length > 0) {
           const mergedOrder = [...parsed, ...missingApis]
           setApiOrder(mergedOrder)
-          localStorage.setItem("porn_api_order", JSON.stringify(mergedOrder))
+          safeStorage.setItem("porn_api_order", JSON.stringify(mergedOrder))
         } else {
           setApiOrder(parsed)
-          localStorage.setItem("porn_api_order", JSON.stringify(parsed))
+          safeStorage.setItem("porn_api_order", JSON.stringify(parsed))
         }
       }
     } catch (err) {
@@ -758,9 +803,9 @@ export function PornVideos() {
 
   const loadLibraryData = () => {
     try {
-      const savedPlaylistsData = localStorage.getItem("porn_playlists")
-      const savedVideosData = localStorage.getItem("porn_saved_videos")
-      const historyData = localStorage.getItem("porn_watch_history")
+      const savedPlaylistsData = safeStorage.getItem("porn_playlists")
+      const savedVideosData = safeStorage.getItem("porn_saved_videos")
+      const historyData = safeStorage.getItem("porn_watch_history")
 
       const loadedSavedVideos = savedVideosData ? JSON.parse(savedVideosData) : []
       setSavedVideos(loadedSavedVideos)
@@ -801,7 +846,7 @@ export function PornVideos() {
       }
 
       setSavedVideos(updatedVideos)
-      localStorage.setItem("porn_saved_videos", JSON.stringify(updatedVideos))
+      safeStorage.setItem("porn_saved_videos", JSON.stringify(updatedVideos))
     } catch (err) {
       console.error("Error saving video:", err)
     }
@@ -817,7 +862,7 @@ export function PornVideos() {
       const filteredHistory = watchHistory.filter((h) => h.video.id !== video.id)
       const updatedHistory = [historyItem, ...filteredHistory].slice(0, 100)
       setWatchHistory(updatedHistory)
-      localStorage.setItem("porn_watch_history", JSON.stringify(updatedHistory))
+      safeStorage.setItem("porn_watch_history", JSON.stringify(updatedHistory))
     } catch (err) {
       console.error("Error adding to history:", err)
     }
@@ -837,7 +882,7 @@ export function PornVideos() {
 
       const updatedPlaylists = [...playlists, newPlaylist]
       setPlaylists(updatedPlaylists)
-      localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
+      safeStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
       setNewPlaylistName("")
       setShowCreatePlaylist(false)
     } catch (err) {
@@ -854,7 +899,7 @@ export function PornVideos() {
       if (!isAlreadySaved) {
         const updatedSavedVideos = [...savedVideos, videoToAdd]
         setSavedVideos(updatedSavedVideos)
-        localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
+        safeStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
       }
 
       const updatedPlaylists = playlists.map((playlist) => {
@@ -876,21 +921,7 @@ export function PornVideos() {
       })
 
       setPlaylists(updatedPlaylists)
-      const dataToSave = JSON.stringify(updatedPlaylists)
-      localStorage.setItem("porn_playlists", dataToSave)
-      
-      // Verify the data was saved correctly
-      const savedData = localStorage.getItem("porn_playlists")
-      if (savedData) {
-        const parsed = JSON.parse(savedData)
-        const targetPlaylist = parsed.find((p: Playlist) => p.id === playlistId)
-        if (targetPlaylist) {
-          console.log("[v0] Verified saved playlist:", targetPlaylist.name, 
-            "videoIds:", targetPlaylist.videoIds?.length, 
-            "videos:", targetPlaylist.videos?.length)
-        }
-      }
-      
+      safeStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
       setShowAddToPlaylist(null)
     } catch (err) {
       console.error("Error adding to playlist:", err)
@@ -901,7 +932,7 @@ export function PornVideos() {
     try {
       const updatedPlaylists = playlists.filter((p) => p.id !== playlistId)
       setPlaylists(updatedPlaylists)
-      localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
+      safeStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
       if (selectedPlaylist === playlistId) {
         setSelectedPlaylist(null)
       }
@@ -1862,34 +1893,26 @@ export function PornLibrary() {
 
   const loadLibraryData = () => {
     try {
-      const savedVideosData = localStorage.getItem("porn_saved_videos")
-      const savedPlaylistsData = localStorage.getItem("porn_playlists")
-      const historyData = localStorage.getItem("porn_watch_history")
+      const savedVideosData = safeStorage.getItem("porn_saved_videos")
+      const savedPlaylistsData = safeStorage.getItem("porn_playlists")
+      const historyData = safeStorage.getItem("porn_watch_history")
 
       const loadedSavedVideos = savedVideosData ? JSON.parse(savedVideosData) : []
       setSavedVideos(loadedSavedVideos)
       
       if (savedPlaylistsData) {
         const loadedPlaylists = JSON.parse(savedPlaylistsData)
-        console.log("[v0] PornLibrary loaded playlists:", loadedPlaylists.map((p: Playlist) => ({
-          name: p.name,
-          videoIds: p.videoIds?.length || 0,
-          videos: p.videos?.length || 0
-        })))
         
         // Ensure all playlists have videos array populated
         const migratedPlaylists = loadedPlaylists.map((playlist: Playlist) => {
           // If playlist already has videos array with content, use it
           if (playlist.videos && playlist.videos.length > 0) {
-            console.log("[v0] Playlist", playlist.name, "has", playlist.videos.length, "videos stored")
             return playlist
           }
           // Otherwise, try to populate videos from savedVideos using videoIds
-          console.log("[v0] Playlist", playlist.name, "needs migration from savedVideos")
           const playlistVideos = (playlist.videoIds || [])
             .map((id: string) => loadedSavedVideos.find((v: Video) => v.id === id))
             .filter(Boolean) as Video[]
-          console.log("[v0] Migrated", playlistVideos.length, "videos from savedVideos")
           return {
             ...playlist,
             videos: playlistVideos
@@ -1907,19 +1930,19 @@ export function PornLibrary() {
   const removeVideo = (videoId: string) => {
     const updatedVideos = savedVideos.filter((v) => v.id !== videoId)
     setSavedVideos(updatedVideos)
-    localStorage.setItem("porn_saved_videos", JSON.stringify(updatedVideos))
+    safeStorage.setItem("porn_saved_videos", JSON.stringify(updatedVideos))
   }
 
   const deletePlaylist = (playlistId: string) => {
     const updatedPlaylists = playlists.filter((p) => p.id !== playlistId)
     setPlaylists(updatedPlaylists)
-    localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
+    safeStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
     if (selectedPlaylist === playlistId) setSelectedPlaylist(null)
   }
 
   const clearHistory = () => {
     setWatchHistory([])
-    localStorage.removeItem("porn_watch_history")
+    safeStorage.removeItem("porn_watch_history")
   }
 
   const createPlaylist = () => {
@@ -1935,7 +1958,7 @@ export function PornLibrary() {
 
     const updatedPlaylists = [...playlists, newPlaylist]
     setPlaylists(updatedPlaylists)
-    localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
+    safeStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
     setNewPlaylistName("")
     setShowCreatePlaylist(false)
   }
