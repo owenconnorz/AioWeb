@@ -2,80 +2,6 @@
 // Version: 2.4.0 - Optimized RedGifs loading speed (removed proxy, use SD quality, added preload)
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
-
-// Ad blocker - blocks popups, redirects, and common ad domains
-const useAdBlocker = () => {
-  useEffect(() => {
-    // Block popup windows
-    const originalOpen = window.open
-    window.open = function(...args) {
-      const url = args[0]?.toString() || ''
-      // Block known ad patterns
-      const adPatterns = [
-        'doubleclick', 'googlesyndication', 'adserver', 'tracking',
-        'popunder', 'popup', 'click', 'redirect', 'ads.', '/ads/',
-        'trafficjunky', 'exoclick', 'juicyads', 'adxpansion',
-        'popads', 'popcash', 'propellerads', 'adsterra', 'revcontent',
-        'mgid', 'taboola', 'outbrain', 'zergnet', 'nativeads'
-      ]
-      const isAd = adPatterns.some(pattern => url.toLowerCase().includes(pattern))
-      if (isAd || !url) {
-        return null
-      }
-      return originalOpen.apply(window, args)
-    }
-
-    // Block beforeunload hijacking (prevents "are you sure" popups)
-    window.onbeforeunload = null
-    Object.defineProperty(window, 'onbeforeunload', {
-      get: () => null,
-      set: () => {},
-    })
-
-    // Block click hijacking on document
-    const blockAdClicks = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      // Check if click is on an invisible overlay (common ad trick)
-      if (target.tagName === 'A') {
-        const href = (target as HTMLAnchorElement).href || ''
-        const adPatterns = ['doubleclick', 'googlesyndication', 'adserver', 'popunder', 'trafficjunky', 'exoclick']
-        if (adPatterns.some(p => href.toLowerCase().includes(p))) {
-          e.preventDefault()
-          e.stopPropagation()
-        }
-      }
-    }
-    document.addEventListener('click', blockAdClicks, true)
-
-    // Remove common ad elements periodically
-    const removeAds = () => {
-      const adSelectors = [
-        '[id*="ad-"]', '[id*="ads-"]', '[class*="ad-container"]',
-        '[class*="advertisement"]', '[class*="sponsored"]',
-        'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
-        'iframe[src*="trafficjunky"]', 'iframe[src*="exoclick"]',
-        '[class*="popup"]', '[class*="overlay"][style*="position: fixed"]'
-      ]
-      adSelectors.forEach(selector => {
-        try {
-          document.querySelectorAll(selector).forEach(el => {
-            if (!el.closest('#video-modal')) {
-              el.remove()
-            }
-          })
-        } catch (e) {}
-      })
-    }
-    const adRemovalInterval = setInterval(removeAds, 2000)
-    removeAds()
-
-    return () => {
-      window.open = originalOpen
-      document.removeEventListener('click', blockAdClicks, true)
-      clearInterval(adRemovalInterval)
-    }
-  }, [])
-}
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -544,9 +470,6 @@ const XVIDAPI_CATEGORIES = [
 ]
 
 export function PornVideos() {
-  // Enable ad blocking
-  useAdBlocker()
-  
   const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [videos, setVideos] = useState<Video[]>([])
