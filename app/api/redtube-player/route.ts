@@ -37,11 +37,13 @@ export async function GET(request: NextRequest) {
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
-          .loading { color: #fff; text-align: center; }
+          .loading { color: #fff; text-align: center; padding: 20px; }
           .spinner { width: 50px; height: 50px; border: 4px solid #333; border-top-color: #f00; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
           @keyframes spin { to { transform: rotate(360deg); } }
           video { width: 100%; height: 100%; max-height: 100vh; object-fit: contain; }
-          .error { color: #f00; padding: 20px; text-align: center; }
+          .error { color: #fff; padding: 20px; text-align: center; }
+          .error a { color: #f44; text-decoration: none; display: inline-block; margin-top: 15px; padding: 12px 24px; background: #f44; color: #fff; border-radius: 8px; }
+          .error p { color: #999; margin-top: 10px; font-size: 14px; }
         </style>
       </head>
       <body>
@@ -57,17 +59,28 @@ export async function GET(request: NextRequest) {
               
               if (data.stream_url) {
                 document.getElementById('player').innerHTML = \`
-                  <video controls autoplay playsinline>
+                  <video controls autoplay playsinline poster="\${data.thumbnail || ''}">
                     \${data.qualities?.map(q => \`<source src="\${q.url}" type="video/mp4">\`).join('') || ''}
                     <source src="\${data.stream_url}" type="video/mp4">
                   </video>
                 \`;
               } else {
-                // No direct stream, show error
-                document.getElementById('player').innerHTML = '<div class="error">Video unavailable in your region</div>';
+                // No direct stream available, offer external link
+                document.getElementById('player').innerHTML = \`
+                  <div class="error">
+                    <p>Video requires VPN to access from your location.</p>
+                    <p>RedTube has blocked this content in certain US states.</p>
+                    <a href="https://www.redtube.com/${videoId}" target="_blank" rel="noopener">Open on RedTube</a>
+                  </div>
+                \`;
               }
             } catch (e) {
-              document.getElementById('player').innerHTML = '<div class="error">Failed to load video</div>';
+              document.getElementById('player').innerHTML = \`
+                <div class="error">
+                  <p>Failed to load video</p>
+                  <a href="https://www.redtube.com/${videoId}" target="_blank" rel="noopener">Open on RedTube</a>
+                </div>
+              \`;
             }
           }
           loadVideo();
