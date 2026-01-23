@@ -39,13 +39,11 @@ async function innertubeRequest(endpoint: string, body: any) {
     )
     
     if (!response.ok) {
-      console.error("[v0] Innertube response not ok:", response.status)
       return { error: response.status }
     }
     
     return response.json()
   } catch (error) {
-    console.error("[v0] Innertube request failed:", error)
     return { error: String(error) }
   }
 }
@@ -180,7 +178,6 @@ async function getAudioStreamUrl(videoId: string) {
     // If URL requires signature, return null (would need cipher decryption)
     return null
   } catch (error) {
-    console.error("[v0] Error getting audio stream:", error)
     return null
   }
 }
@@ -388,7 +385,6 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Unknown action" }, { status: 400 })
     }
   } catch (error) {
-    console.error("[v0] YouTube Music API error:", error)
     return NextResponse.json({ error: "Failed to fetch from YouTube Music", details: String(error) }, { status: 500 })
   }
 }

@@ -54,7 +54,7 @@ export function ImageEditor() {
         setEditedImage(`data:${image.mediaType};base64,${image.base64}`)
       }
     } catch (error) {
-      console.error("[v0] Image editing error:", error)
+      // Handle error silently
     } finally {
       setIsLoading(false)
     }

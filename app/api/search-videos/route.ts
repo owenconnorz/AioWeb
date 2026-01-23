@@ -612,7 +612,6 @@ async function searchYouPorn(query: string, page = 1) {
       total: data.total_count || transformedVideos.length,
     })
   } catch (error) {
-    console.error("[v0] YouPorn API error:", error)
     return NextResponse.json({ videos: [], total: 0 })
   }
 }

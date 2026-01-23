@@ -99,7 +99,6 @@ export async function GET(request: Request) {
       headers: responseHeaders as HeadersInit,
     })
   } catch (error) {
-    console.error("[v0] Proxy error:", error)
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Failed to proxy media" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

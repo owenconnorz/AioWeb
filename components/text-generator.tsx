@@ -111,7 +111,6 @@ export function TextGenerator() {
           }
           setHistory((prev) => [...prev, newEntry])
         } catch (puterError) {
-          console.error("[v0] Puter Grok error:", puterError)
           setGeneratedText("Error using Puter Grok. Please try again or select a different model.")
         }
         
@@ -133,7 +132,6 @@ export function TextGenerator() {
       const data = await response.json()
 
       if (!response.ok || data.error) {
-        console.error("[v0] API error:", data)
         setGeneratedText(data.error || "An error occurred while generating text. Please try a different model.")
         return
       }

@@ -1,5 +1,5 @@
 "use client"
-// Version: 2.3.0 - Cleaned up debug logs and improved storage reliability
+// Version: 2.4.0 - Optimized RedGifs loading speed (removed proxy, use SD quality, added preload)
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 
@@ -100,6 +100,7 @@ import {
   List,
   Settings,
   Check,
+  Download,
 } from "lucide-react"
 import {
   Pagination,
@@ -1237,14 +1238,45 @@ export function PornVideos() {
         alert("Link copied to clipboard!")
       }
     } catch (err) {
-      console.error("Error sharing:", err)
+      // Share failed silently
+    }
+  }
+
+  const handleDownload = async (video: Video) => {
+    try {
+      const videoUrl = video.url || video.embed
+      if (!videoUrl) return
+
+      // For RedGifs, use the proxy to download
+      const downloadUrl = videoUrl.includes("redgifs.com")
+        ? `/api/proxy-media?url=${encodeURIComponent(videoUrl)}&download=true`
+        : videoUrl
+
+      const response = await fetch(downloadUrl)
+      const blob = await response.blob()
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${video.title || video.id || "video"}.mp4`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      // Fallback: open in new tab
+      window.open(video.url || video.embed, "_blank")
     }
   }
 
 const getVideoUrl = (url: string) => {
   if (!url) return ""
-  // RedGifs URLs work directly without proxy - much faster loading
-  // Rule34 and other URLs are also direct
+  // Proxy RedGifs URLs to handle CORS
+  if (apiSource === "redgifs" && url.includes("redgifs.com")) {
+    return `/api/proxy-media?url=${encodeURIComponent(url)}`
+  }
+  // Rule34 and other URLs are direct
   return url
 }
 
@@ -1360,6 +1392,13 @@ const getVideoUrl = (url: string) => {
                     <Share2 className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-xs text-white">Share</span>
+                </button>
+
+                <button onClick={() => handleDownload(video)} className="flex flex-col items-center gap-1">
+                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                    <Download className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs text-white">Download</span>
                 </button>
               </div>
             </div>
@@ -1940,8 +1979,16 @@ const getVideoUrl = (url: string) => {
               <button
                 onClick={() => handleShare(selectedVideo)}
                 className="rounded-full bg-white/10 p-1.5 hover:bg-white/20"
+                title="Share"
               >
                 <Share2 className="h-4 w-4 text-white" />
+              </button>
+              <button
+                onClick={() => handleDownload(selectedVideo)}
+                className="rounded-full bg-white/10 p-1.5 hover:bg-white/20"
+                title="Download"
+              >
+                <Download className="h-4 w-4 text-white" />
               </button>
               <button onClick={() => { closeVideo(); setShowQualityMenu(false); }} className="rounded-full bg-white/10 p-1.5 hover:bg-white/20">
                 <X className="h-5 w-5 text-white" />
@@ -2370,9 +2417,38 @@ export function PornLibrary() {
         >
           <div className="flex items-center justify-between p-2 bg-black/80">
             <h2 className="text-sm font-medium text-white line-clamp-1 flex-1 mr-2">{selectedVideo.title}</h2>
-            <button onClick={closeVideo} className="rounded-full bg-white/10 p-1.5 hover:bg-white/20">
-              <X className="h-5 w-5 text-white" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    const videoUrl = selectedVideo.url || selectedVideo.embed
+                    if (!videoUrl) return
+                    const downloadUrl = videoUrl.includes("redgifs.com")
+                      ? `/api/proxy-media?url=${encodeURIComponent(videoUrl)}&download=true`
+                      : videoUrl
+                    const response = await fetch(downloadUrl)
+                    const blob = await response.blob()
+                    const url = window.URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = `${selectedVideo.title || selectedVideo.id || "video"}.mp4`
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                    window.URL.revokeObjectURL(url)
+                  } catch (err) {
+                    window.open(selectedVideo.url || selectedVideo.embed, "_blank")
+                  }
+                }}
+                className="rounded-full bg-white/10 p-1.5 hover:bg-white/20"
+                title="Download"
+              >
+                <Download className="h-4 w-4 text-white" />
+              </button>
+              <button onClick={closeVideo} className="rounded-full bg-white/10 p-1.5 hover:bg-white/20">
+                <X className="h-5 w-5 text-white" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 w-full overflow-hidden bg-black flex items-center justify-center">
             <iframe

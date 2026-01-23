@@ -9,8 +9,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "video_id is required" }, { status: 400 })
     }
 
-    console.log(`[v0] Fetching RedTube embed code for video:`, videoId)
-
     // Fetch the embed code from RedTube API
     const apiUrl = `https://api.redtube.com/?data=redtube.Videos.getVideoEmbedCode&video_id=${videoId}&output=json`
 
@@ -23,18 +21,14 @@ export async function GET(request: NextRequest) {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.log(`[v0] RedTube embed API error:`, response.status, errorText.substring(0, 200))
       throw new Error(`RedTube embed API error: ${response.status}`)
     }
 
     const data = await response.json()
-    console.log(`[v0] RedTube embed API response:`, JSON.stringify(data).substring(0, 200))
 
     if (data.embed?.code) {
       // Decode the BASE64 embed code
       const decodedEmbed = Buffer.from(data.embed.code, "base64").toString("utf-8")
-      console.log(`[v0] Decoded embed code:`, decodedEmbed.substring(0, 300))
 
       // Extract the embed URL from the HTML - look for iframe src or embed src
       const iframeSrcMatch = decodedEmbed.match(/src="([^"]*embed[^"]*)"/i)
@@ -44,8 +38,6 @@ export async function GET(request: NextRequest) {
 
       // Clean up the URL - fix http to https
       embedUrl = embedUrl.replace(/^http:/, "https:")
-
-      console.log(`[v0] Extracted embed URL:`, embedUrl)
 
       return NextResponse.json({
         embed_url: embedUrl,
@@ -61,7 +53,6 @@ export async function GET(request: NextRequest) {
       video_id: videoId,
     })
   } catch (error) {
-    console.error("[v0] Error fetching RedTube embed:", error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Failed to fetch embed code",

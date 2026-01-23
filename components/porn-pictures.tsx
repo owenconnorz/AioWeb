@@ -216,7 +216,6 @@ export function PornPictures() {
       setPage(1)
       setHasMore(false)
     } catch (err) {
-      console.error("[v0] Error loading galleries:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch galleries")
       setGalleries([])
     } finally {
@@ -246,7 +245,6 @@ export function PornPictures() {
 
       setGalleries(data.galleries || [])
     } catch (err) {
-      console.error("[v0] Error searching:", err)
       setError(err instanceof Error ? err.message : "Failed to search")
       setGalleries([])
     } finally {

@@ -61,9 +61,9 @@ export default function Home() {
               </div>
             </div>
             <div className="mb-4 flex items-center justify-center gap-3">
-              <Image src="/logo.png" alt="AioWeb Logo" width={60} height={60} className="h-12 w-12 sm:h-16 sm:w-16" />
+              <Image src="/icon-512x512.png" alt="Tempted Logo" width={60} height={60} className="h-12 w-12 sm:h-16 sm:w-16" />
               <h1 className="text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
-                AioWeb
+                Tempted
               </h1>
             </div>
             <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
@@ -530,7 +530,7 @@ export default function Home() {
     <div className="space-y-6">
       <div>
         <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Settings</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-300">Customize your AioWeb experience</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Customize your Tempted experience</p>
       </div>
 
       <div>
@@ -739,7 +739,7 @@ export default function Home() {
             <div>
               <p className="font-medium text-slate-900 dark:text-white">Add to Home Screen</p>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                {isInstalled ? "App is already installed" : "Install AioWeb as an app"}
+                {isInstalled ? "App is already installed" : "Install Tempted as an app"}
               </p>
             </div>
             <button

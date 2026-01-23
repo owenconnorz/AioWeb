@@ -9,14 +9,14 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AioWeb - AI Image & Text Generator",
+  title: "Tempted - AI Image & Text Generator",
   description: "Generate stunning images, craft compelling text, and transform faces with cutting-edge AI technology",
   generator: "v0.app",
-  applicationName: "AioWeb",
+  applicationName: "Tempted",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "AioWeb",
+    title: "Tempted",
   },
   formatDetection: {
     telephone: false,

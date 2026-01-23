@@ -83,7 +83,6 @@ export async function POST(req: Request) {
           }
         }
       } catch (spaceError) {
-        console.log(`[v0] Space ${space.name} failed:`, spaceError)
         continue
       }
     }
@@ -93,7 +92,6 @@ export async function POST(req: Request) {
     }, { status: 500 })
 
   } catch (error) {
-    console.error("[v0] Face swap error:", error)
     return Response.json({
       error: error instanceof Error ? error.message : "Face swap failed",
     }, { status: 500 })
