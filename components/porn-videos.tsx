@@ -1,4 +1,5 @@
 "use client"
+// Version: 2.1.0 - Fixed playlist storage for mobile browsers
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 
