@@ -420,10 +420,10 @@ async function searchJsonPorn(query: string, page = 1) {
     headers: {
       "Content-Type": "application/json",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "Accept-Language": "ja-JP,ja;q=0.9,en;q=0.8",
-      "X-Forwarded-For": "103.5.140.1",
-      "CF-IPCountry": "JP",
-      "Cookie": "platform=pc; age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerRT=1; countryCode=JP",
+      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      "X-Forwarded-For": "177.67.80.1",
+      "CF-IPCountry": "BR",
+      "Cookie": "platform=pc; age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerRT=1; countryCode=BR; ageVerified=1",
     },
   })
 
