@@ -1,5 +1,5 @@
 "use client"
-// Version: 2.1.0 - Fixed playlist storage for mobile browsers
+// Version: 2.3.0 - Cleaned up debug logs and improved storage reliability
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 
@@ -1137,7 +1137,6 @@ export function PornVideos() {
         setGalleryImages([])
       }
     } catch (err) {
-      console.error("[v0] Error loading gallery images:", err)
       setGalleryImages([])
     } finally {
       setGalleryLoading(false)
@@ -1243,7 +1242,6 @@ export function PornVideos() {
   }
 
 const getVideoUrl = (url: string) => {
-  console.log("[v0] getVideoUrl called with:", url?.substring(0, 100), "apiSource:", apiSource)
   if (!url) return ""
   // Proxy RedGifs URLs to handle CORS
   if (apiSource === "redgifs" && url.includes("redgifs.com")) {
@@ -1974,7 +1972,7 @@ const getVideoUrl = (url: string) => {
                 loop
                 playsInline
                 className="h-full w-full object-contain"
-                onError={(e) => console.log("[v0] Video error:", e, "src:", (e.target as HTMLVideoElement).src)}
+
               />
             ) : (
               <iframe

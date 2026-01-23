@@ -12,8 +12,6 @@ export async function GET(request: Request) {
       })
     }
 
-    console.log("[v0] Proxying embed URL:", targetUrl)
-
     // Determine the appropriate referer based on the target URL
     let referer = "https://www.google.com/"
     let origin = "https://www.google.com"
@@ -38,7 +36,6 @@ export async function GET(request: Request) {
     })
 
     if (!response.ok) {
-      console.error(`[v0] Proxy embed failed: ${response.status} ${response.statusText}`)
       return new Response(JSON.stringify({ error: `Failed to fetch embed: ${response.status}` }), {
         status: response.status,
         headers: { "Content-Type": "application/json" },
@@ -52,8 +49,6 @@ export async function GET(request: Request) {
     html = html.replace(/src="\/([^"]+)"/g, `src="${baseUrl.origin}/$1"`)
     html = html.replace(/href="\/([^"]+)"/g, `href="${baseUrl.origin}/$1"`)
 
-    console.log("[v0] Proxy embed success, content length:", html.length)
-
     return new Response(html, {
       status: 200,
       headers: {
@@ -63,7 +58,6 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
-    console.error("[v0] Proxy embed error:", error)
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Failed to proxy embed" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

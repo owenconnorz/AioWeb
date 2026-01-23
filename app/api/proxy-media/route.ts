@@ -18,14 +18,11 @@ export async function GET(request: Request) {
 
     const cached = cache.get(targetUrl)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log("[v0] Serving from memory cache:", targetUrl)
       return new Response(cached.data, {
         status: 200,
         headers: cached.headers as HeadersInit,
       })
     }
-
-    console.log("[v0] Proxying URL:", targetUrl)
 
     const range = request.headers.get("range")
 
@@ -58,7 +55,6 @@ export async function GET(request: Request) {
     })
 
     if (!response.ok) {
-      console.error(`[v0] Proxy fetch failed: ${response.status} ${response.statusText}`)
       return new Response(JSON.stringify({ error: `Failed to fetch media: ${response.status}` }), {
         status: response.status,
         headers: { "Content-Type": "application/json" },
@@ -69,8 +65,6 @@ export async function GET(request: Request) {
     const contentLength = response.headers.get("content-length")
     const acceptRanges = response.headers.get("accept-ranges")
     const contentRange = response.headers.get("content-range")
-
-    console.log("[v0] Proxy success:", { contentType, contentLength, status: response.status })
 
     const buffer = await response.arrayBuffer()
 

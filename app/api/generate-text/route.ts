@@ -4,8 +4,6 @@ export async function POST(req: Request) {
   try {
     const { prompt, learningContext, model = "perchance-ai", nsfwFilter = true } = await req.json()
 
-    console.log("[v0] Text generation request:", { model, promptLength: prompt.length, nsfwFilter })
-
     if (model === "perchance-ai") {
       const perchancePrompt = learningContext ? `Context: ${learningContext}\n\nTask: ${prompt}` : prompt
 
@@ -47,8 +45,6 @@ export async function POST(req: Request) {
 
     actualModel = modelMap[model] || model
 
-    console.log("[v0] Using model:", actualModel)
-
     const { text, usage, finishReason } = await generateText({
       model: actualModel,
       prompt: enhancedPrompt,
@@ -56,15 +52,12 @@ export async function POST(req: Request) {
       temperature: 0.7,
     })
 
-    console.log("[v0] Text generation successful")
-
     return Response.json({
       text,
       usage,
       finishReason,
     })
   } catch (error) {
-    console.error("[v0] Text generation error:", error)
     return Response.json(
       {
         error: "Failed to generate text. Please try a different model or check your connection.",

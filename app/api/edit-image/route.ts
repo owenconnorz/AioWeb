@@ -3,11 +3,8 @@ import { generateText } from "ai"
 export async function POST(req: Request) {
   const { imageData, editPrompt, model = "perchance-ai-edit", nsfwFilter = true } = await req.json()
 
-  console.log("[v0] Image editing request:", { model, editPrompt, nsfwFilter })
-
   try {
     if (model === "perchance-ai-edit") {
-      console.log("[v0] Using Perchance AI for image editing")
 
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
@@ -46,8 +43,6 @@ export async function POST(req: Request) {
       ],
     })
 
-    console.log("[v0] Image editing result:", result)
-
     const images = []
     if (result.files && result.files.length > 0) {
       for (const file of result.files) {
@@ -66,7 +61,6 @@ export async function POST(req: Request) {
       usage: result.usage,
     })
   } catch (error) {
-    console.error("[v0] Image editing error:", error)
     return Response.json({ error: "Image editing failed. Please try again." }, { status: 500 })
   }
 }

@@ -309,7 +309,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
       }
     } catch (e) {
-      console.log("[v0] AudioContext not supported")
+      // AudioContext not supported
     }
     
     return () => {

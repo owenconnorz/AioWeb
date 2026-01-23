@@ -68,11 +68,8 @@ export function TextGenerator() {
       const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
       const nsfwFilter = savedSettings ? (JSON.parse(savedSettings).nsfwFilter ?? true) : true
 
-      console.log("[v0] Sending request with model:", selectedModel, "NSFW filter:", nsfwFilter)
-
       // Handle Puter Grok models client-side
       if (selectedModel.startsWith("puter-grok") && puterLoaded && window.puter) {
-        console.log("[v0] Using Puter.js for Grok")
         
         let enhancedPrompt = prompt
         if (positiveExamples) {
@@ -141,7 +138,7 @@ export function TextGenerator() {
         return
       }
 
-      console.log("[v0] Text generation successful")
+      
       setGeneratedText(data.text)
 
       const newEntry: GenerationHistory = {
@@ -183,7 +180,7 @@ export function TextGenerator() {
       <Script 
         src="https://js.puter.com/v2/" 
         onLoad={() => {
-          console.log("[v0] Puter.js loaded")
+          
           setPuterLoaded(true)
         }}
       />

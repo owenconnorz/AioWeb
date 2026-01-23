@@ -30,9 +30,6 @@ export async function POST(req: Request) {
       input.first_frame_image = imageDataUri
     }
 
-    console.log("[v0] Starting video generation with model: minimax/video-01")
-    console.log("[v0] Has uploaded image:", !!uploadedImage)
-
     const response = await fetch("https://api.replicate.com/v1/models/minimax/video-01/predictions", {
       method: "POST",
       headers: {
@@ -43,10 +40,8 @@ export async function POST(req: Request) {
     })
 
     const prediction = await response.json()
-    console.log("[v0] Replicate response:", JSON.stringify(prediction).substring(0, 500))
 
     if (!response.ok) {
-      console.error("[v0] Replicate API error:", prediction)
       return Response.json({ error: prediction.detail || prediction.error || "Failed to start video generation" }, { status: response.status })
     }
 
@@ -62,7 +57,6 @@ export async function POST(req: Request) {
     })
 
   } catch (error) {
-    console.error("[v0] Video generation error:", error)
     return Response.json(
       { error: error instanceof Error ? error.message : "Video generation failed" },
       { status: 500 },

@@ -103,8 +103,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Search query is required" }, { status: 400 })
     }
 
-    console.log(`[v0] Searching ${source} API for:`, query, `page:`, page)
-
     if (source === "chaturbate") {
       return await searchChaturbate(page)
     } else if (source === "cam4") {
@@ -450,8 +448,6 @@ async function searchJsonPorn(query: string, page = 1) {
     ? `https://json-porn.p.rapidapi.com/porn?page=${page}&limit=24`
     : `https://json-porn.p.rapidapi.com/search?q=${encodeURIComponent(searchQuery)}&page=${page}&limit=24`
 
-  console.log("[v0] JSON Porn API URL:", apiUrl)
-  
   const response = await fetch(apiUrl, {
     method: "GET",
     headers: {
@@ -460,20 +456,12 @@ async function searchJsonPorn(query: string, page = 1) {
     },
   })
 
-  console.log("[v0] JSON Porn API status:", response.status)
-
   if (!response.ok) {
-    const errorText = await response.text()
-    console.error("[v0] JSON Porn API error:", errorText.substring(0, 500))
     throw new Error(`JSON Porn API error: ${response.status}`)
   }
 
   const data = await response.json()
-  console.log("[v0] JSON Porn API response keys:", Object.keys(data))
-  console.log("[v0] JSON Porn API response preview:", JSON.stringify(data).substring(0, 500))
-  
   const videos = data.videos || data.data || data.results || data.items || data || []
-  console.log("[v0] JSON Porn videos count:", Array.isArray(videos) ? videos.length : 'not array')
 
   const transformedVideos = (Array.isArray(videos) ? videos : []).map((video: any) => {
     return {

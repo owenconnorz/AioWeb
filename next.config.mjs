@@ -5,7 +5,7 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
-    NEXT_PUBLIC_APP_VERSION: '2.1.0',
+    NEXT_PUBLIC_APP_VERSION: '2.3.0',
   },
   // Disable caching for HTML pages to ensure fresh content
   async headers() {
