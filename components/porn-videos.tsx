@@ -847,6 +847,9 @@ export function PornVideos() {
 
   const addToPlaylist = (playlistId: string, videoToAdd: Video) => {
     try {
+      console.log("[v0] addToPlaylist called with playlistId:", playlistId)
+      console.log("[v0] videoToAdd:", videoToAdd)
+      
       const videoId = videoToAdd.id
 
       // Also save the video to savedVideos so it persists across sessions
@@ -855,16 +858,18 @@ export function PornVideos() {
         const updatedSavedVideos = [...savedVideos, videoToAdd]
         setSavedVideos(updatedSavedVideos)
         localStorage.setItem("porn_saved_videos", JSON.stringify(updatedSavedVideos))
+        console.log("[v0] Saved video to savedVideos")
       }
 
       const updatedPlaylists = playlists.map((playlist) => {
         if (playlist.id === playlistId) {
           const isAlreadyAdded = playlist.videoIds.includes(videoId)
+          console.log("[v0] Found playlist:", playlist.name, "isAlreadyAdded:", isAlreadyAdded)
           
           // Initialize videos array if it doesn't exist (for backwards compatibility)
           const currentVideos = playlist.videos || []
           
-          return {
+          const updated = {
             ...playlist,
             videoIds: isAlreadyAdded
               ? playlist.videoIds.filter((id) => id !== videoId)
@@ -873,10 +878,14 @@ export function PornVideos() {
               ? currentVideos.filter((v) => v.id !== videoId)
               : [...currentVideos, videoToAdd],
           }
+          console.log("[v0] Updated playlist videos count:", updated.videos.length)
+          console.log("[v0] Updated playlist videoIds count:", updated.videoIds.length)
+          return updated
         }
         return playlist
       })
 
+      console.log("[v0] Saving to localStorage:", JSON.stringify(updatedPlaylists).substring(0, 500))
       setPlaylists(updatedPlaylists)
       localStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
       setShowAddToPlaylist(null)
@@ -1854,21 +1863,30 @@ export function PornLibrary() {
       const savedPlaylistsData = localStorage.getItem("porn_playlists")
       const historyData = localStorage.getItem("porn_watch_history")
 
+      console.log("[v0] PornLibrary loadLibraryData called")
+      console.log("[v0] savedPlaylistsData:", savedPlaylistsData?.substring(0, 500))
+
       const loadedSavedVideos = savedVideosData ? JSON.parse(savedVideosData) : []
       setSavedVideos(loadedSavedVideos)
+      console.log("[v0] loadedSavedVideos count:", loadedSavedVideos.length)
       
       if (savedPlaylistsData) {
         const loadedPlaylists = JSON.parse(savedPlaylistsData)
+        console.log("[v0] loadedPlaylists:", loadedPlaylists.map((p: Playlist) => ({ name: p.name, videoIds: p.videoIds?.length, videos: p.videos?.length })))
+        
         // Migrate old playlists that don't have videos array
         const migratedPlaylists = loadedPlaylists.map((playlist: Playlist) => {
           // If playlist already has videos array with content, use it
           if (playlist.videos && playlist.videos.length > 0) {
+            console.log("[v0] Playlist", playlist.name, "has videos:", playlist.videos.length)
             return playlist
           }
           // Otherwise, try to populate videos from savedVideos using videoIds
+          console.log("[v0] Playlist", playlist.name, "needs migration, videoIds:", playlist.videoIds)
           const playlistVideos = playlist.videoIds
             .map((id: string) => loadedSavedVideos.find((v: Video) => v.id === id))
             .filter(Boolean) as Video[]
+          console.log("[v0] Migrated videos count:", playlistVideos.length)
           return {
             ...playlist,
             videos: playlistVideos
@@ -1922,12 +1940,16 @@ export function PornLibrary() {
   }
 
   const getPlaylistVideos = (playlistId: string) => {
+    console.log("[v0] getPlaylistVideos called with playlistId:", playlistId)
     const playlist = playlists.find((p) => p.id === playlistId)
+    console.log("[v0] Found playlist:", playlist?.name, "videos:", playlist?.videos?.length, "videoIds:", playlist?.videoIds?.length)
     if (!playlist) return []
     // Return videos stored directly in the playlist, or fallback to filtering savedVideos for backwards compatibility
-    return playlist.videos && playlist.videos.length > 0 
+    const result = playlist.videos && playlist.videos.length > 0 
       ? playlist.videos 
       : savedVideos.filter((v) => playlist.videoIds.includes(v.id))
+    console.log("[v0] Returning videos count:", result.length)
+    return result
   }
 
   const formatDate = (dateString: string) => {
