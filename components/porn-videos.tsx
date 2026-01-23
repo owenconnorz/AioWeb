@@ -1243,9 +1243,14 @@ const getEmbedUrl = (video: Video, quality?: string) => {
     }
   }
   
-  // Proxy RedTube embeds to fix 403 errors (after adding quality params)
+  // Use custom player for RedTube to bypass geo-restrictions
   if (isRedTube) {
-    embedUrl = `/api/proxy-embed?url=${encodeURIComponent(embedUrl)}`
+    // Extract video ID from embed URL (e.g., https://embed.redtube.com/?id=12345)
+    const idMatch = embedUrl.match(/[?&]id=(\d+)/) || embedUrl.match(/redtube\.com\/(\d+)/)
+    const videoId = idMatch?.[1]
+    if (videoId) {
+      embedUrl = `/api/redtube-player?id=${videoId}`
+    }
   }
   
   return embedUrl
