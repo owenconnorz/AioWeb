@@ -1340,7 +1340,7 @@ const getVideoUrl = (url: string) => {
                         e.stopPropagation()
                         saveVideo(video)
                       }}
-                      className="absolute top-2 right-2 rounded-full bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100"
+                      className="absolute top-2 right-2 rounded-full bg-black/50 p-2 opacity-100"
                     >
                       {isVideoSaved(video.id) ? (
                         <BookmarkCheck className="h-4 w-4 text-violet-400" />
@@ -1509,26 +1509,11 @@ const getVideoUrl = (url: string) => {
       {/* Add to Playlist Modal */}
       {showAddToPlaylist && (
         <div 
-          className="fixed z-[9999] bg-black/95"
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            width: '100vw',
-            height: '100vh',
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            padding: '1rem'
-          }}
+          className="fixed inset-0 z-[9999] overflow-y-auto bg-black/95"
           onClick={(e) => e.target === e.currentTarget && setShowAddToPlaylist(null)}
         >
-          <div 
-            className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
-            style={{ margin: 'auto' }}
-          >
+          <div className="min-h-screen px-4 flex items-center justify-center">
+            <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-white">Add to Playlist</h3>
               <button onClick={() => setShowAddToPlaylist(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-white">
@@ -1561,6 +1546,7 @@ const getVideoUrl = (url: string) => {
               <Plus className="mr-2 inline h-4 w-4" />
               Create New Playlist
             </button>
+            </div>
           </div>
         </div>
       )}
@@ -1568,23 +1554,11 @@ const getVideoUrl = (url: string) => {
       {/* Create Playlist Modal */}
       {showCreatePlaylist && (
         <div 
-          className="fixed z-[9999] bg-black/95"
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            width: '100vw',
-            height: '100vh',
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            padding: '1rem'
-          }}
+          className="fixed inset-0 z-[9999] overflow-y-auto bg-black/95"
           onClick={(e) => e.target === e.currentTarget && setShowCreatePlaylist(false)}
         >
-          <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6" style={{ margin: 'auto' }}>
+          <div className="min-h-screen px-4 flex items-center justify-center">
+            <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6">
             <h3 className="mb-4 text-xl font-semibold text-white">Create New Playlist</h3>
             <Input
               type="text"
@@ -1600,6 +1574,7 @@ const getVideoUrl = (url: string) => {
               <Button onClick={createPlaylist} className="flex-1 bg-violet-600 hover:bg-violet-700">
                 Create
               </Button>
+            </div>
             </div>
           </div>
         </div>
