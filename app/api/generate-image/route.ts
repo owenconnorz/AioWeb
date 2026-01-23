@@ -105,31 +105,64 @@ export async function POST(req: Request) {
     }
 
     // Text-to-image generation (no uploaded image)
+    // Use public spaces that don't require authentication first
     const t2iSpaces = [
       { 
         name: "stabilityai/stable-diffusion-3.5-large",
         endpoint: "/infer",
+        requiresAuth: true,
       },
       { 
         name: "black-forest-labs/FLUX.1-schnell",
         endpoint: "/infer",
+        requiresAuth: true,
       },
       {
-        name: "multimodalart/stable-diffusion-xl",
+        name: "prodia/sdxl-stable-diffusion-xl",
+        endpoint: "/predict",
+        requiresAuth: false,
+      },
+      {
+        name: "hysts/SD-XL",
         endpoint: "/run",
+        requiresAuth: false,
       },
     ]
 
     for (const space of t2iSpaces) {
       try {
-        const client = await Client.connect(space.name, { hf_token: hfApiKey })
+        // Try without auth first for public spaces, then with auth
+        let client;
+        try {
+          if (space.requiresAuth) {
+            client = await Client.connect(space.name, { hf_token: hfApiKey })
+          } else {
+            client = await Client.connect(space.name)
+          }
+        } catch (connectError) {
+          // If connection fails, try the opposite auth approach
+          try {
+            if (space.requiresAuth) {
+              client = await Client.connect(space.name)
+            } else {
+              client = await Client.connect(space.name, { hf_token: hfApiKey })
+            }
+          } catch {
+            throw connectError
+          }
+        }
         
         // Try to get API info to find correct endpoint
-        const apiInfo = await client.view_api()
-        const endpoints = Object.keys(apiInfo.named_endpoints || {})
-        const endpoint = endpoints.find(e => 
-          e.includes("infer") || e.includes("generate") || e.includes("run")
-        ) || space.endpoint || endpoints[0]
+        let endpoint = space.endpoint
+        try {
+          const apiInfo = await client.view_api()
+          const endpoints = Object.keys(apiInfo.named_endpoints || {})
+          endpoint = endpoints.find(e => 
+            e.includes("infer") || e.includes("generate") || e.includes("run") || e.includes("predict")
+          ) || space.endpoint || endpoints[0]
+        } catch {
+          // Use default endpoint if view_api fails
+        }
         
         const result = await client.predict(endpoint, [
           enhancedPrompt,

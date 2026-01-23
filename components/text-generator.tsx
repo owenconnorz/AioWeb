@@ -1,11 +1,23 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Copy, Check, ThumbsUp, ThumbsDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Script from "next/script"
+
+// Declare puter as a global
+declare global {
+  interface Window {
+    puter: {
+      ai: {
+        chat: (prompt: string | object[], options?: { model?: string; stream?: boolean; temperature?: number; max_tokens?: number }) => Promise<{ message: { content: string } } | AsyncIterable<{ text: string }>>
+      }
+    }
+  }
+}
 
 interface GenerationHistory {
   prompt: string
@@ -22,6 +34,8 @@ export function TextGenerator() {
   const [feedback, setFeedback] = useState<"positive" | "negative" | null>(null)
   const [history, setHistory] = useState<GenerationHistory[]>([])
   const [selectedModel, setSelectedModel] = useState("perchance-ai")
+  const [puterLoaded, setPuterLoaded] = useState(false)
+  const [streamingText, setStreamingText] = useState("")
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("textGenerationHistory")
@@ -41,6 +55,7 @@ export function TextGenerator() {
 
     setIsLoading(true)
     setGeneratedText("")
+    setStreamingText("")
     setFeedback(null)
 
     try {
@@ -54,6 +69,58 @@ export function TextGenerator() {
       const nsfwFilter = savedSettings ? (JSON.parse(savedSettings).nsfwFilter ?? true) : true
 
       console.log("[v0] Sending request with model:", selectedModel, "NSFW filter:", nsfwFilter)
+
+      // Handle Puter Grok models client-side
+      if (selectedModel.startsWith("puter-grok") && puterLoaded && window.puter) {
+        console.log("[v0] Using Puter.js for Grok")
+        
+        let enhancedPrompt = prompt
+        if (positiveExamples) {
+          enhancedPrompt = `Here are some examples of responses the user liked:\n\n${positiveExamples}\n\nNow, using a similar style and quality, respond to this request:\n${prompt}`
+        }
+        if (nsfwFilter) {
+          enhancedPrompt += "\n\nIMPORTANT: Keep the content safe, appropriate, and free from adult or explicit material."
+        }
+        
+        const puterModelMap: Record<string, string> = {
+          "puter-grok-4.1-fast": "x-ai/grok-4.1-fast",
+          "puter-grok-4": "x-ai/grok-4",
+          "puter-grok-3": "x-ai/grok-3",
+        }
+        
+        const puterModel = puterModelMap[selectedModel] || "x-ai/grok-4.1-fast"
+        
+        try {
+          // Use streaming for better UX
+          const response = await window.puter.ai.chat(enhancedPrompt, {
+            model: puterModel,
+            stream: true
+          }) as AsyncIterable<{ text: string }>
+          
+          let fullText = ""
+          for await (const part of response) {
+            fullText += part.text || ""
+            setStreamingText(fullText)
+          }
+          
+          setGeneratedText(fullText)
+          setStreamingText("")
+          
+          const newEntry: GenerationHistory = {
+            prompt,
+            response: fullText,
+            feedback: null,
+            timestamp: Date.now(),
+          }
+          setHistory((prev) => [...prev, newEntry])
+        } catch (puterError) {
+          console.error("[v0] Puter Grok error:", puterError)
+          setGeneratedText("Error using Puter Grok. Please try again or select a different model.")
+        }
+        
+        setIsLoading(false)
+        return
+      }
 
       const response = await fetch("/api/generate-text", {
         method: "POST",
@@ -112,6 +179,15 @@ export function TextGenerator() {
 
   return (
     <div className="space-y-6">
+      {/* Load Puter.js for Grok API */}
+      <Script 
+        src="https://js.puter.com/v2/" 
+        onLoad={() => {
+          console.log("[v0] Puter.js loaded")
+          setPuterLoaded(true)
+        }}
+      />
+      
       <div>
         <Label htmlFor="text-prompt" className="text-base font-semibold text-slate-900">
           What would you like to write?
@@ -131,6 +207,9 @@ export function TextGenerator() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="perchance-ai">Perchance AI (Free, Unlimited)</SelectItem>
+            <SelectItem value="puter-grok-4.1-fast">Grok 4.1 Fast (Free, Unlimited via Puter)</SelectItem>
+            <SelectItem value="puter-grok-4">Grok 4 (Free, Unlimited via Puter)</SelectItem>
+            <SelectItem value="puter-grok-3">Grok 3 (Free, Unlimited via Puter)</SelectItem>
             <SelectItem value="openai/gpt-5-mini">GPT-5 Mini (Fast)</SelectItem>
             <SelectItem value="openai/gpt-4o">GPT-4o (Balanced)</SelectItem>
             <SelectItem value="xai/grok-beta">Grok Beta (Creative)</SelectItem>
@@ -140,6 +219,9 @@ export function TextGenerator() {
             <SelectItem value="lustorys/wan-2.5">Lustorys' Wan 2.5 AI</SelectItem>
           </SelectContent>
         </Select>
+        {selectedModel.startsWith("puter-grok") && !puterLoaded && (
+          <p className="text-xs text-amber-600">Loading Puter.js...</p>
+        )}
       </div>
 
       <Textarea
@@ -167,7 +249,18 @@ export function TextGenerator() {
         )}
       </Button>
 
-      {generatedText && (
+      {/* Streaming text while generating */}
+      {streamingText && isLoading && (
+        <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-6">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+            <Label className="text-base font-semibold text-indigo-900">Generating with Grok...</Label>
+          </div>
+          <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">{streamingText}</p>
+        </div>
+      )}
+
+      {generatedText && !isLoading && (
         <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-6">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold text-slate-900">Generated Text</Label>

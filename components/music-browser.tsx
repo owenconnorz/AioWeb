@@ -1,6 +1,8 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft } from "lucide-react"
+import React from "react"
+
+import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -73,6 +75,45 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   // Playback time tracking
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  
+  // New feature states
+  const [showQueuePanel, setShowQueuePanel] = useState(false)
+  const [playlists, setPlaylists] = useState<{id: string, name: string, tracks: Track[]}[]>([])
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false)
+  const [newPlaylistName, setNewPlaylistName] = useState("")
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
+  const [sleepTimer, setSleepTimer] = useState<number | null>(null)
+  const [sleepTimerEnd, setSleepTimerEnd] = useState<number | null>(null)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const [equalizer, setEqualizer] = useState("normal")
+  const [showEqualizerMenu, setShowEqualizerMenu] = useState(false)
+  const [isSeeking, setIsSeeking] = useState(false)
+  
+  const progressBarRef = useRef<HTMLDivElement>(null)
+  
+  // Equalizer presets
+  const EQUALIZER_PRESETS = [
+    { id: "normal", name: "Normal" },
+    { id: "bass", name: "Bass Boost" },
+    { id: "rock", name: "Rock" },
+    { id: "pop", name: "Pop" },
+    { id: "jazz", name: "Jazz" },
+    { id: "classical", name: "Classical" },
+    { id: "electronic", name: "Electronic" },
+  ]
+  
+  // Playback speed options
+  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+  
+  // Sleep timer options (in minutes)
+  const SLEEP_TIMER_OPTIONS = [
+    { label: "Off", value: null },
+    { label: "15 min", value: 15 },
+    { label: "30 min", value: 30 },
+    { label: "45 min", value: 45 },
+    { label: "1 hour", value: 60 },
+  ]
   
   // Helper to parse duration string (e.g., "3:45") to seconds
   const parseDuration = (durationStr: string | undefined): number => {
@@ -358,12 +399,45 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     try {
       const savedLiked = localStorage.getItem("ytmusic_liked")
       const savedRecent = localStorage.getItem("ytmusic_recent")
+      const savedPlaylists = localStorage.getItem("ytmusic_playlists")
       if (savedLiked) setLikedTracks(JSON.parse(savedLiked))
       if (savedRecent) setRecentlyPlayed(JSON.parse(savedRecent))
+      if (savedPlaylists) setPlaylists(JSON.parse(savedPlaylists))
     } catch (e) {
       // localStorage not available
     }
   }, [mounted])
+  
+  // Save playlists to localStorage
+  useEffect(() => {
+    if (!mounted) return
+    try {
+      localStorage.setItem("ytmusic_playlists", JSON.stringify(playlists))
+    } catch (e) {
+      // localStorage not available
+    }
+  }, [playlists, mounted])
+  
+  // Sleep timer effect
+  useEffect(() => {
+    if (!sleepTimerEnd) return
+    
+    const checkTimer = setInterval(() => {
+      if (Date.now() >= sleepTimerEnd) {
+        setIsPlaying(false)
+        setSleepTimer(null)
+        setSleepTimerEnd(null)
+        if (playerRef.current?.contentWindow) {
+          playerRef.current.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: 'pauseVideo' }),
+            '*'
+          )
+        }
+      }
+    }, 1000)
+    
+    return () => clearInterval(checkTimer)
+  }, [sleepTimerEnd])
 
   // Save library to localStorage - only on client after initial load
   useEffect(() => {
@@ -502,6 +576,154 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   }
 
   const isLiked = (track: Track) => likedTracks.some(t => t.videoId === track.videoId)
+  
+  // Queue management
+  const addToQueue = (track: Track) => {
+    setQueue(prev => [...prev, track])
+  }
+  
+  const removeFromQueue = (index: number) => {
+    setQueue(prev => prev.filter((_, i) => i !== index))
+    if (index < queueIndex) {
+      setQueueIndex(prev => prev - 1)
+    }
+  }
+  
+  const moveInQueue = (fromIndex: number, toIndex: number) => {
+    setQueue(prev => {
+      const newQueue = [...prev]
+      const [removed] = newQueue.splice(fromIndex, 1)
+      newQueue.splice(toIndex, 0, removed)
+      return newQueue
+    })
+    // Adjust current index if needed
+    if (fromIndex === queueIndex) {
+      setQueueIndex(toIndex)
+    } else if (fromIndex < queueIndex && toIndex >= queueIndex) {
+      setQueueIndex(prev => prev - 1)
+    } else if (fromIndex > queueIndex && toIndex <= queueIndex) {
+      setQueueIndex(prev => prev + 1)
+    }
+  }
+  
+  const clearQueue = () => {
+    const current = queue[queueIndex]
+    setQueue(current ? [current] : [])
+    setQueueIndex(0)
+  }
+  
+  // Playlist management
+  const createPlaylist = (name: string) => {
+    if (!name.trim()) return
+    const newPlaylist = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      tracks: []
+    }
+    setPlaylists(prev => [...prev, newPlaylist])
+    setNewPlaylistName("")
+    setShowPlaylistModal(false)
+  }
+  
+  const addToPlaylist = (playlistId: string, track: Track) => {
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        // Avoid duplicates
+        if (p.tracks.some(t => t.videoId === track.videoId)) return p
+        return { ...p, tracks: [...p.tracks, track] }
+      }
+      return p
+    }))
+  }
+  
+  const removeFromPlaylist = (playlistId: string, trackId: string) => {
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, tracks: p.tracks.filter(t => t.videoId !== trackId) }
+      }
+      return p
+    }))
+  }
+  
+  const deletePlaylist = (playlistId: string) => {
+    setPlaylists(prev => prev.filter(p => p.id !== playlistId))
+  }
+  
+  const playPlaylist = (playlistId: string) => {
+    const playlist = playlists.find(p => p.id === playlistId)
+    if (playlist && playlist.tracks.length > 0) {
+      setQueue(playlist.tracks)
+      setQueueIndex(0)
+      setCurrentTrack(playlist.tracks[0])
+      setShowPlayer(true)
+      setIsPlaying(true)
+    }
+  }
+  
+  // Sleep timer
+  const setSleepTimerMinutes = (minutes: number | null) => {
+    if (minutes === null) {
+      setSleepTimer(null)
+      setSleepTimerEnd(null)
+    } else {
+      setSleepTimer(minutes)
+      setSleepTimerEnd(Date.now() + minutes * 60 * 1000)
+    }
+  }
+  
+  // Seekable progress bar
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || !currentTrack) return
+    
+    const rect = progressBarRef.current.getBoundingClientRect()
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const newTime = Math.floor(percent * duration)
+    
+    setCurrentTime(newTime)
+    setIsSeeking(true)
+    
+    // Note: Can't actually seek in YouTube iframe without proper API integration
+    // This updates the visual progress bar
+  }
+  
+  const handleSeekEnd = () => {
+    setIsSeeking(false)
+  }
+  
+  // Share song
+  const shareSong = async () => {
+    if (!currentTrack) return
+    
+    const shareUrl = `https://www.youtube.com/watch?v=${currentTrack.videoId}`
+    const shareText = `${currentTrack.title} - ${currentTrack.artist || currentTrack.subtitle}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: currentTrack.title,
+          text: shareText,
+          url: shareUrl
+        })
+      } catch (e) {
+        // User cancelled or error
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        alert("Link copied to clipboard!")
+      } catch (e) {
+        // Clipboard not available
+      }
+    }
+  }
+  
+  // Playback speed (visual only - YouTube iframe doesn't support speed control via postMessage)
+  const setSpeed = (speed: number) => {
+    setPlaybackSpeed(speed)
+    setShowSpeedMenu(false)
+  }
 
   // Track card component
   const TrackCard = ({ track, trackList, size = "normal" }: { track: Track; trackList?: Track[]; size?: "normal" | "small" }) => (
@@ -871,6 +1093,41 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
                   )}
                 </div>
                 
+                {/* Playlists */}
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white">Playlists</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/70 hover:text-white"
+                      onClick={() => setShowPlaylistModal(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Create
+                    </Button>
+                  </div>
+                  
+                  {playlists.length === 0 ? (
+                    <p className="text-slate-400 text-center py-4">No playlists yet</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {playlists.map(playlist => (
+                        <button
+                          key={playlist.id}
+                          className="flex flex-col items-start p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-left"
+                          onClick={() => setSelectedPlaylist(playlist.id)}
+                        >
+                          <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center mb-2">
+                            <Music className="w-8 h-8 text-white" />
+                          </div>
+                          <h4 className="text-white font-medium text-sm truncate w-full">{playlist.name}</h4>
+                          <p className="text-xs text-slate-400">{playlist.tracks.length} songs</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
                 {/* Recently Played in Library */}
                 {recentlyPlayed.length > 0 && (
                   <div>
@@ -897,6 +1154,90 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* Playlist Detail View */}
+            {selectedPlaylist && (
+              <div className="fixed inset-0 z-50 bg-slate-900">
+                <div className="h-full flex flex-col">
+                  <div className="flex items-center justify-between p-4 border-b border-white/10">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 text-white"
+                      onClick={() => setSelectedPlaylist(null)}
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <h3 className="text-lg font-bold text-white">
+                      {playlists.find(p => p.id === selectedPlaylist)?.name}
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 text-red-500"
+                      onClick={() => {
+                        deletePlaylist(selectedPlaylist)
+                        setSelectedPlaylist(null)
+                      }}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  
+                  <div className="p-4">
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => {
+                        playPlaylist(selectedPlaylist)
+                        setSelectedPlaylist(null)
+                      }}
+                    >
+                      <Play className="h-4 w-4 mr-2" /> Play All
+                    </Button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto px-4 pb-4">
+                    {playlists.find(p => p.id === selectedPlaylist)?.tracks.length === 0 ? (
+                      <p className="text-slate-400 text-center py-8">No songs in this playlist</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {playlists.find(p => p.id === selectedPlaylist)?.tracks.map((track, idx) => (
+                          <div
+                            key={`pl-${track.videoId}-${idx}`}
+                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
+                          >
+                            <button
+                              onClick={() => playTrack(track, playlists.find(p => p.id === selectedPlaylist)?.tracks)}
+                              className="flex items-center gap-3 flex-1"
+                            >
+                              <span className="text-slate-500 w-6 text-sm">{idx + 1}</span>
+                              <img
+                                src={track.thumbnail || "/placeholder.svg"}
+                                alt={track.title}
+                                className="w-10 h-10 rounded object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="flex-1 text-left">
+                                <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+                                <p className="text-sm text-slate-400 line-clamp-1">{track.artist || track.subtitle}</p>
+                              </div>
+                            </button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-red-500"
+                              onClick={() => removeFromPlaylist(selectedPlaylist, track.videoId)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </>
@@ -1093,23 +1434,36 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           </div>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar - Seekable */}
         <div 
           className="relative z-10 px-8 py-2 shrink-0"
           style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
         >
-          <div className="w-full h-1 bg-white/20 rounded-full">
-            <div className="w-1/3 h-full bg-white rounded-full" />
+          <div 
+            ref={progressBarRef}
+            className="w-full h-2 bg-white/20 rounded-full overflow-hidden cursor-pointer touch-none"
+            onClick={handleSeek}
+            onTouchStart={handleSeek}
+            onTouchMove={handleSeek}
+            onTouchEnd={handleSeekEnd}
+          >
+            <div 
+              className="h-full bg-white rounded-full transition-all"
+              style={{ 
+                width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+                transition: isSeeking ? 'none' : 'width 0.3s'
+              }}
+            />
           </div>
           <div className="flex justify-between mt-2 text-xs text-slate-400">
-            <span>1:23</span>
-            <span>{currentTrack.duration || "3:45"}</span>
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
           </div>
         </div>
 
         {/* Main Controls */}
         <div 
-          className="relative z-10 flex items-center justify-center gap-6 py-6 shrink-0"
+          className="relative z-10 flex items-center justify-center gap-6 py-4 shrink-0"
           style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
         >
           <Button
@@ -1118,7 +1472,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
             className="h-12 w-12 text-white"
             onClick={() => setIsShuffle(!isShuffle)}
           >
-            <ListMusic className={`h-5 w-5 ${isShuffle ? "text-red-500" : ""}`} />
+            <Shuffle className={`h-5 w-5 ${isShuffle ? "text-red-500" : ""}`} />
           </Button>
           <Button
             variant="ghost"
@@ -1153,13 +1507,218 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
             <Repeat className={`h-5 w-5 ${isRepeat ? "text-red-500" : ""}`} />
           </Button>
         </div>
+        
+        {/* Extra Controls Row */}
+        <div 
+          className="relative z-10 flex items-center justify-around px-8 py-3 shrink-0"
+          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
+        >
+          {/* Queue */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white/70 hover:text-white flex flex-col items-center gap-1"
+            onClick={() => setShowQueuePanel(true)}
+          >
+            <ListMusic className="h-5 w-5" />
+            <span className="text-xs">Queue</span>
+          </Button>
+          
+          {/* Sleep Timer */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex flex-col items-center gap-1 ${sleepTimer ? "text-red-500" : "text-white/70 hover:text-white"}`}
+              onClick={() => {
+                const nextIndex = SLEEP_TIMER_OPTIONS.findIndex(o => o.value === sleepTimer) + 1
+                const nextOption = SLEEP_TIMER_OPTIONS[nextIndex % SLEEP_TIMER_OPTIONS.length]
+                setSleepTimerMinutes(nextOption.value)
+              }}
+            >
+              <Clock className="h-5 w-5" />
+              <span className="text-xs">{sleepTimer ? `${sleepTimer}m` : "Timer"}</span>
+            </Button>
+          </div>
+          
+          {/* Share */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white/70 hover:text-white flex flex-col items-center gap-1"
+            onClick={shareSong}
+          >
+            <Share2 className="h-5 w-5" />
+            <span className="text-xs">Share</span>
+          </Button>
+          
+          {/* Speed */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex flex-col items-center gap-1 ${playbackSpeed !== 1 ? "text-red-500" : "text-white/70 hover:text-white"}`}
+              onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+            >
+              <span className="text-sm font-bold">{playbackSpeed}x</span>
+              <span className="text-xs">Speed</span>
+            </Button>
+            {showSpeedMenu && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-800 rounded-lg shadow-xl border border-white/10 overflow-hidden">
+                {SPEED_OPTIONS.map(speed => (
+                  <button
+                    key={speed}
+                    className={`block w-full px-4 py-2 text-sm text-left hover:bg-white/10 ${playbackSpeed === speed ? "text-red-500" : "text-white"}`}
+                    onClick={() => setSpeed(speed)}
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Equalizer */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex flex-col items-center gap-1 ${equalizer !== "normal" ? "text-red-500" : "text-white/70 hover:text-white"}`}
+              onClick={() => setShowEqualizerMenu(!showEqualizerMenu)}
+            >
+              <Volume2 className="h-5 w-5" />
+              <span className="text-xs">EQ</span>
+            </Button>
+            {showEqualizerMenu && (
+              <div className="absolute bottom-full right-0 mb-2 bg-slate-800 rounded-lg shadow-xl border border-white/10 overflow-hidden min-w-[120px]">
+                {EQUALIZER_PRESETS.map(preset => (
+                  <button
+                    key={preset.id}
+                    className={`block w-full px-4 py-2 text-sm text-left hover:bg-white/10 ${equalizer === preset.id ? "text-red-500" : "text-white"}`}
+                    onClick={() => {
+                      setEqualizer(preset.id)
+                      setShowEqualizerMenu(false)
+                    }}
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Swipe down indicator */}
         <div 
-          className="relative z-10 flex justify-center pb-8 shrink-0"
+          className="relative z-10 flex justify-center pb-6 shrink-0"
           style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
         >
           <div className="w-16 h-1 bg-white/30 rounded-full" />
+        </div>
+      </div>
+    )}
+    
+    {/* Queue Panel Modal */}
+    {showQueuePanel && (
+      <div className="fixed inset-0 z-[10000] bg-black/80 flex items-end">
+        <div 
+          className="w-full max-h-[80vh] bg-slate-900 rounded-t-2xl overflow-hidden flex flex-col"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <h3 className="text-lg font-bold text-white">Queue</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-500"
+                onClick={clearQueue}
+              >
+                Clear
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white"
+                onClick={() => setShowQueuePanel(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {queue.length === 0 ? (
+              <p className="text-slate-400 text-center py-8">Queue is empty</p>
+            ) : (
+              <div className="space-y-2">
+                {queue.map((track, index) => (
+                  <div 
+                    key={`${track.videoId}-${index}`}
+                    className={`flex items-center gap-3 p-3 rounded-lg ${index === queueIndex ? "bg-white/10" : "hover:bg-white/5"}`}
+                  >
+                    <div className="text-slate-500 text-sm w-6">{index + 1}</div>
+                    <img
+                      src={track.thumbnail || "/placeholder.svg"}
+                      alt={track.title}
+                      className="w-12 h-12 rounded object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${index === queueIndex ? "text-red-500" : "text-white"}`}>
+                        {track.title}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">{track.artist || track.subtitle}</p>
+                    </div>
+                    {index !== queueIndex && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                        onClick={() => removeFromQueue(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Create Playlist Modal */}
+    {showPlaylistModal && (
+      <div className="fixed inset-0 z-[10001] bg-black/80 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-xl p-6 w-full max-w-sm">
+          <h3 className="text-lg font-bold text-white mb-4">Create Playlist</h3>
+          <Input
+            type="text"
+            placeholder="Playlist name"
+            value={newPlaylistName}
+            onChange={(e) => setNewPlaylistName(e.target.value)}
+            className="bg-slate-700 border-slate-600 text-white mb-4"
+            autoFocus
+          />
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              className="flex-1 text-white"
+              onClick={() => {
+                setShowPlaylistModal(false)
+                setNewPlaylistName("")
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => createPlaylist(newPlaylistName)}
+              disabled={!newPlaylistName.trim()}
+            >
+              Create
+            </Button>
+          </div>
         </div>
       </div>
     )}

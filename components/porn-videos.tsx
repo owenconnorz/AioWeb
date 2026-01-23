@@ -92,7 +92,18 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination"
 
 interface Video {
   id: string
@@ -135,9 +146,9 @@ interface HistoryItem {
   apiSource: string
 }
 
-type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai"
-
-const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai"]
+  type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai" | "youporn"
+  
+  const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "youporn", "redgifs", "cam4", "pornpics", "chaturbate", "redtube", "hentai"]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -348,6 +359,9 @@ export function PornVideos() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [totalPages, setTotalPages] = useState(100) // Estimated total pages
+  const [showPageJump, setShowPageJump] = useState(false)
+  const [jumpToPage, setJumpToPage] = useState("")
   const [refreshKey, setRefreshKey] = useState(0)
   const [feedView, setFeedView] = useState(false)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
@@ -495,6 +509,43 @@ export function PornVideos() {
       setHasMore(true)
     } finally {
       setLoadingMore(false)
+    }
+  }
+
+  // Go to a specific page
+  const goToPage = async (targetPage: number) => {
+    if (targetPage < 1 || targetPage === page || loading) return
+    
+    setLoading(true)
+    setPage(targetPage)
+    
+    try {
+      const searchParam = selectedCategory || searchQuery || "popular"
+      const apiEndpoint =
+        apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34"
+          ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=${targetPage}`
+          : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=${targetPage}`
+
+      const response = await fetch(apiEndpoint)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load page")
+      }
+
+      const newVideos = data.videos || data.galleries || []
+      setVideos(newVideos)
+      setHasMore(newVideos.length >= 10)
+      
+      // Scroll to top of results
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (err) {
+      console.error("Go to page error:", err)
+      setError("Failed to load page. Please try again.")
+    } finally {
+      setLoading(false)
+      setShowPageJump(false)
+      setJumpToPage("")
     }
   }
 
@@ -1079,7 +1130,9 @@ const getVideoUrl = (url: string) => {
                                 ? "Anime"
                                 : api === "rule34"
                                   ? "Rule34"
-                                  : api}
+                                  : api === "youporn"
+                                    ? "YouPorn"
+                                    : api}
               </span>
             </button>
           ))}
@@ -1240,6 +1293,124 @@ const getVideoUrl = (url: string) => {
           {loadingMore && (
             <div className="flex items-center justify-center py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {videos.length > 0 && (
+            <div className="mt-8 flex flex-col items-center gap-4">
+              <Pagination>
+                <PaginationContent className="flex-wrap justify-center gap-1">
+                  {/* First Page */}
+                  <PaginationItem>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => goToPage(1)}
+                      disabled={page === 1 || loading}
+                      className="h-9 w-9 text-slate-400 hover:text-white disabled:opacity-50"
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                  </PaginationItem>
+                  
+                  {/* Previous */}
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => goToPage(page - 1)}
+                      className={`${page === 1 || loading ? "pointer-events-none opacity-50" : "cursor-pointer"} text-slate-400 hover:text-white`}
+                    />
+                  </PaginationItem>
+
+                  {/* Page Numbers */}
+                  {page > 2 && (
+                    <PaginationItem className="hidden sm:block">
+                      <PaginationEllipsis className="text-slate-400" />
+                    </PaginationItem>
+                  )}
+                  
+                  {[page - 1, page, page + 1].filter(p => p >= 1).map(p => (
+                    <PaginationItem key={p}>
+                      <PaginationLink
+                        onClick={() => goToPage(p)}
+                        isActive={p === page}
+                        className={`cursor-pointer ${p === page ? "bg-violet-600 text-white hover:bg-violet-700" : "text-slate-400 hover:text-white"}`}
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  {hasMore && (
+                    <PaginationItem className="hidden sm:block">
+                      <PaginationEllipsis className="text-slate-400" />
+                    </PaginationItem>
+                  )}
+
+                  {/* Next */}
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => goToPage(page + 1)}
+                      className={`${!hasMore || loading ? "pointer-events-none opacity-50" : "cursor-pointer"} text-slate-400 hover:text-white`}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+
+              {/* Jump to Page */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-400">Page {page}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPageJump(!showPageJump)}
+                  className="text-xs border-slate-700 bg-transparent text-slate-400 hover:text-white"
+                >
+                  Go to page
+                </Button>
+              </div>
+
+              {showPageJump && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Page #"
+                    value={jumpToPage}
+                    onChange={(e) => setJumpToPage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const targetPage = parseInt(jumpToPage)
+                        if (targetPage >= 1) goToPage(targetPage)
+                      }
+                    }}
+                    className="w-24 border-slate-700 bg-slate-800 text-white text-center"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const targetPage = parseInt(jumpToPage)
+                      if (targetPage >= 1) goToPage(targetPage)
+                    }}
+                    disabled={!jumpToPage || parseInt(jumpToPage) < 1}
+                    className="bg-violet-600 hover:bg-violet-700"
+                  >
+                    Go
+                  </Button>
+                </div>
+              )}
+
+              {/* Load More Button as alternative */}
+              {hasMore && (
+                <Button
+                  onClick={loadMoreVideos}
+                  disabled={loadingMore}
+                  variant="outline"
+                  className="border-slate-700 bg-transparent text-slate-400 hover:text-white"
+                >
+                  {loadingMore ? "Loading..." : "Load More"}
+                </Button>
+              )}
             </div>
           )}
         </>
