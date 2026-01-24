@@ -1,4 +1,5 @@
 "use client"
+
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import React from "react"
@@ -27,7 +28,7 @@ interface Shelf {
   items: Track[]
 }
 
-// All YT Music Genres
+// All YouTube Music Genres
 const GENRES = [
   { id: "pop", name: "Pop", color: "from-pink-500 to-rose-500" },
   { id: "rock", name: "Rock", color: "from-red-500 to-red-700" },
@@ -1304,7 +1305,8 @@ useEffect(() => {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black overflow-hidden ${showFullPlayer ? 'invisible' : ''}`}>
+    <>
+      <div className={`flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black overflow-hidden ${showFullPlayer ? 'invisible' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/30">
         <div className="flex items-center gap-3">
@@ -2042,34 +2044,34 @@ useEffect(() => {
         style={{ display: 'none' }}
       />
 
-  {/* Hidden Audio element for offline playback */}
-  <audio
-    ref={offlineAudioRef}
-    onEnded={playNext}
-    onTimeUpdate={(e) => {
-      if (!isSeeking) {
-        setCurrentTime(e.currentTarget.currentTime)
-      }
-    }}
-    onLoadedMetadata={(e) => {
-      setDuration(e.currentTarget.duration)
-    }}
-    onPlay={() => setIsPlaying(true)}
-    onPause={() => setIsPlaying(false)}
-    style={{ display: 'none' }}
-  />
+      {/* Hidden Audio element for offline playback */}
+      <audio
+        ref={offlineAudioRef}
+        onEnded={playNext}
+        onTimeUpdate={(e) => {
+          if (!isSeeking) {
+            setCurrentTime(e.currentTarget.currentTime)
+          }
+        }}
+        onLoadedMetadata={(e) => {
+          setDuration(e.currentTarget.duration)
+        }}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        style={{ display: 'none' }}
+      />
 
-  {/* YouTube Embed for audio playback - hidden (only when online and not offline playback) */}
-  {showPlayer && currentTrack && !isOfflinePlayback && (
-  <iframe
-  key={currentTrack.videoId}
-  ref={playerRef}
-  src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
-  className="w-0 h-0 absolute"
-  allow="autoplay; encrypted-media"
-  style={{ height: 0, width: 0, border: 0, position: 'absolute', left: -9999 }}
-  />
-  )}
+      {/* YouTube Embed for audio playback - hidden (only when online and not offline playback) */}
+      {showPlayer && currentTrack && !isOfflinePlayback && (
+        <iframe
+          key={currentTrack.videoId}
+          ref={playerRef}
+          src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
+          className="w-0 h-0 absolute"
+          allow="autoplay; encrypted-media"
+          style={{ height: 0, width: 0, border: 0, position: 'absolute', left: -9999 }}
+        />
+      )}
 
       {/* Mini Player - Above tab bar, swipe up to expand */}
       {showPlayer && currentTrack && !showFullPlayer && (
