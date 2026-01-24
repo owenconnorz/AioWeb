@@ -132,11 +132,13 @@ export function useOfflineMusic() {
         status: "downloading"
       }))
 
-      const streamResponse = await fetch(`/api/music-download?videoId=${videoId}`)
+      const streamResponse = await fetch(`/api/music-download?videoId=${videoId}`, {
+        signal: AbortSignal.timeout(30000), // 30s timeout
+      })
       const streamData = await streamResponse.json()
 
       if (!streamData.audioUrl) {
-        throw new Error(streamData.error || "Failed to get audio stream")
+        throw new Error(streamData.error || streamData.details || "Failed to get audio stream")
       }
 
       setDownloadProgress(prev => new Map(prev).set(videoId, {
@@ -150,10 +152,12 @@ export function useOfflineMusic() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audioUrl: streamData.audioUrl }),
+        signal: AbortSignal.timeout(120000), // 2 min timeout for large files
       })
 
       if (!audioResponse.ok) {
-        throw new Error("Failed to download audio")
+        const errorText = await audioResponse.text()
+        throw new Error("Failed to download audio: " + errorText)
       }
 
       setDownloadProgress(prev => new Map(prev).set(videoId, {

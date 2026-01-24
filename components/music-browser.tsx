@@ -62,9 +62,14 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [showPlayer, setShowPlayer] = useState(false)
   const [showFullPlayer, setShowFullPlayer] = useState(false)
   
-  // Swipe gesture state
+  // Swipe gesture state with drag tracking
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [dragOffset, setDragOffset] = useState(0) // Current drag position
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragVelocity, setDragVelocity] = useState(0)
+  const lastTouchY = useRef<number>(0)
+  const lastTouchTime = useRef<number>(0)
   
   // Library state
   const [likedTracks, setLikedTracks] = useState<Track[]>([])
@@ -162,46 +167,129 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const silentAudioRef = useRef<HTMLAudioElement>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   
-  // Swipe gesture handlers
+  // Swipe gesture handlers with velocity tracking
   const minSwipeDistance = 50
+  const velocityThreshold = 0.5 // pixels per millisecond
   
-  const onTouchStart = (e: React.TouchEvent) => {
+  const onTouchStartMini = (e: React.TouchEvent) => {
+    const y = e.targetTouches[0].clientY
+    setTouchStart(y)
     setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientY)
+    setIsDragging(true)
+    setDragOffset(0)
+    lastTouchY.current = y
+    lastTouchTime.current = Date.now()
+    setDragVelocity(0)
+  }
+  
+  const onTouchStartFull = (e: React.TouchEvent) => {
+    const y = e.targetTouches[0].clientY
+    setTouchStart(y)
+    setTouchEnd(null)
+    setIsDragging(true)
+    setDragOffset(0)
+    lastTouchY.current = y
+    lastTouchTime.current = Date.now()
+    setDragVelocity(0)
   }
   
   const onTouchMoveMini = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientY)
+    if (!touchStart) return
+    const y = e.targetTouches[0].clientY
+    const now = Date.now()
+    const deltaY = y - lastTouchY.current
+    const deltaTime = now - lastTouchTime.current
+    
+    // Calculate velocity (pixels per millisecond)
+    if (deltaTime > 0) {
+      setDragVelocity(deltaY / deltaTime)
+    }
+    
+    lastTouchY.current = y
+    lastTouchTime.current = now
+    
+    // Calculate drag offset (negative = swiping up to expand)
+    const offset = y - touchStart
+    // Only allow upward drag (negative offset) for mini player
+    if (offset < 0) {
+      setDragOffset(offset)
+    }
+    setTouchEnd(y)
   }
   
   const onTouchMoveFull = (e: React.TouchEvent) => {
-    // Prevent browser pull-to-refresh when swiping down
-    if (e.targetTouches[0].clientY > (touchStart || 0)) {
+    if (!touchStart) return
+    const y = e.targetTouches[0].clientY
+    const now = Date.now()
+    const deltaY = y - lastTouchY.current
+    const deltaTime = now - lastTouchTime.current
+    
+    // Calculate velocity
+    if (deltaTime > 0) {
+      setDragVelocity(deltaY / deltaTime)
+    }
+    
+    lastTouchY.current = y
+    lastTouchTime.current = now
+    
+    // Prevent browser pull-to-refresh
+    if (y > touchStart) {
       e.preventDefault()
     }
-    setTouchEnd(e.targetTouches[0].clientY)
+    
+    // Calculate drag offset (positive = swiping down to minimize)
+    const offset = y - touchStart
+    // Only allow downward drag (positive offset) for full player
+    if (offset > 0) {
+      setDragOffset(offset)
+    }
+    setTouchEnd(y)
   }
   
   const onTouchEndMini = () => {
-    if (!touchStart || !touchEnd) return
+    if (!touchStart || !touchEnd) {
+      setIsDragging(false)
+      setDragOffset(0)
+      return
+    }
+    
     const distance = touchStart - touchEnd
-    const isSwipeUp = distance > minSwipeDistance
-    if (isSwipeUp) {
+    const shouldExpand = distance > minSwipeDistance || dragVelocity < -velocityThreshold
+    
+    // Animate to final position
+    setDragOffset(0)
+    setIsDragging(false)
+    
+    if (shouldExpand) {
       setShowFullPlayer(true)
     }
+    
     setTouchStart(null)
     setTouchEnd(null)
+    setDragVelocity(0)
   }
   
   const onTouchEndFull = () => {
-    if (!touchStart || !touchEnd) return
+    if (!touchStart || !touchEnd) {
+      setIsDragging(false)
+      setDragOffset(0)
+      return
+    }
+    
     const distance = touchEnd - touchStart
-    const isSwipeDown = distance > minSwipeDistance
-    if (isSwipeDown) {
+    const shouldMinimize = distance > minSwipeDistance || dragVelocity > velocityThreshold
+    
+    // Animate to final position
+    setDragOffset(0)
+    setIsDragging(false)
+    
+    if (shouldMinimize) {
       setShowFullPlayer(false)
     }
+    
     setTouchStart(null)
     setTouchEnd(null)
+    setDragVelocity(0)
   }
 
   // Handle SSR - mount check
@@ -1551,16 +1639,21 @@ useEffect(() => {
       {/* Mini Player - Above tab bar, swipe up to expand */}
       {showPlayer && currentTrack && !showFullPlayer && (
         <div 
-          className="border-t border-white/10 cursor-pointer transition-colors duration-500"
+          className="border-t border-white/10 cursor-pointer"
           style={{ 
             background: dynamicThemeEnabled 
               ? `linear-gradient(to right, ${secondaryColor}, ${dominantColor})`
-              : 'linear-gradient(to right, #0f172a, #1e293b)'
+              : 'linear-gradient(to right, #0f172a, #1e293b)',
+            transform: isDragging && dragOffset < 0 
+              ? `translateY(${dragOffset * 0.3}px) scale(${1 + Math.abs(dragOffset) * 0.0003})` 
+              : 'translateY(0) scale(1)',
+            transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), background 0.5s',
+            opacity: isDragging && dragOffset < 0 ? 1 - Math.abs(dragOffset) * 0.002 : 1,
           }}
-          onTouchStart={onTouchStart}
+          onTouchStart={onTouchStartMini}
           onTouchMove={onTouchMoveMini}
           onTouchEnd={onTouchEndMini}
-          onClick={() => setShowFullPlayer(true)}
+          onClick={() => !isDragging && setShowFullPlayer(true)}
         >
           {/* Swipe indicator */}
           <div className="flex justify-center pt-2">
@@ -1645,9 +1738,14 @@ useEffect(() => {
           backgroundColor: dynamicThemeEnabled ? secondaryColor : '#000000',
           minHeight: '100vh',
           minHeight: '100dvh',
-          touchAction: 'pan-x pinch-zoom'
+          touchAction: 'pan-x pinch-zoom',
+          transform: isDragging && dragOffset > 0 
+            ? `translateY(${dragOffset}px) scale(${1 - dragOffset * 0.0002})` 
+            : 'translateY(0) scale(1)',
+          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+          borderRadius: isDragging && dragOffset > 0 ? `${Math.min(dragOffset * 0.1, 20)}px` : '0',
         }}
-        onTouchStart={onTouchStart}
+        onTouchStart={onTouchStartFull}
         onTouchMove={onTouchMoveFull}
         onTouchEnd={onTouchEndFull}
       >
