@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import React from "react"
 
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio, Link2, User, Disc } from "lucide-react"
+import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio, Link2, User, Disc, Pencil, ListPlus, PlayCircle, Info, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOfflineMusic } from "@/hooks/use-offline-music"
@@ -165,6 +165,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [dynamicThemeEnabled, setDynamicThemeEnabled] = useState(true)
   const [dominantColor, setDominantColor] = useState<string>("#1e293b") // default slate-800
   const [secondaryColor, setSecondaryColor] = useState<string>("#0f172a") // default slate-900
+  const [accentColor, setAccentColor] = useState<string>("#7dd3c0") // default teal for buttons/seekbar
   
   // Playback time tracking
   const [currentTime, setCurrentTime] = useState(0)
@@ -184,6 +185,10 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [showEqualizerMenu, setShowEqualizerMenu] = useState(false)
   const [showPlayerMenu, setShowPlayerMenu] = useState(false)
   const [playerMenuVisible, setPlayerMenuVisible] = useState(false)
+  const [showTrackMenu, setShowTrackMenu] = useState(false)
+  const [trackMenuVisible, setTrackMenuVisible] = useState(false)
+  const [trackMenuExpanded, setTrackMenuExpanded] = useState(false)
+  const [selectedTrackForMenu, setSelectedTrackForMenu] = useState<Track | null>(null)
   const [isSeeking, setIsSeeking] = useState(false)
   const [expandedShelf, setExpandedShelf] = useState<Shelf | null>(null)
   const [loadingPlaylist, setLoadingPlaylist] = useState(false)
@@ -411,6 +416,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     if (!dynamicThemeEnabled || !imageUrl) {
       setDominantColor("#1e293b")
       setSecondaryColor("#0f172a")
+      setAccentColor("#7dd3c0")
       return
     }
     
@@ -455,19 +461,27 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           const darkerG = Math.round(g * 0.4)
           const darkerB = Math.round(b * 0.4)
           
+          // Create lighter/more vibrant accent color for buttons and seek bar
+          const accentR = Math.min(255, Math.round(r * 1.3 + 50))
+          const accentG = Math.min(255, Math.round(g * 1.3 + 50))
+          const accentB = Math.min(255, Math.round(b * 1.3 + 50))
+          
           setDominantColor(`rgb(${r}, ${g}, ${b})`)
           setSecondaryColor(`rgb(${darkerR}, ${darkerG}, ${darkerB})`)
+          setAccentColor(`rgb(${accentR}, ${accentG}, ${accentB})`)
         }
       } catch (e) {
         // CORS error or other issue, use defaults
         setDominantColor("#1e293b")
         setSecondaryColor("#0f172a")
+        setAccentColor("#7dd3c0")
       }
     }
     
     img.onerror = () => {
       setDominantColor("#1e293b")
       setSecondaryColor("#0f172a")
+      setAccentColor("#7dd3c0")
     }
   }, [dynamicThemeEnabled])
   
@@ -1106,8 +1120,18 @@ useEffect(() => {
     setCurrentTime(newTime)
     setIsSeeking(true)
     
-    // Note: Can't actually seek in YouTube iframe without proper API integration
-    // This updates the visual progress bar
+    // Seek in offline audio
+    if (isOfflinePlayback && offlineAudioRef.current) {
+      offlineAudioRef.current.currentTime = newTime
+    }
+    
+    // Seek in YouTube iframe using postMessage API
+    if (!isOfflinePlayback && playerRef.current?.contentWindow) {
+      playerRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'seekTo', args: [newTime, true] }),
+        '*'
+      )
+    }
   }
   
   const handleSeekEnd = () => {
@@ -1136,6 +1160,51 @@ useEffect(() => {
       try {
         await navigator.clipboard.writeText(shareUrl)
         alert("Link copied to clipboard!")
+      } catch (e) {
+        // Clipboard not available
+      }
+    }
+  }
+  
+  // Open track context menu
+  const openTrackMenu = (track: Track, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+      e.preventDefault()
+    }
+    setSelectedTrackForMenu(track)
+    setTrackMenuExpanded(false)
+    setShowTrackMenu(true)
+  }
+  
+  // Close track context menu
+  const closeTrackMenu = () => {
+    setTrackMenuVisible(false)
+    setTrackMenuExpanded(false)
+    setTimeout(() => {
+      setShowTrackMenu(false)
+      setSelectedTrackForMenu(null)
+    }, 300)
+  }
+  
+  // Share a specific track
+  const shareTrack = async (track: Track) => {
+    const shareUrl = `https://www.youtube.com/watch?v=${track.videoId}`
+    const shareText = `${track.title} - ${track.artist || ''}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: track.title,
+          text: shareText,
+          url: shareUrl
+        })
+      } catch (e) {
+        // User cancelled
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl)
       } catch (e) {
         // Clipboard not available
       }
@@ -1424,38 +1493,48 @@ useEffect(() => {
                     </button>
                   ))}
                   
-                  {/* Song Suggestions */}
-                  {songSuggestions.map((song, index) => (
-                    <button
-                      key={`song-${index}`}
-                      className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setShowSuggestions(false)
-                        const track: Track = {
-                          id: song.videoId,
-                          videoId: song.videoId,
-                          title: song.title,
-                          artist: song.artist,
-                          thumbnail: song.thumbnail,
-                        }
-                        playTrack(track, [track])
-                      }}
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <img 
-                          src={song.thumbnail || "/placeholder.svg"} 
-                          alt={song.title}
-                          className="w-12 h-12 rounded object-cover flex-shrink-0"
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="truncate font-medium text-[15px]">{song.title}</span>
-                          <span className="truncate text-sm text-slate-400">{song.artist}</span>
-                        </div>
-                      </div>
-                      <MoreVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                    </button>
-                  ))}
+  {/* Song Suggestions */}
+  {songSuggestions.map((song, index) => {
+  const track: Track = {
+  id: song.videoId,
+  videoId: song.videoId,
+  title: song.title,
+  artist: song.artist,
+  thumbnail: song.thumbnail,
+  }
+  return (
+  <div
+  key={`song-${index}`}
+  className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors cursor-pointer"
+  onMouseDown={(e) => e.preventDefault()}
+  onClick={() => {
+  setShowSuggestions(false)
+  playTrack(track, [track])
+  }}
+  >
+  <div className="flex items-center gap-3 flex-1 min-w-0">
+  <img
+  src={song.thumbnail || "/placeholder.svg"}
+  alt={song.title}
+  className="w-12 h-12 rounded object-cover flex-shrink-0"
+  />
+  <div className="flex flex-col min-w-0">
+  <span className="truncate font-medium text-[15px]">{song.title}</span>
+  <span className="truncate text-sm text-slate-400">{song.artist}</span>
+  </div>
+  </div>
+  <button
+  className="p-2 -mr-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+  onClick={(e) => {
+  setShowSuggestions(false)
+  openTrackMenu(track, e)
+  }}
+  >
+  <MoreVertical className="h-5 w-5 text-slate-400" />
+  </button>
+  </div>
+  )
+  })}
                 </div>
               )}
             </div>
@@ -2260,47 +2339,54 @@ useEffect(() => {
                   )}
                 </div>
                 
-                {/* Songs list format */}
-                {shelf.type === "songs" || shelf.title?.toLowerCase().includes("song") ? (
-                  <div className="px-4 space-y-1">
-                    {shelf.items?.slice(0, 5).map((item: any, idx: number) => (
-                      <button
-                        key={`song-${idx}`}
-                        className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
-                        onClick={() => {
-                          const track: Track = {
-                            id: item.videoId,
-                            videoId: item.videoId,
-                            title: item.title,
-                            artist: item.artist || currentArtist?.name,
-                            thumbnail: item.thumbnail,
-                          }
-                          playTrack(track, shelf.items?.map((i: any) => ({
-                            id: i.videoId,
-                            videoId: i.videoId,
-                            title: i.title,
-                            artist: i.artist || currentArtist?.name,
-                            thumbnail: i.thumbnail,
-                          })))
-                        }}
-                      >
-                        <img
-                          src={item.thumbnail || "/placeholder.svg"}
-                          alt={item.title}
-                          className="w-12 h-12 rounded object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="flex-1 text-left min-w-0">
-                          <h4 className="text-white font-medium line-clamp-1">{item.title}</h4>
-                          <p className="text-sm text-slate-400 line-clamp-1 flex items-center gap-1">
-                            {item.explicit && <span className="text-xs bg-slate-600 px-1 rounded">E</span>}
-                            {item.artist || currentArtist?.name}
-                          </p>
-                        </div>
-                        <MoreVertical className="h-5 w-5 text-slate-400" />
-                      </button>
-                    ))}
-                  </div>
+  {/* Songs list format */}
+  {shelf.type === "songs" || shelf.title?.toLowerCase().includes("song") ? (
+  <div className="px-4 space-y-1">
+  {shelf.items?.slice(0, 5).map((item: any, idx: number) => {
+  const track: Track = {
+  id: item.videoId,
+  videoId: item.videoId,
+  title: item.title,
+  artist: item.artist || currentArtist?.name,
+  thumbnail: item.thumbnail,
+  }
+  return (
+  <div
+  key={`song-${idx}`}
+  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+  onClick={() => {
+  playTrack(track, shelf.items?.map((i: any) => ({
+  id: i.videoId,
+  videoId: i.videoId,
+  title: i.title,
+  artist: i.artist || currentArtist?.name,
+  thumbnail: i.thumbnail,
+  })))
+  }}
+  >
+  <img
+  src={item.thumbnail || "/placeholder.svg"}
+  alt={item.title}
+  className="w-12 h-12 rounded object-cover"
+  referrerPolicy="no-referrer"
+  />
+  <div className="flex-1 text-left min-w-0">
+  <h4 className="text-white font-medium line-clamp-1">{item.title}</h4>
+  <p className="text-sm text-slate-400 line-clamp-1 flex items-center gap-1">
+  {item.explicit && <span className="text-xs bg-slate-600 px-1 rounded">E</span>}
+  {item.artist || currentArtist?.name}
+  </p>
+  </div>
+  <button
+  className="p-2 -mr-2 hover:bg-white/20 rounded-full transition-colors"
+  onClick={(e) => openTrackMenu(track, e)}
+  >
+  <MoreVertical className="h-5 w-5 text-slate-400" />
+  </button>
+  </div>
+  )
+  })}
+  </div>
                 ) : (
                   /* Horizontal scroll for albums, videos, etc. */
                   <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide w-full max-w-full">
@@ -2433,23 +2519,28 @@ useEffect(() => {
               <div className="space-y-1">
                 {albumTracks.map((track, idx) => (
                   <button
-                    key={`album-track-${idx}`}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition-colors"
-                    onClick={() => playTrack(track, albumTracks)}
-                  >
-                    <span className="w-6 text-slate-500 text-sm text-center">{idx + 1}</span>
-                    <img
-                      src={track.thumbnail || currentAlbum?.thumbnail || "/placeholder.svg"}
-                      alt={track.title}
-                      className="w-12 h-12 rounded object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="flex-1 text-left min-w-0">
-                      <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
-                      <p className="text-sm text-slate-400 line-clamp-1">{track.artist}</p>
-                    </div>
-                    <MoreVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                  </button>
+  key={`album-track-${idx}`}
+  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition-colors"
+  onClick={() => playTrack(track, albumTracks)}
+  >
+  <span className="w-6 text-slate-500 text-sm text-center">{idx + 1}</span>
+  <img
+  src={track.thumbnail || currentAlbum?.thumbnail || "/placeholder.svg"}
+  alt={track.title}
+  className="w-12 h-12 rounded object-cover"
+  referrerPolicy="no-referrer"
+  />
+  <div className="flex-1 text-left min-w-0">
+  <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+  <p className="text-sm text-slate-400 line-clamp-1">{track.artist}</p>
+  </div>
+  <button
+  className="p-2 -mr-2 hover:bg-white/10 rounded-full transition-colors"
+  onClick={(e) => openTrackMenu(track, e)}
+  >
+  <MoreVertical className="h-5 w-5 text-slate-400" />
+  </button>
+  </button>
                 ))}
               </div>
               
@@ -2523,156 +2614,190 @@ useEffect(() => {
     </div>
     <p className="text-white/60 truncate">{currentTrack.artist || currentTrack.subtitle}</p>
     </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 rounded-lg bg-[#a8d5d8]/20 text-[#a8d5d8] hover:bg-[#a8d5d8]/30"
-                onClick={shareSong}
-              >
-                <Share2 className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 rounded-lg bg-[#a8d5d8]/20 text-[#a8d5d8] hover:bg-[#a8d5d8]/30"
-                onClick={() => toggleLike(currentTrack)}
-              >
-                <Heart className={`h-5 w-5 ${isLiked(currentTrack) ? "fill-[#a8d5d8] text-[#a8d5d8]" : ""}`} />
-              </Button>
-            </div>
+    <div className="flex items-center gap-2">
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-11 w-11 rounded-lg transition-colors duration-500"
+    style={{ 
+    backgroundColor: dynamicThemeEnabled ? `${accentColor}30` : 'rgba(168, 213, 216, 0.2)',
+    color: dynamicThemeEnabled ? accentColor : '#a8d5d8'
+    }}
+    onClick={shareSong}
+    >
+    <Share2 className="h-5 w-5" />
+    </Button>
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-11 w-11 rounded-lg transition-colors duration-500"
+    style={{ 
+    backgroundColor: dynamicThemeEnabled ? `${accentColor}30` : 'rgba(168, 213, 216, 0.2)',
+    color: dynamicThemeEnabled ? accentColor : '#a8d5d8'
+    }}
+    onClick={() => toggleLike(currentTrack)}
+    >
+    <Heart className={`h-5 w-5 ${isLiked(currentTrack) ? "fill-current" : ""}`} style={{ color: dynamicThemeEnabled ? accentColor : '#a8d5d8' }} />
+    </Button>
+    </div>
           </div>
         </div>
 
     {/* Progress Bar */}
     <div className="relative z-10 px-8 py-2 shrink-0">
-          <div 
-            ref={progressBarRef}
-            className="w-full h-1 bg-[#3a4556] rounded-full overflow-hidden cursor-pointer touch-none"
-            onClick={handleSeek}
-            onTouchStart={handleSeek}
-            onTouchMove={handleSeek}
-            onTouchEnd={handleSeekEnd}
-          >
-            <div 
-              className="h-full bg-[#7dd3c0] rounded-full"
-              style={{ 
-                width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
-                transition: isSeeking ? 'none' : 'width 0.3s'
-              }}
-            />
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-[#7a8599]">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
+    <div
+    ref={progressBarRef}
+    className="w-full h-1 rounded-full overflow-hidden cursor-pointer touch-none transition-colors duration-500"
+    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}40` : '#3a4556' }}
+    onClick={handleSeek}
+    onTouchStart={handleSeek}
+    onTouchMove={handleSeek}
+    onTouchEnd={handleSeekEnd}
+    >
+    <div
+    className="h-full rounded-full transition-colors duration-500"
+    style={{
+    width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+    transition: isSeeking ? 'background-color 0.5s' : 'width 0.3s, background-color 0.5s',
+    backgroundColor: dynamicThemeEnabled ? accentColor : '#7dd3c0'
+    }}
+    />
+    </div>
+    <div className="flex justify-between mt-2 text-xs text-white/50">
+    <span>{formatTime(currentTime)}</span>
+    <span>{formatTime(duration)}</span>
+    </div>
+    </div>
 
     {/* Main Controls - Large rounded buttons */}
     <div className="relative z-10 flex items-center justify-center gap-4 py-4 px-8 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-16 w-16 rounded-2xl bg-[#2a3545] text-white hover:bg-[#3a4556]"
-            onClick={playPrev}
-          >
-            <SkipBack className="h-6 w-6" />
-          </Button>
-          <Button
-            variant="ghost"
-            className="h-16 flex-1 max-w-[200px] rounded-2xl bg-[#a8d5d8] text-[#1e2738] hover:bg-[#8fc5c8] font-medium flex items-center justify-center gap-2"
-            onClick={togglePlay}
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="h-6 w-6" />
-                <span>Pause</span>
-              </>
-            ) : (
-              <>
-                <Play className="h-6 w-6 ml-1" />
-                <span>Play</span>
-              </>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-16 w-16 rounded-2xl bg-[#2a3545] text-white hover:bg-[#3a4556]"
-            onClick={playNext}
-          >
-            <SkipForward className="h-6 w-6" />
-          </Button>
-        </div>
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-16 w-16 rounded-2xl text-white transition-colors duration-500"
+    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+    onClick={playPrev}
+    >
+    <SkipBack className="h-6 w-6" />
+    </Button>
+    <Button
+    variant="ghost"
+    className="h-16 flex-1 max-w-[200px] rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors duration-500"
+    style={{ 
+    backgroundColor: dynamicThemeEnabled ? accentColor : '#a8d5d8',
+    color: dynamicThemeEnabled ? secondaryColor : '#1e2738'
+    }}
+    onClick={togglePlay}
+    >
+    {isPlaying ? (
+    <>
+    <Pause className="h-6 w-6" />
+    <span>Pause</span>
+    </>
+    ) : (
+    <>
+    <Play className="h-6 w-6 ml-1" />
+    <span>Play</span>
+    </>
+    )}
+    </Button>
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-16 w-16 rounded-2xl text-white transition-colors duration-500"
+    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+    onClick={playNext}
+    >
+    <SkipForward className="h-6 w-6" />
+    </Button>
+    </div>
         
     {/* Bottom Controls Row */}
     <div className="relative z-10 flex items-center justify-between px-6 py-4 shrink-0">
-          <div className="flex items-center gap-2">
-            {/* Queue */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white"
-              onClick={() => setShowQueuePanel(true)}
-            >
-              <ListMusic className="h-5 w-5" />
-            </Button>
-            
-            {/* Sleep Timer */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${sleepTimer ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
-              onClick={() => {
-                const nextIndex = SLEEP_TIMER_OPTIONS.findIndex(o => o.value === sleepTimer) + 1
-                const nextOption = SLEEP_TIMER_OPTIONS[nextIndex % SLEEP_TIMER_OPTIONS.length]
-                setSleepTimerMinutes(nextOption.value)
-              }}
-            >
-              <Clock className="h-5 w-5" />
-            </Button>
-            
-            {/* Shuffle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${isShuffle ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
-              onClick={() => setIsShuffle(!isShuffle)}
-            >
-              <Shuffle className="h-5 w-5" />
-            </Button>
-            
-            {/* Equalizer / Sort */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${equalizer !== "normal" ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
-              onClick={() => setShowEqualizerMenu(!showEqualizerMenu)}
-            >
-              <Volume2 className="h-5 w-5" />
-            </Button>
-            
-            {/* Repeat */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${isRepeat ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
-              onClick={() => setIsRepeat(!isRepeat)}
-            >
-              <Repeat className="h-5 w-5" />
-            </Button>
-          </div>
-          
-          {/* 3-dot Menu */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-12 w-12 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white"
-            onClick={() => setShowPlayerMenu(true)}
-          >
-            <MoreVertical className="h-5 w-5" />
-          </Button>
-        </div>
+    <div className="flex items-center gap-2">
+    {/* Queue */}
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-12 w-12 rounded-xl text-[#7a8599] hover:text-white transition-colors duration-500"
+    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+    onClick={() => setShowQueuePanel(true)}
+    >
+    <ListMusic className="h-5 w-5" />
+    </Button>
+    
+    {/* Sleep Timer */}
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-12 w-12 rounded-xl transition-colors duration-500"
+    style={{ 
+    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+    color: sleepTimer ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+    }}
+    onClick={() => {
+    const nextIndex = SLEEP_TIMER_OPTIONS.findIndex(o => o.value === sleepTimer) + 1
+    const nextOption = SLEEP_TIMER_OPTIONS[nextIndex % SLEEP_TIMER_OPTIONS.length]
+    setSleepTimerMinutes(nextOption.value)
+    }}
+    >
+    <Clock className="h-5 w-5" />
+    </Button>
+    
+    {/* Shuffle */}
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-12 w-12 rounded-xl transition-colors duration-500"
+    style={{ 
+    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+    color: isShuffle ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+    }}
+    onClick={() => setIsShuffle(!isShuffle)}
+    >
+    <Shuffle className="h-5 w-5" />
+    </Button>
+    
+    {/* Equalizer / Sort */}
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-12 w-12 rounded-xl transition-colors duration-500"
+    style={{ 
+    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+    color: equalizer !== "normal" ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+    }}
+    onClick={() => setShowEqualizerMenu(!showEqualizerMenu)}
+    >
+    <Volume2 className="h-5 w-5" />
+    </Button>
+    
+    {/* Repeat */}
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-12 w-12 rounded-xl transition-colors duration-500"
+    style={{ 
+    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+    color: isRepeat ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+    }}
+    onClick={() => setIsRepeat(!isRepeat)}
+    >
+    <Repeat className="h-5 w-5" />
+    </Button>
+    </div>
+    
+    {/* 3-dot Menu */}
+    <Button
+    variant="ghost"
+    size="icon"
+    className="h-12 w-12 rounded-xl text-[#7a8599] hover:text-white transition-colors duration-500"
+    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+    onClick={() => setShowPlayerMenu(true)}
+    >
+    <MoreVertical className="h-5 w-5" />
+    </Button>
+    </div>
         
         {/* Equalizer Menu Popup */}
         {showEqualizerMenu && (
@@ -3086,10 +3211,275 @@ useEffect(() => {
             >
               Create
             </Button>
+  </div>
+  </div>
+  </div>
+  )}
+  
+  {/* Track Context Menu - Bottom Sheet */}
+  {showTrackMenu && selectedTrackForMenu && isMounted && createPortal(
+    <div className="fixed inset-0 z-[99999]">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/60 transition-opacity duration-300"
+        style={{ opacity: trackMenuVisible ? 1 : 0 }}
+        onClick={closeTrackMenu}
+      />
+      
+      {/* Bottom Sheet */}
+      <div 
+        className={`absolute bottom-0 left-0 right-0 bg-[#1a2332] rounded-t-3xl transition-all duration-300 ease-out overflow-hidden`}
+        style={{ 
+          transform: trackMenuVisible ? 'translateY(0)' : 'translateY(100%)',
+          maxHeight: trackMenuExpanded ? '85vh' : '50vh',
+        }}
+        ref={(el) => {
+          if (el && showTrackMenu && !trackMenuVisible) {
+            setTimeout(() => setTrackMenuVisible(true), 10)
+          }
+        }}
+      >
+        {/* Drag Handle */}
+        <div 
+          className="flex justify-center py-3 cursor-grab active:cursor-grabbing"
+          onTouchStart={(e) => {
+            const startY = e.touches[0].clientY
+            const handleMove = (moveE: TouchEvent) => {
+              const deltaY = startY - moveE.touches[0].clientY
+              if (deltaY > 50) {
+                setTrackMenuExpanded(true)
+              } else if (deltaY < -50) {
+                if (trackMenuExpanded) {
+                  setTrackMenuExpanded(false)
+                } else {
+                  closeTrackMenu()
+                }
+              }
+            }
+            const handleEnd = () => {
+              document.removeEventListener('touchmove', handleMove)
+              document.removeEventListener('touchend', handleEnd)
+            }
+            document.addEventListener('touchmove', handleMove)
+            document.addEventListener('touchend', handleEnd)
+          }}
+        >
+          <div className="w-10 h-1 bg-[#3a4556] rounded-full" />
+        </div>
+        
+        {/* Track Header */}
+        <div className="flex items-center gap-3 px-4 pb-3">
+          <img
+            src={selectedTrackForMenu.thumbnail || "/placeholder.svg"}
+            alt={selectedTrackForMenu.title}
+            className="w-14 h-14 rounded-lg object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="flex-1 min-w-0">
+            <h3 className="text-white font-medium truncate">{selectedTrackForMenu.title}</h3>
+            <p className="text-[#7a8599] text-sm truncate">{selectedTrackForMenu.artist}</p>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 text-[#7a8599] hover:text-white"
+            onClick={() => {
+              toggleLike(selectedTrackForMenu)
+            }}
+          >
+            <Heart className={`h-5 w-5 ${isLiked(selectedTrackForMenu) ? "fill-red-500 text-red-500" : ""}`} />
+          </Button>
+        </div>
+        
+        {/* Divider */}
+        <div className="mx-4 border-t border-[#3a4556]" />
+        
+        {/* Action Buttons Row */}
+        <div className="flex items-center justify-center gap-3 px-4 py-4">
+          <Button
+            variant="ghost"
+            className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
+          >
+            <Pencil className="h-5 w-5" />
+            <span className="text-xs">Edit</span>
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
+            onClick={() => {
+              addToQueue(selectedTrackForMenu)
+              closeTrackMenu()
+            }}
+          >
+            <ListPlus className="h-5 w-5" />
+            <span className="text-xs">Add to playl</span>
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
+            onClick={() => {
+              shareTrack(selectedTrackForMenu)
+              closeTrackMenu()
+            }}
+          >
+            <Share2 className="h-5 w-5" />
+            <span className="text-xs">Share</span>
+          </Button>
+        </div>
+        
+        {/* Scrollable Menu Options */}
+        <div className="overflow-y-auto" style={{ maxHeight: trackMenuExpanded ? 'calc(85vh - 200px)' : 'calc(50vh - 200px)' }}>
+          {/* Start Radio */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              // Start radio based on track
+              closeTrackMenu()
+            }}
+          >
+            <Radio className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">Start radio</p>
+              <p className="text-[#7a8599] text-sm">Create a station based on this item</p>
+            </div>
+          </button>
+          
+          {/* Play Next */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              // Add to front of queue
+              if (selectedTrackForMenu) {
+                const newQueue = [selectedTrackForMenu, ...queue.filter(t => t.videoId !== selectedTrackForMenu.videoId)]
+                // This would need a setQueue function
+              }
+              closeTrackMenu()
+            }}
+          >
+            <PlayCircle className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">Play next</p>
+              <p className="text-[#7a8599] text-sm">Add to the top of your queue</p>
+            </div>
+          </button>
+          
+          {/* Add to Queue */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              addToQueue(selectedTrackForMenu)
+              closeTrackMenu()
+            }}
+          >
+            <ListMusic className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">Add to queue</p>
+              <p className="text-[#7a8599] text-sm">Add to the bottom of your queue</p>
+            </div>
+          </button>
+          
+          {/* Add to Library */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              toggleLike(selectedTrackForMenu)
+              closeTrackMenu()
+            }}
+          >
+            <Plus className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">Add to library</p>
+              <p className="text-[#7a8599] text-sm">Save to your library</p>
+            </div>
+          </button>
+          
+          {/* Download */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              if (isDownloaded(selectedTrackForMenu.videoId)) {
+                deleteTrack(selectedTrackForMenu.videoId)
+              } else {
+                downloadTrack(selectedTrackForMenu)
+              }
+              closeTrackMenu()
+            }}
+          >
+            {isDownloaded(selectedTrackForMenu.videoId) ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            ) : (
+              <Download className="h-5 w-5 text-[#7a8599]" />
+            )}
+            <div className="text-left">
+              <p className="text-white font-medium">
+                {isDownloaded(selectedTrackForMenu.videoId) ? "Downloaded" : "Download"}
+              </p>
+              <p className="text-[#7a8599] text-sm">Make available for offline playback</p>
+            </div>
+          </button>
+          
+          {/* View Artist */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              // Navigate to artist
+              closeTrackMenu()
+            }}
+          >
+            <User className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">View artist</p>
+              <p className="text-[#7a8599] text-sm">{selectedTrackForMenu.artist || "Unknown Artist"}</p>
+            </div>
+          </button>
+          
+          {/* View Album */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              // Navigate to album
+              closeTrackMenu()
+            }}
+          >
+            <Disc className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">View album</p>
+              <p className="text-[#7a8599] text-sm">{selectedTrackForMenu.album || selectedTrackForMenu.title}</p>
+            </div>
+          </button>
+          
+          {/* Refetch */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
+            onClick={() => {
+              closeTrackMenu()
+            }}
+          >
+            <RefreshCw className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">Refetch</p>
+              <p className="text-[#7a8599] text-sm">Fetch the latest metadata from YouTube Music</p>
+            </div>
+          </button>
+          
+          {/* Details */}
+          <button
+            className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors pb-8"
+            onClick={() => {
+              closeTrackMenu()
+            }}
+          >
+            <Info className="h-5 w-5 text-[#7a8599]" />
+            <div className="text-left">
+              <p className="text-white font-medium">Details</p>
+              <p className="text-[#7a8599] text-sm">View the song's information</p>
+            </div>
+          </button>
         </div>
       </div>
-    )}
-    </>
+    </div>,
+    document.body
+  )}
+  </>
   )
-}
+  }
