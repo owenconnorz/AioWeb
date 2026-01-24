@@ -71,6 +71,7 @@ interface Video {
   isCategory?: boolean
   qualities?: VideoQuality[]
   isImage?: boolean
+  directUrl?: string
   fullImage?: string
   sampleImage?: string
 }
@@ -1286,6 +1287,18 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                   autoPlay={index === activeVideoIndex}
                   className="h-full w-full object-contain bg-black"
                 />
+              ) : apiSource === "xvidapi" && video.directUrl && loadedIframes.has(index) ? (
+                <iframe
+                  ref={(el) => {
+                    iframeRefs.current[index] = el
+                  }}
+                  src={`/api/xvideo-player?url=${encodeURIComponent(video.directUrl)}&poster=${encodeURIComponent(video.thumbnail || '')}`}
+                  className="h-full w-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay"
+                  title={video.title}
+                />
               ) : loadedIframes.has(index) ? (
                 <iframe
                   ref={(el) => {
@@ -1953,6 +1966,15 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                 loop
                 playsInline
                 className="h-full w-full object-contain"
+              />
+            ) : apiSource === "xvidapi" && selectedVideo.directUrl ? (
+              // xvidapi with direct m3u8/mp4 URL - use video player route
+              <iframe
+                src={`/api/xvideo-player?url=${encodeURIComponent(selectedVideo.directUrl)}&poster=${encodeURIComponent(selectedVideo.thumbnail || '')}`}
+                className="h-full w-full border-0"
+                allowFullScreen
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                title={selectedVideo.title}
               />
             ) : (
               <iframe

@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest } from "next/server"
 
 export const dynamic = "force-dynamic"
 
@@ -11,100 +11,76 @@ export async function GET(request: NextRequest) {
       return new Response("Video ID required", { status: 400 })
     }
 
-    // Use the official RedTube API getVideoEmbedCode endpoint
-    // This returns a BASE64 encoded embed HTML that should work properly
-    const apiUrl = `https://api.redtube.com/?data=redtube.Videos.getVideoEmbedCode&video_id=${videoId}&output=json`
+    // The embed URL format for RedTube
+    // Using the embed URL directly instead of fetching from API (which returns "No video with this ID" for some videos)
+    const embedSrc = `https://embed.redtube.com/?id=${videoId}`
     
-    const response = await fetch(apiUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "application/json",
-      },
-    })
-
-    const data = await response.json()
-    
-    // Debug: Log the API response structure
-    console.log("[v0] RedTube API response:", JSON.stringify(data))
-
-    if (data.embed?.code) {
-      // Decode the BASE64 embed code
-      const decodedEmbed = Buffer.from(data.embed.code, "base64").toString("utf-8")
-      
-      // Extract iframe src from decoded HTML
-      const srcMatch = decodedEmbed.match(/src="([^"]+)"/)
-      let embedSrc = srcMatch?.[1] || `https://embed.redtube.com/?id=${videoId}`
-      
-      // Fix http to https
-      embedSrc = embedSrc.replace(/^http:/, "https:")
-      
-      // Create a full HTML page with the embed
-      const playerHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-            iframe { width: 100%; height: 100%; border: none; }
-          </style>
-        </head>
-        <body>
-          <iframe 
-            src="${embedSrc}" 
-            allowfullscreen 
-            allow="autoplay; fullscreen; encrypted-media"
-            referrerpolicy="no-referrer-when-downgrade"
-          ></iframe>
-        </body>
-        </html>
-      `
-
-      return new Response(playerHtml, {
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Access-Control-Allow-Origin": "*",
-          "X-Frame-Options": "ALLOWALL",
-        },
-      })
-    }
-
-    // Fallback: show debug info and redirect option
-    const apiDebugInfo = JSON.stringify(data, null, 2)
-    const fallbackHtml = `
+    // Create an HTML page that serves as a wrapper for the embed
+    // This acts as an intermediary origin which may help with CORS/referrer issues
+    const playerHtml = `
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="referrer" content="no-referrer">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, sans-serif; }
-          .container { text-align: center; padding: 20px; max-width: 600px; }
-          h2 { color: #fff; margin-bottom: 10px; }
-          p { color: #999; margin-bottom: 20px; font-size: 14px; }
-          a { color: #fff; text-decoration: none; display: inline-block; padding: 12px 24px; background: #c00; border-radius: 8px; font-weight: 500; }
-          a:hover { background: #e00; }
-          pre { background: #222; color: #0f0; padding: 10px; border-radius: 8px; text-align: left; overflow: auto; max-height: 200px; font-size: 10px; margin-top: 20px; }
+          html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+          iframe { width: 100%; height: 100%; border: none; }
+          .error { display: none; color: #fff; text-align: center; padding: 40px; font-family: -apple-system, sans-serif; }
+          .error h2 { margin-bottom: 15px; }
+          .error p { color: #999; margin-bottom: 20px; }
+          .error a { color: #fff; background: #c00; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block; }
         </style>
       </head>
       <body>
-        <div class="container">
-          <h2>Debug: API Response</h2>
-          <p>Video ID: ${videoId}</p>
-          <pre>${apiDebugInfo}</pre>
-          <br/>
+        <iframe 
+          id="player"
+          src="${embedSrc}" 
+          allowfullscreen 
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          referrerpolicy="no-referrer"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+        ></iframe>
+        <div id="error" class="error">
+          <h2>Video Blocked</h2>
+          <p>This video cannot be embedded from this location.</p>
           <a href="https://www.redtube.com/${videoId}" target="_blank" rel="noopener">Watch on RedTube</a>
         </div>
+        <script>
+          // Detect if iframe fails to load
+          const iframe = document.getElementById('player');
+          const error = document.getElementById('error');
+          
+          iframe.onerror = function() {
+            iframe.style.display = 'none';
+            error.style.display = 'block';
+          };
+          
+          // Also check after a timeout if content seems blocked
+          setTimeout(function() {
+            try {
+              // If we can't access iframe content and it looks empty, show error
+              if (iframe.contentWindow && iframe.contentWindow.document.body.innerHTML === '') {
+                iframe.style.display = 'none';
+                error.style.display = 'block';
+              }
+            } catch(e) {
+              // Cross-origin, which is expected - do nothing
+            }
+          }, 5000);
+        </script>
       </body>
       </html>
     `
 
-    return new Response(fallbackHtml, {
+    return new Response(playerHtml, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Access-Control-Allow-Origin": "*",
         "X-Frame-Options": "ALLOWALL",
+        "Content-Security-Policy": "frame-ancestors *",
       },
     })
   } catch (error) {
