@@ -166,6 +166,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [dominantColor, setDominantColor] = useState<string>("#1e293b") // default slate-800
   const [secondaryColor, setSecondaryColor] = useState<string>("#0f172a") // default slate-900
   const [accentColor, setAccentColor] = useState<string>("#7dd3c0") // default teal for buttons/seekbar
+  const [lightColor, setLightColor] = useState<string>("#334155") // lighter theme color for backgrounds
   
   // Playback time tracking
   const [currentTime, setCurrentTime] = useState(0)
@@ -421,6 +422,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       setDominantColor("#1e293b")
       setSecondaryColor("#0f172a")
       setAccentColor("#7dd3c0")
+      setLightColor("#334155")
       return
     }
     
@@ -470,15 +472,22 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
           const accentG = Math.min(255, Math.round(g * 1.3 + 50))
           const accentB = Math.min(255, Math.round(b * 1.3 + 50))
           
+          // Create lighter background color for cards/surfaces
+          const lightR = Math.min(255, Math.round(r * 0.6 + 40))
+          const lightG = Math.min(255, Math.round(g * 0.6 + 40))
+          const lightB = Math.min(255, Math.round(b * 0.6 + 40))
+          
           setDominantColor(`rgb(${r}, ${g}, ${b})`)
           setSecondaryColor(`rgb(${darkerR}, ${darkerG}, ${darkerB})`)
           setAccentColor(`rgb(${accentR}, ${accentG}, ${accentB})`)
+          setLightColor(`rgb(${lightR}, ${lightG}, ${lightB})`)
         }
       } catch (e) {
         // CORS error or other issue, use defaults
         setDominantColor("#1e293b")
         setSecondaryColor("#0f172a")
         setAccentColor("#7dd3c0")
+        setLightColor("#334155")
       }
     }
     
@@ -486,6 +495,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       setDominantColor("#1e293b")
       setSecondaryColor("#0f172a")
       setAccentColor("#7dd3c0")
+      setLightColor("#334155")
     }
   }, [dynamicThemeEnabled])
   
@@ -1529,7 +1539,14 @@ useEffect(() => {
 
   return (
     <>
-      <div className={`flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black overflow-hidden ${showFullPlayer ? 'invisible' : ''}`}>
+      <div 
+      className={`flex flex-col min-h-screen h-screen w-full overflow-hidden transition-colors duration-700 ${showFullPlayer ? 'invisible' : ''}`}
+      style={{
+      background: dynamicThemeEnabled && showPlayer && currentTrack
+      ? `linear-gradient(to bottom, ${lightColor}, ${secondaryColor})`
+      : 'linear-gradient(to bottom, #0f172a, #000000)'
+      }}
+      >
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/30">
         <div className="flex items-center gap-3">
@@ -2144,8 +2161,8 @@ useEffect(() => {
                 </div>
                 )}
                 
-  {/* History Tab */}
-  {librarySubTab === "history" && (
+                {/* History Tab */}
+                {librarySubTab === "history" && (
   <div>
   <h3 className="text-xl font-bold text-white mb-4">Recently Played</h3>
   {recentlyPlayed.length === 0 ? (
@@ -2174,98 +2191,13 @@ useEffect(() => {
   </div>
   </button>
   ))}
-  </div>
-  )}
-  </div>
-  )}
-              </div>
-            )}
-            
-            {/* Playlist Detail View */}
-            {selectedPlaylist && (
-              <div className="fixed inset-0 z-50 bg-slate-900">
-                <div className="h-full flex flex-col">
-                  <div className="flex items-center justify-between p-4 border-b border-white/10">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 text-white"
-                      onClick={() => setSelectedPlaylist(null)}
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <h3 className="text-lg font-bold text-white">
-                      {playlists.find(p => p.id === selectedPlaylist)?.name}
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 text-red-500"
-                      onClick={() => {
-                        deletePlaylist(selectedPlaylist)
-                        setSelectedPlaylist(null)
-                      }}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  </div>
-                  
-                  <div className="p-4">
-                    <Button
-                      className="w-full bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => {
-                        playPlaylist(selectedPlaylist)
-                        setSelectedPlaylist(null)
-                      }}
-                    >
-                      <Play className="h-4 w-4 mr-2" /> Play All
-                    </Button>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto px-4 pb-4">
-                    {playlists.find(p => p.id === selectedPlaylist)?.tracks.length === 0 ? (
-                      <p className="text-slate-400 text-center py-8">No songs in this playlist</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {playlists.find(p => p.id === selectedPlaylist)?.tracks.map((track, idx) => (
-                          <div
-                            key={`pl-${track.videoId}-${idx}`}
-                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
-                          >
-                            <button
-                              onClick={() => playTrack(track, playlists.find(p => p.id === selectedPlaylist)?.tracks)}
-                              className="flex items-center gap-3 flex-1"
-                            >
-                              <span className="text-slate-500 w-6 text-sm">{idx + 1}</span>
-                              <img
-                                src={track.thumbnail || "/placeholder.svg"}
-                                alt={track.title}
-                                className="w-10 h-10 rounded object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                              <div className="flex-1 text-left">
-                                <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
-                                <p className="text-sm text-slate-400 line-clamp-1">{track.artist || track.subtitle}</p>
-                              </div>
-                            </button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-400 hover:text-red-500"
-                              onClick={() => removeFromPlaylist(selectedPlaylist, track.videoId)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
           </>
         )}
+        
+        {/* Padding at bottom for mini player */}
+        {showPlayer && <div className="h-20" />}
       </div>
 
       {/* Silent audio element for Media Session API - enables Bluetooth/system controls */}
@@ -2408,7 +2340,7 @@ useEffect(() => {
         </button>
       </div>
     </div>
-
+\
     {/* Artist Page - Full Screen Portal */}
     {showArtistPage && isMounted && createPortal(
       <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
@@ -2596,15 +2528,60 @@ useEffect(() => {
               </div>
             ))}
             
-            {/* Padding at bottom for mini player */}
-            <div className="h-32" />
-          </div>
-    )}
-    </div>,
-    document.body
-    )}
-    
-    {/* Album/Playlist Page - Full Screen Portal */}
+  {/* Padding at bottom for mini player */}
+  <div className="h-32" />
+  </div>
+  )}
+  
+  {/* Mini Player */}
+  {showPlayer && currentTrack && !showFullPlayer && (
+  <div
+  className="absolute bottom-14 left-0 right-0 border-t border-white/10"
+  style={{
+  background: dynamicThemeEnabled
+  ? `linear-gradient(to right, ${secondaryColor}, ${dominantColor})`
+  : 'linear-gradient(to right, #0f172a, #1e293b)',
+  }}
+  onClick={() => setShowFullPlayer(true)}
+  >
+  <div className="flex items-center gap-3 p-3">
+  <img src={currentTrack.thumbnail || "/placeholder.svg"} alt={currentTrack.title} className="w-12 h-12 rounded-lg object-cover" referrerPolicy="no-referrer" />
+  <div className="flex-1 min-w-0">
+  <p className="text-white text-sm font-medium truncate">{currentTrack.title}</p>
+  <p className="text-white/60 text-xs truncate">{currentTrack.artist}</p>
+  </div>
+  <div className="flex items-center gap-1">
+  <Button variant="ghost" size="icon" className="h-10 w-10 text-white" onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
+  {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+  </Button>
+  <Button variant="ghost" size="icon" className="h-10 w-10 text-white" onClick={(e) => { e.stopPropagation(); playNext(); }}>
+  <SkipForward className="h-5 w-5" />
+  </Button>
+  </div>
+  </div>
+  </div>
+  )}
+  
+  {/* Bottom Navigation */}
+  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around p-2 bg-black/90 border-t border-white/10">
+  <button onClick={() => { setShowArtistPage(false); setActiveTab("home"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+  <Home className="h-5 w-5" />
+  <span className="text-xs">Home</span>
+  </button>
+  <button onClick={() => { setShowArtistPage(false); setActiveTab("explore"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+  <Compass className="h-5 w-5" />
+  <span className="text-xs">Explore</span>
+  </button>
+  <button onClick={() => { setShowArtistPage(false); setActiveTab("library"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+  <Library className="h-5 w-5" />
+  <span className="text-xs">Library</span>
+  </button>
+  </div>
+  </div>,
+  document.body
+  )}
+  
+  {/* Album/Playlist Page - Full Screen Portal */}
     {showAlbumPage && isMounted && createPortal(
       <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
         {/* Header */}
@@ -2710,14 +2687,59 @@ useEffect(() => {
               {albumTracks.length === 0 && !loadingAlbum && (
                 <p className="text-slate-500 text-center py-8">No tracks found</p>
               )}
-            </div>
-          </div>
-        )}
-      </div>,
-      document.body
-    )}
-    
-    {/* Full Screen Player - Metrolist Style with Dynamic Theme */}
+  </div>
+  </div>
+  )}
+  
+  {/* Mini Player */}
+  {showPlayer && currentTrack && !showFullPlayer && (
+  <div
+  className="absolute bottom-14 left-0 right-0 border-t border-white/10"
+  style={{
+  background: dynamicThemeEnabled
+  ? `linear-gradient(to right, ${secondaryColor}, ${dominantColor})`
+  : 'linear-gradient(to right, #0f172a, #1e293b)',
+  }}
+  onClick={() => setShowFullPlayer(true)}
+  >
+  <div className="flex items-center gap-3 p-3">
+  <img src={currentTrack.thumbnail || "/placeholder.svg"} alt={currentTrack.title} className="w-12 h-12 rounded-lg object-cover" referrerPolicy="no-referrer" />
+  <div className="flex-1 min-w-0">
+  <p className="text-white text-sm font-medium truncate">{currentTrack.title}</p>
+  <p className="text-white/60 text-xs truncate">{currentTrack.artist}</p>
+  </div>
+  <div className="flex items-center gap-1">
+  <Button variant="ghost" size="icon" className="h-10 w-10 text-white" onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
+  {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+  </Button>
+  <Button variant="ghost" size="icon" className="h-10 w-10 text-white" onClick={(e) => { e.stopPropagation(); playNext(); }}>
+  <SkipForward className="h-5 w-5" />
+  </Button>
+  </div>
+  </div>
+  </div>
+  )}
+  
+  {/* Bottom Navigation */}
+  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around p-2 bg-black/90 border-t border-white/10">
+  <button onClick={() => { setShowAlbumPage(false); setActiveTab("home"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+  <Home className="h-5 w-5" />
+  <span className="text-xs">Home</span>
+  </button>
+  <button onClick={() => { setShowAlbumPage(false); setActiveTab("explore"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+  <Compass className="h-5 w-5" />
+  <span className="text-xs">Explore</span>
+  </button>
+  <button onClick={() => { setShowAlbumPage(false); setActiveTab("library"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+  <Library className="h-5 w-5" />
+  <span className="text-xs">Library</span>
+  </button>
+  </div>
+  </div>,
+  document.body
+  )}
+  
+  {/* Full Screen Player - Metrolist Style with Dynamic Theme */}
     {showFullPlayer && currentTrack && (
     <div
     className="fixed inset-0 z-[9999] flex flex-col overscroll-none transition-colors duration-700"
@@ -3043,13 +3065,15 @@ useEffect(() => {
                   variant="ghost"
                   className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
                   onClick={() => {
-                    addToQueue(currentTrack)
                     setPlayerMenuVisible(false)
-                    setTimeout(() => setShowPlayerMenu(false), 300)
+                    setTimeout(() => {
+                      setShowPlayerMenu(false)
+                      openPlaylistPicker(currentTrack)
+                    }, 300)
                   }}
                 >
-                  <ListMusic className="h-5 w-5" />
-                  <span className="text-xs">Add to playl...</span>
+                  <ListPlus className="h-5 w-5" />
+                  <span className="text-xs">Add to playlist</span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -3793,4 +3817,4 @@ useEffect(() => {
   )}
   </>
   )
-  }
+}
