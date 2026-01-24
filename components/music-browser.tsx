@@ -2340,8 +2340,8 @@ useEffect(() => {
         </button>
       </div>
     </div>
-\
-    {/* Artist Page - Full Screen Portal */}
+
+      {/* Artist Page - Full Screen Portal */}
     {showArtistPage && isMounted && createPortal(
       <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
         {/* Header */}
