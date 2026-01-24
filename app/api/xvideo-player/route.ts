@@ -5,11 +5,45 @@ export const dynamic = "force-dynamic"
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const videoUrl = searchParams.get("url")
+    let videoUrl = searchParams.get("url")
     const poster = searchParams.get("poster") || ""
 
     if (!videoUrl) {
       return new Response("Video URL required", { status: 400 })
+    }
+
+    // If the URL is not a direct video URL, show error message
+    const isDirectVideo = videoUrl.includes(".m3u8") || videoUrl.includes(".mp4") || videoUrl.includes(".webm")
+    
+    if (!isDirectVideo) {
+      // Return a player page with an error message
+      const errorHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+            .error { color: #fff; text-align: center; padding: 40px; font-family: -apple-system, sans-serif; }
+            .error h2 { margin-bottom: 10px; }
+            .error p { color: #888; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h2>Video Unavailable</h2>
+            <p>This video cannot be played directly.</p>
+          </div>
+        </body>
+        </html>
+      `
+      return new Response(errorHtml, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      })
     }
 
     const isHLS = videoUrl.includes(".m3u8")

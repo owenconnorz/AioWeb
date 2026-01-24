@@ -1885,11 +1885,11 @@ const getEmbedUrl = (video: Video, quality?: string) => {
         </div>
       )}
 
-      {/* Video Modal */}
-      {selectedVideo && (
+      {/* Video Modal - using portal to render above nav */}
+      {selectedVideo && isMounted && createPortal(
         <div 
           id="video-modal"
-          className="fixed inset-0 z-50 flex flex-col bg-black"
+          className="fixed inset-0 z-[9999] flex flex-col bg-black"
         >
           {/* Header - compact for more video space */}
           <div className="flex items-center justify-between p-2 bg-black/80">
@@ -1973,26 +1973,29 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                 playsInline
                 className="h-full w-full object-contain"
               />
-            ) : apiSource === "xvidapi" && selectedVideo.directUrl ? (
-              // xvidapi with direct m3u8/mp4 URL - use video player route
-              <iframe
-                src={`/api/xvideo-player?url=${encodeURIComponent(selectedVideo.directUrl)}&poster=${encodeURIComponent(selectedVideo.thumbnail || '')}`}
-                className="h-full w-full border-0"
-                allowFullScreen
-                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                title={selectedVideo.title}
-              />
-            ) : (
-              <iframe
-                src={getEmbedUrl(selectedVideo, selectedQuality)}
-                className="h-full w-full border-0"
-                allowFullScreen
-                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                title={selectedVideo.title}
-              />
-            )}
+              ) : apiSource === "xvidapi" ? (
+                // xvidapi - always use our internal player to avoid ad redirects
+                <iframe
+                  src={`/api/xvideo-player?url=${encodeURIComponent(selectedVideo.directUrl || selectedVideo.url || '')}&poster=${encodeURIComponent(selectedVideo.thumbnail || selectedVideo.default_thumb?.src || '')}`}
+                  className="h-full w-full border-0"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                  sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                  title={selectedVideo.title}
+                />
+              ) : (
+                <iframe
+                  src={getEmbedUrl(selectedVideo, selectedQuality)}
+                  className="h-full w-full border-0"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                  sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                  title={selectedVideo.title}
+                />
+              )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Categories Modal */}
