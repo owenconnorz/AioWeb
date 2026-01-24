@@ -2567,23 +2567,23 @@ useEffect(() => {
   {/* Bottom Navigation */}
   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around p-2 bg-black/90 border-t border-white/10">
   <button onClick={() => { setShowArtistPage(false); setActiveTab("home"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
-  <Home className="h-5 w-5" />
-  <span className="text-xs">Home</span>
-  </button>
-  <button onClick={() => { setShowArtistPage(false); setActiveTab("explore"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
-  <Compass className="h-5 w-5" />
-  <span className="text-xs">Explore</span>
-  </button>
-  <button onClick={() => { setShowArtistPage(false); setActiveTab("library"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
-  <Library className="h-5 w-5" />
-  <span className="text-xs">Library</span>
-  </button>
-  </div>
-  </div>,
-  document.body
-  )}
+            <Home className="h-5 w-5" />
+            <span className="text-xs">Home</span>
+          </button>
+          <button onClick={() => { setShowArtistPage(false); setActiveTab("explore"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+            <Compass className="h-5 w-5" />
+            <span className="text-xs">Explore</span>
+          </button>
+          <button onClick={() => { setShowArtistPage(false); setActiveTab("library"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+            <Library className="h-5 w-5" />
+            <span className="text-xs">Library</span>
+          </button>
+        </div>
+      </div>,
+      document.body
+    )}
   
-  {/* Album/Playlist Page - Full Screen Portal */}
+      {/* Album/Playlist Page - Full Screen Portal */}
     {showAlbumPage && isMounted && createPortal(
       <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
         {/* Header */}
@@ -2717,276 +2717,276 @@ useEffect(() => {
   <Button variant="ghost" size="icon" className="h-10 w-10 text-white" onClick={(e) => { e.stopPropagation(); playNext(); }}>
   <SkipForward className="h-5 w-5" />
   </Button>
-  </div>
-  </div>
-  </div>
-  )}
-  
-  {/* Bottom Navigation */}
-  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around p-2 bg-black/90 border-t border-white/10">
-  <button onClick={() => { setShowAlbumPage(false); setActiveTab("home"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
-  <Home className="h-5 w-5" />
-  <span className="text-xs">Home</span>
-  </button>
-  <button onClick={() => { setShowAlbumPage(false); setActiveTab("explore"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
-  <Compass className="h-5 w-5" />
-  <span className="text-xs">Explore</span>
-  </button>
-  <button onClick={() => { setShowAlbumPage(false); setActiveTab("library"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
-  <Library className="h-5 w-5" />
-  <span className="text-xs">Library</span>
-  </button>
-  </div>
-  </div>,
-  document.body
-  )}
-  
-  {/* Full Screen Player - Metrolist Style with Dynamic Theme */}
-    {showFullPlayer && currentTrack && (
-    <div
-    className="fixed inset-0 z-[9999] flex flex-col overscroll-none transition-colors duration-700"
-    style={{
-    backgroundColor: dynamicThemeEnabled ? secondaryColor : '#1e2738',
-    minHeight: '100dvh',
-    touchAction: 'pan-x pinch-zoom',
-    transform: isDragging && dragOffset > 0
-    ? `translateY(${dragOffset}px) scale(${1 - dragOffset * 0.0002})`
-    : 'translateY(0) scale(1)',
-    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.7s ease-out',
-    borderRadius: isDragging && dragOffset > 0 ? `${Math.min(dragOffset * 0.1, 20)}px` : '0',
-    }}
-    onTouchStart={onTouchStartFull}
-    onTouchMove={onTouchMoveFull}
-    onTouchEnd={onTouchEndFull}
-    >
-    {/* Gradient overlay for dynamic theme */}
-    <div 
-    className="absolute inset-0 transition-all duration-700 pointer-events-none"
-    style={{
-    background: dynamicThemeEnabled 
-    ? `linear-gradient(180deg, ${dominantColor}40 0%, ${secondaryColor} 40%, ${secondaryColor} 100%)`
-    : 'transparent'
-    }}
-    />
-    
-    {/* Header - Now Playing */}
-    <div className="relative z-10 flex flex-col items-center pt-6 pb-4 shrink-0">
-    <p className="text-white/60 text-sm font-medium">Now Playing</p>
-    </div>
-
-    {/* Album Art - Large with rounded corners */}
-    <div className="relative z-10 flex-1 flex items-center justify-center px-8 min-h-0">
-          <img
-            src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
-            alt={currentTrack.title}
-            className="w-full max-w-[340px] aspect-square rounded-2xl shadow-2xl object-cover"
-            referrerPolicy="no-referrer"
-          />
-        </div>
-
-    {/* Track Info with Share & Like buttons */}
-    <div className="relative z-10 px-8 py-4 shrink-0">
-    <div className="flex items-center justify-between">
-    <div className="flex-1 min-w-0 pr-4 overflow-hidden">
-    <div className="overflow-hidden">
-    <h2 
-    className={`text-xl font-semibold text-white whitespace-nowrap ${currentTrack.title.length > 25 ? 'animate-marquee' : ''}`}
-    style={{
-    animation: currentTrack.title.length > 25 ? 'marquee 10s linear infinite' : 'none',
-    }}
-    >
-    {currentTrack.title}
-    {currentTrack.title.length > 25 && <span className="px-12">{currentTrack.title}</span>}
-    </h2>
-    </div>
-    <p className="text-white/60 truncate">{currentTrack.artist || currentTrack.subtitle}</p>
-    </div>
-    <div className="flex items-center gap-2">
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-11 w-11 rounded-lg transition-colors duration-500"
-    style={{ 
-    backgroundColor: dynamicThemeEnabled ? `${accentColor}30` : 'rgba(168, 213, 216, 0.2)',
-    color: dynamicThemeEnabled ? accentColor : '#a8d5d8'
-    }}
-    onClick={shareSong}
-    >
-    <Share2 className="h-5 w-5" />
-    </Button>
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-11 w-11 rounded-lg transition-colors duration-500"
-    style={{ 
-    backgroundColor: dynamicThemeEnabled ? `${accentColor}30` : 'rgba(168, 213, 216, 0.2)',
-    color: dynamicThemeEnabled ? accentColor : '#a8d5d8'
-    }}
-    onClick={() => toggleLike(currentTrack)}
-    >
-    <Heart className={`h-5 w-5 ${isLiked(currentTrack) ? "fill-current" : ""}`} style={{ color: dynamicThemeEnabled ? accentColor : '#a8d5d8' }} />
-    </Button>
-    </div>
           </div>
         </div>
-
-    {/* Progress Bar */}
-    <div className="relative z-10 px-8 py-2 shrink-0">
-    <div
-    ref={progressBarRef}
-    className="w-full h-1 rounded-full overflow-hidden cursor-pointer touch-none transition-colors duration-500"
-    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}40` : '#3a4556' }}
-    onClick={handleSeek}
-    onTouchStart={handleSeek}
-    onTouchMove={handleSeek}
-    onTouchEnd={handleSeekEnd}
-    >
-    <div
-    className="h-full rounded-full transition-colors duration-500"
-    style={{
-    width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
-    transition: isSeeking ? 'background-color 0.5s' : 'width 0.3s, background-color 0.5s',
-    backgroundColor: dynamicThemeEnabled ? accentColor : '#7dd3c0'
-    }}
-    />
-    </div>
-    <div className="flex justify-between mt-2 text-xs text-white/50">
-    <span>{formatTime(currentTime)}</span>
-    <span>{formatTime(duration)}</span>
-    </div>
-    </div>
-
-    {/* Main Controls - Large rounded buttons */}
-    <div className="relative z-10 flex items-center justify-center gap-4 py-4 px-8 shrink-0">
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-16 w-16 rounded-2xl text-white transition-colors duration-500"
-    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
-    onClick={playPrev}
-    >
-    <SkipBack className="h-6 w-6" />
-    </Button>
-    <Button
-    variant="ghost"
-    className="h-16 flex-1 max-w-[200px] rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors duration-500"
-    style={{ 
-    backgroundColor: dynamicThemeEnabled ? accentColor : '#a8d5d8',
-    color: dynamicThemeEnabled ? secondaryColor : '#1e2738'
-    }}
-    onClick={togglePlay}
-    >
-    {isPlaying ? (
-    <>
-    <Pause className="h-6 w-6" />
-    <span>Pause</span>
-    </>
-    ) : (
-    <>
-    <Play className="h-6 w-6 ml-1" />
-    <span>Play</span>
-    </>
+      </div>
     )}
-    </Button>
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-16 w-16 rounded-2xl text-white transition-colors duration-500"
-    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
-    onClick={playNext}
-    >
-    <SkipForward className="h-6 w-6" />
-    </Button>
-    </div>
+    
+        {/* Bottom Navigation */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around p-2 bg-black/90 border-t border-white/10">
+          <button onClick={() => { setShowAlbumPage(false); setActiveTab("home"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+            <Home className="h-5 w-5" />
+            <span className="text-xs">Home</span>
+          </button>
+          <button onClick={() => { setShowAlbumPage(false); setActiveTab("explore"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+            <Compass className="h-5 w-5" />
+            <span className="text-xs">Explore</span>
+          </button>
+          <button onClick={() => { setShowAlbumPage(false); setActiveTab("library"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+            <Library className="h-5 w-5" />
+            <span className="text-xs">Library</span>
+          </button>
+        </div>
+      </div>,
+      document.body
+    )}
+  
+      {/* Full Screen Player - Metrolist Style with Dynamic Theme */}
+      {showFullPlayer && currentTrack && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col overscroll-none transition-colors duration-700"
+          style={{
+            backgroundColor: dynamicThemeEnabled ? secondaryColor : '#1e2738',
+            minHeight: '100dvh',
+            touchAction: 'pan-x pinch-zoom',
+            transform: isDragging && dragOffset > 0
+              ? `translateY(${dragOffset}px) scale(${1 - dragOffset * 0.0002})`
+              : 'translateY(0) scale(1)',
+            transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.7s ease-out',
+            borderRadius: isDragging && dragOffset > 0 ? `${Math.min(dragOffset * 0.1, 20)}px` : '0',
+          }}
+          onTouchStart={onTouchStartFull}
+          onTouchMove={onTouchMoveFull}
+          onTouchEnd={onTouchEndFull}
+        >
+          {/* Gradient overlay for dynamic theme */}
+          <div 
+            className="absolute inset-0 transition-all duration-700 pointer-events-none"
+            style={{
+              background: dynamicThemeEnabled 
+                ? `linear-gradient(180deg, ${dominantColor}40 0%, ${secondaryColor} 40%, ${secondaryColor} 100%)`
+                : 'transparent'
+            }}
+          />
+          
+          {/* Header - Now Playing */}
+          <div className="relative z-10 flex flex-col items-center pt-6 pb-4 shrink-0">
+            <p className="text-white/60 text-sm font-medium">Now Playing</p>
+          </div>
+
+          {/* Album Art - Large with rounded corners */}
+          <div className="relative z-10 flex-1 flex items-center justify-center px-8 min-h-0">
+            <img
+              src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
+              alt={currentTrack.title}
+              className="w-full max-w-[340px] aspect-square rounded-2xl shadow-2xl object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+
+          {/* Track Info with Share & Like buttons */}
+          <div className="relative z-10 px-8 py-4 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0 pr-4 overflow-hidden">
+                <div className="overflow-hidden">
+                  <h2 
+                    className={`text-xl font-semibold text-white whitespace-nowrap ${currentTrack.title.length > 25 ? 'animate-marquee' : ''}`}
+                    style={{
+                      animation: currentTrack.title.length > 25 ? 'marquee 10s linear infinite' : 'none',
+                    }}
+                  >
+                    {currentTrack.title}
+                    {currentTrack.title.length > 25 && <span className="px-12">{currentTrack.title}</span>}
+                  </h2>
+                </div>
+                <p className="text-white/60 truncate">{currentTrack.artist || currentTrack.subtitle}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 rounded-lg transition-colors duration-500"
+                  style={{ 
+                    backgroundColor: dynamicThemeEnabled ? `${accentColor}30` : 'rgba(168, 213, 216, 0.2)',
+                    color: dynamicThemeEnabled ? accentColor : '#a8d5d8'
+                  }}
+                  onClick={shareSong}
+                >
+                  <Share2 className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 rounded-lg transition-colors duration-500"
+                  style={{ 
+                    backgroundColor: dynamicThemeEnabled ? `${accentColor}30` : 'rgba(168, 213, 216, 0.2)',
+                    color: dynamicThemeEnabled ? accentColor : '#a8d5d8'
+                  }}
+                  onClick={() => toggleLike(currentTrack)}
+                >
+                  <Heart className={`h-5 w-5 ${isLiked(currentTrack) ? "fill-current" : ""}`} style={{ color: dynamicThemeEnabled ? accentColor : '#a8d5d8' }} />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="relative z-10 px-8 py-2 shrink-0">
+            <div
+              ref={progressBarRef}
+              className="w-full h-1 rounded-full overflow-hidden cursor-pointer touch-none transition-colors duration-500"
+              style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}40` : '#3a4556' }}
+              onClick={handleSeek}
+              onTouchStart={handleSeek}
+              onTouchMove={handleSeek}
+              onTouchEnd={handleSeekEnd}
+            >
+              <div
+                className="h-full rounded-full transition-colors duration-500"
+                style={{
+                  width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+                  transition: isSeeking ? 'background-color 0.5s' : 'width 0.3s, background-color 0.5s',
+                  backgroundColor: dynamicThemeEnabled ? accentColor : '#7dd3c0'
+                }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-white/50">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+
+          {/* Main Controls - Large rounded buttons */}
+          <div className="relative z-10 flex items-center justify-center gap-4 py-4 px-8 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-16 w-16 rounded-2xl text-white transition-colors duration-500"
+              style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+              onClick={playPrev}
+            >
+              <SkipBack className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-16 flex-1 max-w-[200px] rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors duration-500"
+              style={{ 
+                backgroundColor: dynamicThemeEnabled ? accentColor : '#a8d5d8',
+                color: dynamicThemeEnabled ? secondaryColor : '#1e2738'
+              }}
+              onClick={togglePlay}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="h-6 w-6" />
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="h-6 w-6 ml-1" />
+                  <span>Play</span>
+                </>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-16 w-16 rounded-2xl text-white transition-colors duration-500"
+              style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+              onClick={playNext}
+            >
+              <SkipForward className="h-6 w-6" />
+            </Button>
+          </div>
         
-    {/* Bottom Controls Row */}
-    <div className="relative z-10 flex items-center justify-between px-6 py-4 shrink-0">
-    <div className="flex items-center gap-2">
-    {/* Queue */}
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-12 w-12 rounded-xl text-[#7a8599] hover:text-white transition-colors duration-500"
-    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
-    onClick={() => setShowQueuePanel(true)}
-    >
-    <ListMusic className="h-5 w-5" />
-    </Button>
-    
-    {/* Sleep Timer */}
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-12 w-12 rounded-xl transition-colors duration-500"
-    style={{ 
-    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
-    color: sleepTimer ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
-    }}
-    onClick={() => {
-    const nextIndex = SLEEP_TIMER_OPTIONS.findIndex(o => o.value === sleepTimer) + 1
-    const nextOption = SLEEP_TIMER_OPTIONS[nextIndex % SLEEP_TIMER_OPTIONS.length]
-    setSleepTimerMinutes(nextOption.value)
-    }}
-    >
-    <Clock className="h-5 w-5" />
-    </Button>
-    
-    {/* Shuffle */}
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-12 w-12 rounded-xl transition-colors duration-500"
-    style={{ 
-    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
-    color: isShuffle ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
-    }}
-    onClick={() => setIsShuffle(!isShuffle)}
-    >
-    <Shuffle className="h-5 w-5" />
-    </Button>
-    
-    {/* Equalizer / Sort */}
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-12 w-12 rounded-xl transition-colors duration-500"
-    style={{ 
-    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
-    color: equalizer !== "normal" ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
-    }}
-    onClick={() => setShowEqualizerMenu(!showEqualizerMenu)}
-    >
-    <Volume2 className="h-5 w-5" />
-    </Button>
-    
-    {/* Repeat */}
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-12 w-12 rounded-xl transition-colors duration-500"
-    style={{ 
-    backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
-    color: isRepeat ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
-    }}
-    onClick={() => setIsRepeat(!isRepeat)}
-    >
-    <Repeat className="h-5 w-5" />
-    </Button>
-    </div>
-    
-    {/* 3-dot Menu */}
-    <Button
-    variant="ghost"
-    size="icon"
-    className="h-12 w-12 rounded-xl text-[#7a8599] hover:text-white transition-colors duration-500"
-    style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
-    onClick={() => setShowPlayerMenu(true)}
-    >
-    <MoreVertical className="h-5 w-5" />
-    </Button>
-    </div>
+          {/* Bottom Controls Row */}
+          <div className="relative z-10 flex items-center justify-between px-6 py-4 shrink-0">
+            <div className="flex items-center gap-2">
+              {/* Queue */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-xl text-[#7a8599] hover:text-white transition-colors duration-500"
+                style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+                onClick={() => setShowQueuePanel(true)}
+              >
+                <ListMusic className="h-5 w-5" />
+              </Button>
+              
+              {/* Sleep Timer */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-xl transition-colors duration-500"
+                style={{ 
+                  backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+                  color: sleepTimer ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+                }}
+                onClick={() => {
+                  const nextIndex = SLEEP_TIMER_OPTIONS.findIndex(o => o.value === sleepTimer) + 1
+                  const nextOption = SLEEP_TIMER_OPTIONS[nextIndex % SLEEP_TIMER_OPTIONS.length]
+                  setSleepTimerMinutes(nextOption.value)
+                }}
+              >
+                <Clock className="h-5 w-5" />
+              </Button>
+              
+              {/* Shuffle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-xl transition-colors duration-500"
+                style={{ 
+                  backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+                  color: isShuffle ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+                }}
+                onClick={() => setIsShuffle(!isShuffle)}
+              >
+                <Shuffle className="h-5 w-5" />
+              </Button>
+              
+              {/* Equalizer / Sort */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-xl transition-colors duration-500"
+                style={{ 
+                  backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+                  color: equalizer !== "normal" ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+                }}
+                onClick={() => setShowEqualizerMenu(!showEqualizerMenu)}
+              >
+                <Volume2 className="h-5 w-5" />
+              </Button>
+              
+              {/* Repeat */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-xl transition-colors duration-500"
+                style={{ 
+                  backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545',
+                  color: isRepeat ? (dynamicThemeEnabled ? accentColor : '#7dd3c0') : '#7a8599'
+                }}
+                onClick={() => setIsRepeat(!isRepeat)}
+              >
+                <Repeat className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* 3-dot Menu */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12 rounded-xl text-[#7a8599] hover:text-white transition-colors duration-500"
+              style={{ backgroundColor: dynamicThemeEnabled ? `${dominantColor}60` : '#2a3545' }}
+              onClick={() => setShowPlayerMenu(true)}
+            >
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          </div>
         
-        {/* Equalizer Menu Popup */}
+          {/* Equalizer Menu Popup */}
         {showEqualizerMenu && (
           <div className="absolute bottom-24 left-6 bg-[#2a3545] rounded-xl shadow-xl border border-white/10 overflow-hidden min-w-[140px] z-50">
             {EQUALIZER_PRESETS.map(preset => (
@@ -3315,41 +3315,41 @@ useEffect(() => {
                     {track.artist || track.subtitle}
                   </p>
                 </div>
-  <span className="text-sm text-slate-500 shrink-0">{track.duration}</span>
-  <Button
-  variant="ghost"
-  size="icon"
-  className="h-8 w-8 shrink-0"
-  onClick={(e) => {
-  e.stopPropagation()
-  if (isDownloaded(track.videoId)) {
-    deleteTrack(track.videoId)
-  } else {
-    downloadTrack(track)
-  }
-  }}
-  >
-  {downloadProgress.get(track.videoId)?.status === "downloading" ? (
-    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
-  ) : isDownloaded(track.videoId) ? (
-    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-  ) : (
-    <Download className="h-4 w-4 text-slate-400" />
-  )}
-  </Button>
-  <Button
-  variant="ghost"
-  size="icon"
-  className="h-8 w-8 shrink-0"
-  onClick={(e) => {
-  e.stopPropagation()
-  toggleLike(track)
-  }}
-  >
-  <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : "text-slate-400"}`} />
-  </Button>
-  <Button
-  variant="ghost"
+                <span className="text-sm text-slate-500 shrink-0">{track.duration}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (isDownloaded(track.videoId)) {
+                      deleteTrack(track.videoId)
+                    } else {
+                      downloadTrack(track)
+                    }
+                  }}
+                >
+                  {downloadProgress.get(track.videoId)?.status === "downloading" ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+                  ) : isDownloaded(track.videoId) ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  ) : (
+                    <Download className="h-4 w-4 text-slate-400" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleLike(track)
+                  }}
+                >
+                  <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : "text-slate-400"}`} />
+                </Button>
+                <Button
+                  variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0"
                   onClick={(e) => {
@@ -3400,12 +3400,12 @@ useEffect(() => {
             >
               Create
             </Button>
-  </div>
-  </div>
-  </div>
-  )}
+          </div>
+        </div>
+      </div>
+    )}
   
-  {/* Track Context Menu - Bottom Sheet */}
+    {/* Track Context Menu - Bottom Sheet */}
   {showTrackMenu && selectedTrackForMenu && isMounted && createPortal(
     <div className="fixed inset-0 z-[99999]">
       {/* Backdrop */}
