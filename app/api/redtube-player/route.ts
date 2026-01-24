@@ -11,9 +11,9 @@ export async function GET(request: NextRequest) {
       return new Response("Video ID required", { status: 400 })
     }
 
-    // The embed URL format for RedTube
+    // The embed URL format for RedTube with autoplay enabled
     // Using the embed URL directly instead of fetching from API (which returns "No video with this ID" for some videos)
-    const embedSrc = `https://embed.redtube.com/?id=${videoId}`
+    const embedSrc = `https://embed.redtube.com/?id=${videoId}&autoplay=1`
     
     // Create an HTML page that serves as a wrapper for the embed
     // This acts as an intermediary origin which may help with CORS/referrer issues

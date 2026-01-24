@@ -1250,8 +1250,14 @@ const getEmbedUrl = (video: Video, quality?: string) => {
     const idMatch = embedUrl.match(/[?&]id=(\d+)/) || embedUrl.match(/redtube\.com\/(\d+)/)
     const videoId = idMatch?.[1]
     if (videoId) {
-      embedUrl = `/api/redtube-player?id=${videoId}`
+      embedUrl = `/api/redtube-player?id=${videoId}&autoplay=1`
     }
+  }
+  
+  // Add autoplay parameter to all embed URLs
+  if (embedUrl && !embedUrl.includes('/api/')) {
+    const separator = embedUrl.includes('?') ? '&' : '?'
+    embedUrl = `${embedUrl}${separator}autoplay=1&muted=0`
   }
   
   return embedUrl

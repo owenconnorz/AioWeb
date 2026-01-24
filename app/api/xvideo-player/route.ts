@@ -35,11 +35,31 @@ export async function GET(request: NextRequest) {
           controls 
           autoplay 
           playsinline
+          muted
           ${poster ? `poster="${poster}"` : ''}
         ></video>
         <script>
           const video = document.getElementById('player');
           const videoUrl = "${videoUrl}";
+          
+          // Function to attempt autoplay with fallback
+          function attemptAutoplay() {
+            // First try with sound
+            video.muted = false;
+            video.play().then(() => {
+              console.log('Autoplay with sound succeeded');
+            }).catch(e => {
+              console.log('Autoplay with sound failed, trying muted');
+              // If that fails, try muted autoplay
+              video.muted = true;
+              video.play().then(() => {
+                // Show unmute hint or auto-unmute on user interaction
+                video.addEventListener('click', () => { video.muted = false; }, { once: true });
+              }).catch(e2 => {
+                console.log('All autoplay attempts failed');
+              });
+            });
+          }
           
           ${isHLS ? `
           // HLS stream
@@ -51,20 +71,21 @@ export async function GET(request: NextRequest) {
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
-              video.play().catch(e => console.log('Autoplay blocked'));
+              attemptAutoplay();
             });
             hls.on(Hls.Events.ERROR, function(event, data) {
               if (data.fatal) {
                 console.error('HLS error:', data);
                 // Try direct playback as fallback
                 video.src = videoUrl;
+                attemptAutoplay();
               }
             });
           } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             // Native HLS support (Safari)
             video.src = videoUrl;
             video.addEventListener('loadedmetadata', function() {
-              video.play().catch(e => console.log('Autoplay blocked'));
+              attemptAutoplay();
             });
           } else {
             document.body.innerHTML = '<div class="error"><p>HLS not supported in this browser</p></div>';
@@ -72,7 +93,9 @@ export async function GET(request: NextRequest) {
           ` : `
           // Direct video playback
           video.src = videoUrl;
-          video.play().catch(e => console.log('Autoplay blocked'));
+          video.addEventListener('loadedmetadata', function() {
+            attemptAutoplay();
+          });
           `}
         </script>
       </body>
