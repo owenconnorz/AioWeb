@@ -2195,12 +2195,11 @@ useEffect(() => {
                     )}
                   </div>
                 )}
-              </div>
-            )}
 
             {/* Padding at bottom for mini player */}
             {showPlayer && <div className="h-20" />}
           </div>
+        )}
 
       {/* Silent audio element for Media Session API - enables Bluetooth/system controls */}
       <audio
