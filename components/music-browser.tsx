@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import React from "react"
 
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio } from "lucide-react"
+import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio, Link2, User, Disc } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOfflineMusic } from "@/hooks/use-offline-music"
@@ -181,6 +181,8 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const [equalizer, setEqualizer] = useState("normal")
   const [showEqualizerMenu, setShowEqualizerMenu] = useState(false)
+  const [showPlayerMenu, setShowPlayerMenu] = useState(false)
+  const [playerMenuVisible, setPlayerMenuVisible] = useState(false)
   const [isSeeking, setIsSeeking] = useState(false)
   const [expandedShelf, setExpandedShelf] = useState<Shelf | null>(null)
   const [loadingPlaylist, setLoadingPlaylist] = useState(false)
@@ -1302,7 +1304,6 @@ useEffect(() => {
   }
 
   return (
-    <>
     <div className={`flex flex-col min-h-screen h-screen w-full bg-gradient-to-b from-slate-900 to-black overflow-hidden ${showFullPlayer ? 'invisible' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/30">
@@ -2460,13 +2461,12 @@ useEffect(() => {
       document.body
     )}
     
-    {/* Full Screen Player - Rendered outside main container for proper fixed positioning */}
+    {/* Full Screen Player - Metrolist Style */}
     {showFullPlayer && currentTrack && (
       <div 
-        className="fixed top-0 left-0 right-0 bottom-0 z-[9999] flex flex-col overscroll-none"
+        className="fixed inset-0 z-[9999] flex flex-col overscroll-none"
         style={{ 
-          backgroundColor: dynamicThemeEnabled ? secondaryColor : '#000000',
-          minHeight: '100vh',
+          backgroundColor: '#1e2738',
           minHeight: '100dvh',
           touchAction: 'pan-x pinch-zoom',
           transform: isDragging && dragOffset > 0 
@@ -2479,176 +2479,129 @@ useEffect(() => {
         onTouchMove={onTouchMoveFull}
         onTouchEnd={onTouchEndFull}
       >
-        {/* Gradient overlay - uses dynamic colors */}
-        <div 
-          className="absolute top-0 left-0 right-0 bottom-0 transition-all duration-700 ease-out"
-          style={{ 
-            background: dynamicThemeEnabled 
-              ? `linear-gradient(180deg, ${dominantColor} 0%, ${secondaryColor} 50%, ${secondaryColor} 100%)`
-              : 'linear-gradient(180deg, #1e293b 0%, #0f172a 50%, #000000 100%)'
-          }}
-        />
-        
-        {/* Header */}
-        <div className="relative z-10 flex items-center justify-between p-4 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 text-white"
-            onClick={() => setShowFullPlayer(false)}
-          >
-            <ChevronLeft className="h-6 w-6 rotate-[-90deg]" />
-          </Button>
-          <div className="text-center">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Now Playing</p>
-            <p className="text-sm text-white">{currentTrack.album || "Unknown Album"}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 text-white"
-          >
-            <ListMusic className="h-5 w-5" />
-          </Button>
+        {/* Header - Now Playing */}
+        <div className="flex flex-col items-center pt-6 pb-4 shrink-0">
+          <p className="text-[#7a8599] text-sm font-medium">Now Playing</p>
+          <p className="text-[#7a8599] text-sm">{currentTrack.album || `${currentTrack.title} Mix`}</p>
         </div>
 
-        {/* Album Art */}
-        <div className="relative z-10 flex-1 flex items-center justify-center p-8 shrink-0 min-h-0">
+        {/* Album Art - Large with rounded corners */}
+        <div className="flex-1 flex items-center justify-center px-8 min-h-0">
           <img
             src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
             alt={currentTrack.title}
-            className="w-full max-w-[320px] aspect-square rounded-lg shadow-2xl object-cover"
+            className="w-full max-w-[340px] aspect-square rounded-2xl shadow-2xl object-cover"
             referrerPolicy="no-referrer"
           />
         </div>
 
-        {/* Track Info */}
-        <div 
-          className="relative z-10 px-8 py-4 shrink-0"
-          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
-        >
+        {/* Track Info with Share & Like buttons */}
+        <div className="px-8 py-4 shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <div className="overflow-hidden">
-                <h2 
-                  className="text-xl font-bold text-white whitespace-nowrap animate-marquee"
-                  style={{
-                    animation: currentTrack.title.length > 25 ? 'marquee 8s linear infinite' : 'none'
-                  }}
-                >
-                  {currentTrack.title}
-                  {currentTrack.title.length > 25 && <span className="px-8">{currentTrack.title}</span>}
-                </h2>
-              </div>
-              <p className="text-slate-400 truncate">{currentTrack.artist || currentTrack.subtitle}</p>
+            <div className="flex-1 min-w-0 pr-4">
+              <h2 className="text-xl font-semibold text-white truncate">{currentTrack.title}</h2>
+              <p className="text-[#7a8599] truncate">{currentTrack.artist || currentTrack.subtitle}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 text-white"
-              onClick={() => toggleLike(currentTrack)}
-            >
-              <Heart className={`h-6 w-6 ${isLiked(currentTrack) ? "fill-red-500 text-red-500" : ""}`} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 rounded-lg bg-[#a8d5d8]/20 text-[#a8d5d8] hover:bg-[#a8d5d8]/30"
+                onClick={shareSong}
+              >
+                <Share2 className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 rounded-lg bg-[#a8d5d8]/20 text-[#a8d5d8] hover:bg-[#a8d5d8]/30"
+                onClick={() => toggleLike(currentTrack)}
+              >
+                <Heart className={`h-5 w-5 ${isLiked(currentTrack) ? "fill-[#a8d5d8] text-[#a8d5d8]" : ""}`} />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Progress Bar - Seekable */}
-        <div 
-          className="relative z-10 px-8 py-2 shrink-0"
-          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
-        >
+        {/* Progress Bar */}
+        <div className="px-8 py-2 shrink-0">
           <div 
             ref={progressBarRef}
-            className="w-full h-2 bg-white/20 rounded-full overflow-hidden cursor-pointer touch-none"
+            className="w-full h-1 bg-[#3a4556] rounded-full overflow-hidden cursor-pointer touch-none"
             onClick={handleSeek}
             onTouchStart={handleSeek}
             onTouchMove={handleSeek}
             onTouchEnd={handleSeekEnd}
           >
             <div 
-              className="h-full bg-white rounded-full transition-all"
+              className="h-full bg-[#7dd3c0] rounded-full"
               style={{ 
                 width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
                 transition: isSeeking ? 'none' : 'width 0.3s'
               }}
             />
           </div>
-          <div className="flex justify-between mt-2 text-xs text-slate-400">
+          <div className="flex justify-between mt-2 text-xs text-[#7a8599]">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
         </div>
 
-        {/* Main Controls */}
-        <div 
-          className="relative z-10 flex items-center justify-center gap-6 py-4 shrink-0"
-          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
-        >
+        {/* Main Controls - Large rounded buttons */}
+        <div className="flex items-center justify-center gap-4 py-4 px-8 shrink-0">
           <Button
             variant="ghost"
             size="icon"
-            className="h-12 w-12 text-white"
-            onClick={() => setIsShuffle(!isShuffle)}
-          >
-            <Shuffle className={`h-5 w-5 ${isShuffle ? "text-red-500" : ""}`} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-12 w-12 text-white"
+            className="h-16 w-16 rounded-2xl bg-[#2a3545] text-white hover:bg-[#3a4556]"
             onClick={playPrev}
           >
-            <SkipBack className="h-7 w-7" />
+            <SkipBack className="h-6 w-6" />
           </Button>
           <Button
             variant="ghost"
-            size="icon"
-            className="h-16 w-16 bg-white text-black hover:bg-white/90 rounded-full"
+            className="h-16 flex-1 max-w-[200px] rounded-2xl bg-[#a8d5d8] text-[#1e2738] hover:bg-[#8fc5c8] font-medium flex items-center justify-center gap-2"
             onClick={togglePlay}
           >
-            {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
+            {isPlaying ? (
+              <>
+                <Pause className="h-6 w-6" />
+                <span>Pause</span>
+              </>
+            ) : (
+              <>
+                <Play className="h-6 w-6 ml-1" />
+                <span>Play</span>
+              </>
+            )}
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-12 w-12 text-white"
+            className="h-16 w-16 rounded-2xl bg-[#2a3545] text-white hover:bg-[#3a4556]"
             onClick={playNext}
           >
-            <SkipForward className="h-7 w-7" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-12 w-12 text-white"
-            onClick={() => setIsRepeat(!isRepeat)}
-          >
-            <Repeat className={`h-5 w-5 ${isRepeat ? "text-red-500" : ""}`} />
+            <SkipForward className="h-6 w-6" />
           </Button>
         </div>
         
-        {/* Extra Controls Row */}
-        <div 
-          className="relative z-10 flex items-center justify-around px-8 py-3 shrink-0"
-          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
-        >
-          {/* Queue */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white/70 hover:text-white flex flex-col items-center gap-1"
-            onClick={() => setShowQueuePanel(true)}
-          >
-            <ListMusic className="h-5 w-5" />
-            <span className="text-xs">Queue</span>
-          </Button>
-          
-          {/* Sleep Timer */}
-          <div className="relative">
+        {/* Bottom Controls Row */}
+        <div className="flex items-center justify-between px-6 py-4 shrink-0">
+          <div className="flex items-center gap-2">
+            {/* Queue */}
             <Button
               variant="ghost"
-              size="sm"
-              className={`flex flex-col items-center gap-1 ${sleepTimer ? "text-red-500" : "text-white/70 hover:text-white"}`}
+              size="icon"
+              className="h-12 w-12 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white"
+              onClick={() => setShowQueuePanel(true)}
+            >
+              <ListMusic className="h-5 w-5" />
+            </Button>
+            
+            {/* Sleep Timer */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${sleepTimer ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
               onClick={() => {
                 const nextIndex = SLEEP_TIMER_OPTIONS.findIndex(o => o.value === sleepTimer) + 1
                 const nextOption = SLEEP_TIMER_OPTIONS[nextIndex % SLEEP_TIMER_OPTIONS.length]
@@ -2656,111 +2609,195 @@ useEffect(() => {
               }}
             >
               <Clock className="h-5 w-5" />
-              <span className="text-xs">{sleepTimer ? `${sleepTimer}m` : "Timer"}</span>
             </Button>
-          </div>
-          
-          {/* Download */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`flex flex-col items-center gap-1 ${isDownloaded(currentTrack.videoId) ? "text-emerald-400" : "text-white/70 hover:text-white"}`}
-            onClick={() => {
-              if (isDownloaded(currentTrack.videoId)) {
-                deleteTrack(currentTrack.videoId)
-              } else {
-                downloadTrack(currentTrack)
-              }
-            }}
-          >
-            {downloadProgress.get(currentTrack.videoId)?.status === "downloading" ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : isDownloaded(currentTrack.videoId) ? (
-              <CheckCircle2 className="h-5 w-5" />
-            ) : (
-              <Download className="h-5 w-5" />
-            )}
-            <span className="text-xs">
-              {downloadProgress.get(currentTrack.videoId)?.status === "downloading" 
-                ? `${downloadProgress.get(currentTrack.videoId)?.progress}%`
-                : isDownloaded(currentTrack.videoId) ? "Saved" : "Download"}
-            </span>
-          </Button>
-          
-          {/* Share */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white/70 hover:text-white flex flex-col items-center gap-1"
-            onClick={shareSong}
-          >
-            <Share2 className="h-5 w-5" />
-            <span className="text-xs">Share</span>
-          </Button>
-          
-          {/* Speed */}
-          <div className="relative">
+            
+            {/* Shuffle */}
             <Button
               variant="ghost"
-              size="sm"
-              className={`flex flex-col items-center gap-1 ${playbackSpeed !== 1 ? "text-red-500" : "text-white/70 hover:text-white"}`}
-              onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+              size="icon"
+              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${isShuffle ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
+              onClick={() => setIsShuffle(!isShuffle)}
             >
-              <span className="text-sm font-bold">{playbackSpeed}x</span>
-              <span className="text-xs">Speed</span>
+              <Shuffle className="h-5 w-5" />
             </Button>
-            {showSpeedMenu && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-800 rounded-lg shadow-xl border border-white/10 overflow-hidden">
-                {SPEED_OPTIONS.map(speed => (
-                  <button
-                    key={speed}
-                    className={`block w-full px-4 py-2 text-sm text-left hover:bg-white/10 ${playbackSpeed === speed ? "text-red-500" : "text-white"}`}
-                    onClick={() => setSpeed(speed)}
-                  >
-                    {speed}x
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          {/* Equalizer */}
-          <div className="relative">
+            
+            {/* Equalizer / Sort */}
             <Button
               variant="ghost"
-              size="sm"
-              className={`flex flex-col items-center gap-1 ${equalizer !== "normal" ? "text-red-500" : "text-white/70 hover:text-white"}`}
+              size="icon"
+              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${equalizer !== "normal" ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
               onClick={() => setShowEqualizerMenu(!showEqualizerMenu)}
             >
               <Volume2 className="h-5 w-5" />
-              <span className="text-xs">EQ</span>
             </Button>
-            {showEqualizerMenu && (
-              <div className="absolute bottom-full right-0 mb-2 bg-slate-800 rounded-lg shadow-xl border border-white/10 overflow-hidden min-w-[120px]">
-                {EQUALIZER_PRESETS.map(preset => (
-                  <button
-                    key={preset.id}
-                    className={`block w-full px-4 py-2 text-sm text-left hover:bg-white/10 ${equalizer === preset.id ? "text-red-500" : "text-white"}`}
-                    onClick={() => {
-                      setEqualizer(preset.id)
-                      setShowEqualizerMenu(false)
-                    }}
-                  >
-                    {preset.name}
-                  </button>
-                ))}
-              </div>
-            )}
+            
+            {/* Repeat */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-12 w-12 rounded-xl bg-[#2a3545] hover:bg-[#3a4556] ${isRepeat ? "text-[#7dd3c0]" : "text-[#7a8599] hover:text-white"}`}
+              onClick={() => setIsRepeat(!isRepeat)}
+            >
+              <Repeat className="h-5 w-5" />
+            </Button>
           </div>
+          
+          {/* 3-dot Menu */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white"
+            onClick={() => setShowPlayerMenu(true)}
+          >
+            <MoreVertical className="h-5 w-5" />
+          </Button>
         </div>
-
-        {/* Swipe down indicator */}
-        <div 
-          className="relative z-10 flex justify-center pb-6 shrink-0"
-          style={{ backgroundColor: dynamicThemeEnabled ? secondaryColor : '#0f172a' }}
-        >
-          <div className="w-16 h-1 bg-white/30 rounded-full" />
-        </div>
+        
+        {/* Equalizer Menu Popup */}
+        {showEqualizerMenu && (
+          <div className="absolute bottom-24 left-6 bg-[#2a3545] rounded-xl shadow-xl border border-white/10 overflow-hidden min-w-[140px] z-50">
+            {EQUALIZER_PRESETS.map(preset => (
+              <button
+                key={preset.id}
+                className={`block w-full px-4 py-3 text-sm text-left hover:bg-[#3a4556] ${equalizer === preset.id ? "text-[#7dd3c0]" : "text-white"}`}
+                onClick={() => {
+                  setEqualizer(preset.id)
+                  setShowEqualizerMenu(false)
+                }}
+              >
+                {preset.name}
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {/* Bottom Sheet Player Menu - Metrolist Style */}
+        {showPlayerMenu && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/60 z-50"
+              onClick={() => {
+                setPlayerMenuVisible(false)
+                setTimeout(() => setShowPlayerMenu(false), 300)
+              }}
+            />
+            
+            {/* Bottom Sheet */}
+            <div 
+              className={`absolute bottom-0 left-0 right-0 z-50 bg-[#1e2738] rounded-t-3xl transition-transform duration-300 ease-out ${playerMenuVisible ? 'translate-y-0' : 'translate-y-full'}`}
+              style={{ maxHeight: '80vh' }}
+              ref={(el) => {
+                if (el && showPlayerMenu && !playerMenuVisible) {
+                  setTimeout(() => setPlayerMenuVisible(true), 10)
+                }
+              }}
+            >
+              {/* Drag Handle */}
+              <div className="flex justify-center py-3">
+                <div className="w-10 h-1 bg-[#3a4556] rounded-full" />
+              </div>
+              
+              {/* Album Art (smaller) */}
+              <div className="flex justify-center pb-4">
+                <img
+                  src={currentTrack.thumbnail || "/placeholder.svg"}
+                  alt={currentTrack.title}
+                  className="w-48 h-48 rounded-2xl object-cover shadow-xl"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              
+              {/* Volume Slider */}
+              <div className="px-6 pb-4">
+                <div className="flex items-center gap-3 bg-[#2a3545] rounded-xl p-3">
+                  <Volume2 className="h-5 w-5 text-[#7dd3c0]" />
+                  <div className="flex-1 h-2 bg-[#3a4556] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#7dd3c0] rounded-full" style={{ width: '80%' }} />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Divider */}
+              <div className="mx-6 border-t border-[#3a4556]" />
+              
+              {/* Action Buttons Row */}
+              <div className="flex items-center justify-center gap-3 px-6 py-4">
+                <Button
+                  variant="ghost"
+                  className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
+                >
+                  <Radio className="h-5 w-5" />
+                  <span className="text-xs">Start radio</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
+                  onClick={() => {
+                    addToQueue(currentTrack)
+                    setPlayerMenuVisible(false)
+                    setTimeout(() => setShowPlayerMenu(false), 300)
+                  }}
+                >
+                  <ListMusic className="h-5 w-5" />
+                  <span className="text-xs">Add to playl...</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://music.youtube.com/watch?v=${currentTrack.videoId}`)
+                    setPlayerMenuVisible(false)
+                    setTimeout(() => setShowPlayerMenu(false), 300)
+                  }}
+                >
+                  <Link2 className="h-5 w-5" />
+                  <span className="text-xs">Copy link</span>
+                </Button>
+              </div>
+              
+              {/* View Artist */}
+              <button
+                className="w-full flex items-center gap-4 px-6 py-4 hover:bg-[#2a3545] transition-colors"
+                onClick={() => {
+                  setPlayerMenuVisible(false)
+                  setTimeout(() => {
+                    setShowPlayerMenu(false)
+                    // Would navigate to artist page here
+                  }, 300)
+                }}
+              >
+                <div className="w-10 h-10 rounded-lg bg-[#2a3545] flex items-center justify-center">
+                  <User className="h-5 w-5 text-[#7a8599]" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-medium">View artist</p>
+                  <p className="text-[#7a8599] text-sm">{currentTrack.artist || "Unknown Artist"}</p>
+                </div>
+              </button>
+              
+              {/* View Album */}
+              <button
+                className="w-full flex items-center gap-4 px-6 py-4 hover:bg-[#2a3545] transition-colors pb-8"
+                onClick={() => {
+                  setPlayerMenuVisible(false)
+                  setTimeout(() => {
+                    setShowPlayerMenu(false)
+                    // Would navigate to album page here
+                  }, 300)
+                }}
+              >
+                <div className="w-10 h-10 rounded-lg bg-[#2a3545] flex items-center justify-center">
+                  <Disc className="h-5 w-5 text-[#7a8599]" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-medium">View album</p>
+                  <p className="text-[#7a8599] text-sm">{currentTrack.album || currentTrack.title}</p>
+                </div>
+              </button>
+            </div>
+          </>
+        )}
       </div>
     )}
     
