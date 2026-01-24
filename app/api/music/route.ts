@@ -263,6 +263,59 @@ export async function GET(request: Request) {
         return NextResponse.json({ results })
       }
       
+      case "suggestions": {
+        // Get search suggestions from YouTube Music
+        const data = await innertubeRequest("music/get_search_suggestions", {
+          input: query,
+        })
+        
+        const suggestions: string[] = []
+        const contents = data.contents || []
+        
+        for (const section of contents) {
+          if (section.searchSuggestionsSectionRenderer) {
+            const items = section.searchSuggestionsSectionRenderer.contents || []
+            for (const item of items) {
+              if (item.searchSuggestionRenderer) {
+                const text = item.searchSuggestionRenderer.suggestion?.runs?.map((r: any) => r.text).join("") ||
+                            item.searchSuggestionRenderer.navigationEndpoint?.searchEndpoint?.query
+                if (text) suggestions.push(text)
+              }
+              if (item.musicResponsiveListItemRenderer) {
+                const renderer = item.musicResponsiveListItemRenderer
+                const title = renderer.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text
+                const artist = renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text
+                if (title) suggestions.push(artist ? `${title} - ${artist}` : title)
+              }
+            }
+          }
+        }
+        
+        // Fallback: Use YouTube's suggest API if InnerTube fails
+        if (suggestions.length === 0 && query.length > 1) {
+          try {
+            const suggestResponse = await fetch(
+              `https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}&callback=_`
+            )
+            const text = await suggestResponse.text()
+            // Parse JSONP response
+            const jsonStr = text.replace(/^[^(]+\(/, '').replace(/\)$/, '')
+            const parsed = JSON.parse(jsonStr)
+            if (parsed[1]) {
+              for (const item of parsed[1]) {
+                if (typeof item[0] === 'string') {
+                  suggestions.push(item[0])
+                }
+              }
+            }
+          } catch {
+            // Ignore fallback errors
+          }
+        }
+        
+        return NextResponse.json({ suggestions: suggestions.slice(0, 8) })
+      }
+      
       case "charts": {
         const data = await innertubeRequest("browse", {
           browseId: "FEmusic_charts",

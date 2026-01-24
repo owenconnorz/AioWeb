@@ -26,15 +26,76 @@ interface Shelf {
   items: Track[]
 }
 
+// All YT Music Genres
 const GENRES = [
   { id: "pop", name: "Pop", color: "from-pink-500 to-rose-500" },
   { id: "rock", name: "Rock", color: "from-red-500 to-red-700" },
-  { id: "electronic", name: "Electronic", color: "from-cyan-500 to-blue-500" },
   { id: "hip hop", name: "Hip-Hop", color: "from-amber-500 to-orange-500" },
-  { id: "r&b", name: "R&B", color: "from-purple-500 to-violet-600" },
+  { id: "r&b soul", name: "R&B & Soul", color: "from-purple-500 to-violet-600" },
+  { id: "country", name: "Country", color: "from-orange-400 to-yellow-500" },
+  { id: "latin", name: "Latin", color: "from-red-400 to-pink-500" },
+  { id: "electronic dance", name: "Electronic", color: "from-cyan-500 to-blue-500" },
   { id: "jazz", name: "Jazz", color: "from-yellow-500 to-amber-600" },
   { id: "classical", name: "Classical", color: "from-indigo-500 to-purple-600" },
-  { id: "country", name: "Country", color: "from-orange-400 to-yellow-500" },
+  { id: "indie alternative", name: "Indie & Alternative", color: "from-teal-500 to-emerald-600" },
+  { id: "metal", name: "Metal", color: "from-slate-600 to-slate-800" },
+  { id: "folk acoustic", name: "Folk & Acoustic", color: "from-lime-500 to-green-600" },
+  { id: "reggae", name: "Reggae", color: "from-green-500 to-yellow-500" },
+  { id: "blues", name: "Blues", color: "from-blue-600 to-indigo-700" },
+  { id: "punk", name: "Punk", color: "from-fuchsia-500 to-pink-600" },
+  { id: "k-pop", name: "K-Pop", color: "from-violet-400 to-purple-500" },
+  { id: "j-pop", name: "J-Pop", color: "from-rose-400 to-red-500" },
+  { id: "afrobeats", name: "Afrobeats", color: "from-orange-500 to-red-500" },
+  { id: "gospel christian", name: "Gospel & Christian", color: "from-sky-400 to-blue-500" },
+  { id: "anime", name: "Anime", color: "from-pink-400 to-violet-500" },
+]
+
+// Moods & Moments
+const MOODS = [
+  { id: "happy", name: "Happy", color: "from-yellow-400 to-orange-400", icon: "sun" },
+  { id: "sad", name: "Sad", color: "from-blue-400 to-indigo-500", icon: "cloud-rain" },
+  { id: "energetic", name: "Energetic", color: "from-red-500 to-orange-500", icon: "zap" },
+  { id: "chill", name: "Chill", color: "from-cyan-400 to-teal-500", icon: "wind" },
+  { id: "romantic", name: "Romantic", color: "from-pink-400 to-rose-500", icon: "heart" },
+  { id: "angry", name: "Angry", color: "from-red-600 to-red-800", icon: "flame" },
+  { id: "peaceful", name: "Peaceful", color: "from-green-400 to-emerald-500", icon: "leaf" },
+  { id: "melancholy", name: "Melancholy", color: "from-slate-400 to-slate-600", icon: "moon" },
+  { id: "uplifting", name: "Uplifting", color: "from-amber-400 to-yellow-500", icon: "sunrise" },
+  { id: "dark", name: "Dark", color: "from-gray-700 to-gray-900", icon: "moon" },
+]
+
+// Activities & Contexts
+const ACTIVITIES = [
+  { id: "workout music", name: "Workout", color: "from-red-500 to-orange-600", icon: "dumbbell" },
+  { id: "focus music", name: "Focus", color: "from-blue-500 to-cyan-500", icon: "target" },
+  { id: "sleep music", name: "Sleep", color: "from-indigo-600 to-purple-700", icon: "moon" },
+  { id: "party music", name: "Party", color: "from-pink-500 to-purple-500", icon: "party-popper" },
+  { id: "driving music", name: "Driving", color: "from-slate-500 to-slate-700", icon: "car" },
+  { id: "cooking music", name: "Cooking", color: "from-orange-400 to-red-500", icon: "utensils" },
+  { id: "study music", name: "Study", color: "from-emerald-500 to-teal-600", icon: "book" },
+  { id: "meditation music", name: "Meditation", color: "from-violet-400 to-purple-500", icon: "brain" },
+  { id: "gaming music", name: "Gaming", color: "from-green-500 to-emerald-600", icon: "gamepad" },
+  { id: "morning music", name: "Morning", color: "from-amber-300 to-orange-400", icon: "sunrise" },
+]
+
+// Decades
+const DECADES = [
+  { id: "2020s hits", name: "2020s", color: "from-fuchsia-500 to-pink-500" },
+  { id: "2010s hits", name: "2010s", color: "from-purple-500 to-violet-600" },
+  { id: "2000s hits", name: "2000s", color: "from-blue-500 to-cyan-500" },
+  { id: "90s hits", name: "90s", color: "from-teal-500 to-emerald-500" },
+  { id: "80s hits", name: "80s", color: "from-pink-500 to-rose-500" },
+  { id: "70s hits", name: "70s", color: "from-orange-500 to-amber-500" },
+  { id: "60s hits", name: "60s", color: "from-yellow-500 to-lime-500" },
+  { id: "50s hits", name: "50s", color: "from-red-400 to-rose-500" },
+]
+
+// Charts & New Releases
+const CHARTS = [
+  { id: "top 100 songs", name: "Top 100", color: "from-amber-500 to-yellow-500" },
+  { id: "trending music", name: "Trending", color: "from-red-500 to-pink-500" },
+  { id: "new releases", name: "New Releases", color: "from-green-500 to-emerald-500" },
+  { id: "viral hits", name: "Viral Hits", color: "from-violet-500 to-purple-600" },
 ]
 
 interface MusicBrowserProps {
@@ -49,8 +110,11 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const suggestionsDebounceRef = useRef<NodeJS.Timeout | null>(null)
   
   // Player state
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
@@ -645,9 +709,59 @@ useEffect(() => {
     }
   }
   
+  // Fetch search suggestions
+  const fetchSuggestions = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSearchSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/music?action=suggestions&query=${encodeURIComponent(query)}`)
+      const data = await response.json()
+      setSearchSuggestions(data.suggestions || [])
+      setShowSuggestions(data.suggestions?.length > 0)
+    } catch {
+      setSearchSuggestions([])
+    }
+  }
+  
+  // Handle search input change with debounced suggestions
+  const handleSearchInputChange = (value: string) => {
+    setSearchQuery(value)
+    
+    // Clear previous debounce timer
+    if (suggestionsDebounceRef.current) {
+      clearTimeout(suggestionsDebounceRef.current)
+    }
+    
+    // Debounce suggestions fetch
+    suggestionsDebounceRef.current = setTimeout(() => {
+      fetchSuggestions(value)
+    }, 200)
+  }
+  
+  // Select a suggestion
+  const selectSuggestion = (suggestion: string) => {
+    setSearchQuery(suggestion)
+    setShowSuggestions(false)
+    setSearchSuggestions([])
+    // Trigger search
+    setIsSearching(true)
+    fetch(`/api/music?action=search&query=${encodeURIComponent(suggestion)}`)
+      .then(res => res.json())
+      .then(data => {
+        setSearchResults(data.results || [])
+      })
+      .catch(err => console.error("Search error:", err))
+      .finally(() => setIsSearching(false))
+  }
+  
   // Search
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
+    setShowSuggestions(false)
     setIsSearching(true)
     try {
       const response = await fetch(`/api/music?action=search&query=${encodeURIComponent(searchQuery)}`)
@@ -1080,28 +1194,61 @@ useEffect(() => {
         </div>
         
         {/* Search */}
-        <div className="flex-1 max-w-md mx-4">
+        <div className="flex-1 max-w-md mx-4 relative">
           {showSearch ? (
-            <div className="flex items-center gap-2">
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Search songs, artists..."
-                className="bg-white/10 border-0 text-white placeholder:text-slate-400"
-                autoFocus
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setShowSearch(false)
-                  setSearchQuery("")
-                  setSearchResults([])
-                }}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => handleSearchInputChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setShowSuggestions(false)
+                        handleSearch()
+                      }
+                      if (e.key === "Escape") {
+                        setShowSuggestions(false)
+                      }
+                    }}
+                    onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    placeholder="Search songs, artists..."
+                    className="bg-white/10 border-0 text-white placeholder:text-slate-400"
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowSearch(false)
+                    setSearchQuery("")
+                    setSearchResults([])
+                    setSearchSuggestions([])
+                    setShowSuggestions(false)
+                  }}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              {/* Search Suggestions Dropdown */}
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-12 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50">
+                  {searchSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      className="w-full px-4 py-3 text-left text-white hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectSuggestion(suggestion)}
+                    >
+                      <Search className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="truncate">{suggestion}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <Button
@@ -1255,24 +1402,105 @@ useEffect(() => {
             )}
 
             {activeTab === "explore" && (
-              <div>
-                <h3 className="text-xl font-bold text-white mb-4">Browse by Genre</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8">
-                  {GENRES.map((genre) => (
-                    <button
-                      key={genre.id}
-                      onClick={() => {
-                        setSearchQuery(genre.name)
-                        setShowSearch(true)
-                        setTimeout(() => {
-                          handleSearch()
-                        }, 100)
-                      }}
-                      className={`aspect-video rounded-lg bg-gradient-to-br ${genre.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105`}
-                    >
-                      <span className="text-white font-bold text-lg">{genre.name}</span>
-                    </button>
-                  ))}
+              <div className="space-y-8">
+                {/* Charts & New Releases */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4">Charts & New Releases</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {CHARTS.map((chart) => (
+                      <button
+                        key={chart.id}
+                        onClick={() => {
+                          setSearchQuery(chart.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`aspect-[2/1] rounded-lg bg-gradient-to-br ${chart.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-base drop-shadow-md">{chart.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Moods & Moments */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4">Moods & Moments</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {MOODS.map((mood) => (
+                      <button
+                        key={mood.id}
+                        onClick={() => {
+                          setSearchQuery(`${mood.name} music`)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`flex-shrink-0 w-28 h-28 rounded-xl bg-gradient-to-br ${mood.color} hover:opacity-90 flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-sm drop-shadow-md">{mood.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Activities */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4">Activities</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {ACTIVITIES.map((activity) => (
+                      <button
+                        key={activity.id}
+                        onClick={() => {
+                          setSearchQuery(activity.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`flex-shrink-0 w-32 h-20 rounded-xl bg-gradient-to-br ${activity.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-sm drop-shadow-md">{activity.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Decades */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4">Decades</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {DECADES.map((decade) => (
+                      <button
+                        key={decade.id}
+                        onClick={() => {
+                          setSearchQuery(decade.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`flex-shrink-0 w-24 h-24 rounded-full bg-gradient-to-br ${decade.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-lg drop-shadow-md">{decade.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* All Genres */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4">Browse by Genre</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {GENRES.map((genre) => (
+                      <button
+                        key={genre.id}
+                        onClick={() => {
+                          setSearchQuery(genre.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`aspect-video rounded-lg bg-gradient-to-br ${genre.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-base drop-shadow-md">{genre.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
