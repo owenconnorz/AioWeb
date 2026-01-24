@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
+import { createPortal } from "react-dom"
 import React from "react"
 
 import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio } from "lucide-react"
@@ -123,6 +124,12 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [currentArtist, setCurrentArtist] = useState<{id: string, name: string, thumbnail: string, banner: string, description: string, subscriberCount: string} | null>(null)
   const [artistShelves, setArtistShelves] = useState<any[]>([])
   const [loadingArtist, setLoadingArtist] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  
+  // Set mounted state for portal
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   
   // Player state
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
@@ -171,7 +178,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [isSeeking, setIsSeeking] = useState(false)
   const [expandedShelf, setExpandedShelf] = useState<Shelf | null>(null)
   const [loadingPlaylist, setLoadingPlaylist] = useState(false)
-  const [librarySubTab, setLibrarySubTab] = useState<"liked" | "history" | "playlists" | "downloads">("liked")
+  const [librarySubTab, setLibrarySubTab] = useState<"liked" | "history" | "playlists" | "downloads">("playlists")
   
   // Offline music storage
   const {
@@ -2102,9 +2109,9 @@ useEffect(() => {
       </div>
     </div>
 
-    {/* Artist Page - Full Screen */}
-    {showArtistPage && (
-      <div className="fixed inset-0 z-[9998] flex flex-col bg-black overflow-hidden w-screen max-w-full">
+    {/* Artist Page - Full Screen Portal */}
+    {showArtistPage && isMounted && createPortal(
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
           <Button
@@ -2284,7 +2291,8 @@ useEffect(() => {
             <div className="h-32" />
           </div>
         )}
-      </div>
+      </div>,
+      document.body
     )}
 
     {/* Full Screen Player - Rendered outside main container for proper fixed positioning */}
