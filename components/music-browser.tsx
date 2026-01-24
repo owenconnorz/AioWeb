@@ -2104,13 +2104,13 @@ useEffect(() => {
 
     {/* Artist Page - Full Screen */}
     {showArtistPage && (
-      <div className="fixed top-0 left-0 right-0 bottom-0 z-[9998] flex flex-col bg-black overflow-hidden">
+      <div className="fixed inset-0 z-[9998] flex flex-col bg-black overflow-hidden w-screen max-w-full">
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 text-white hover:bg-white/10"
+            className="h-10 w-10 text-white hover:bg-white/10 flex-shrink-0"
             onClick={() => {
               setShowArtistPage(false)
               setCurrentArtist(null)
@@ -2119,8 +2119,8 @@ useEffect(() => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-bold text-white truncate flex-1 mx-4">{currentArtist?.name}</h1>
-          <div className="w-10" />
+          <h1 className="text-lg font-bold text-white truncate flex-1 mx-4 text-center">{currentArtist?.name}</h1>
+          <div className="w-10 flex-shrink-0" />
         </div>
         
         {loadingArtist ? (
@@ -2128,9 +2128,9 @@ useEffect(() => {
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden w-full">
             {/* Artist Banner/Image */}
-            <div className="relative h-80">
+            <div className="relative h-64 sm:h-80 w-full">
               <img
                 src={currentArtist?.banner || currentArtist?.thumbnail || "/placeholder.svg"}
                 alt={currentArtist?.name}
@@ -2141,27 +2141,29 @@ useEffect(() => {
               
               {/* Artist Info Overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h2 className="text-3xl font-bold text-white mb-2">{currentArtist?.name}</h2>
-                <div className="flex items-center gap-4 mb-4">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">{currentArtist?.name}</h2>
+                <div className="flex items-center gap-3 mb-4 flex-wrap">
                   <Button
                     variant="outline"
-                    className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10"
+                    size="sm"
+                    className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm px-3 sm:px-4"
                   >
                     Subscribe
                   </Button>
                   <Button
                     variant="outline"
-                    className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10 flex items-center gap-2"
+                    size="sm"
+                    className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-3 sm:px-4"
                   >
-                    <Radio className="h-4 w-4" />
+                    <Radio className="h-3 w-3 sm:h-4 sm:w-4" />
                     Radio
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="rounded-full bg-blue-600 hover:bg-blue-700 text-white h-9 w-9 sm:h-10 sm:w-10"
                   >
-                    <Shuffle className="h-5 w-5" />
+                    <Shuffle className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 </div>
               </div>
@@ -2185,7 +2187,7 @@ useEffect(() => {
             
             {/* Artist Shelves (Top Songs, Albums, Singles & EPs, etc.) */}
             {artistShelves.map((shelf, shelfIdx) => (
-              <div key={`artist-shelf-${shelfIdx}`} className="mb-6">
+              <div key={`artist-shelf-${shelfIdx}`} className="mb-6 w-full max-w-full overflow-hidden">
                 <div className="flex items-center justify-between px-4 mb-3">
                   <h3 className="text-xl font-bold text-blue-500">{shelf.title}</h3>
                   {shelf.items?.length > 4 && (
@@ -2236,11 +2238,11 @@ useEffect(() => {
                   </div>
                 ) : (
                   /* Horizontal scroll for albums, videos, etc. */
-                  <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
+                  <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide w-full max-w-full">
                     {shelf.items?.map((item: any, idx: number) => (
                       <button
                         key={`item-${idx}`}
-                        className="flex-shrink-0 w-36 text-left"
+                        className="flex-shrink-0 w-32 sm:w-36 text-left"
                         onClick={() => {
                           if (item.videoId) {
                             const track: Track = {
@@ -2258,16 +2260,16 @@ useEffect(() => {
                           <img
                             src={item.thumbnail || "/placeholder.svg"}
                             alt={item.title}
-                            className={`w-36 h-36 object-cover ${shelf.title?.toLowerCase().includes("artist") || shelf.title?.toLowerCase().includes("fan") ? "rounded-full" : "rounded-lg"}`}
+                            className={`w-32 h-32 sm:w-36 sm:h-36 object-cover ${shelf.title?.toLowerCase().includes("artist") || shelf.title?.toLowerCase().includes("fan") ? "rounded-full" : "rounded-lg"}`}
                             referrerPolicy="no-referrer"
                           />
                           {item.videoId && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg">
-                              <Play className="h-10 w-10 text-white fill-white" />
+                              <Play className="h-8 w-8 sm:h-10 sm:w-10 text-white fill-white" />
                             </div>
                           )}
                         </div>
-                        <h4 className="text-white font-medium line-clamp-2 text-sm">{item.title}</h4>
+                        <h4 className="text-white font-medium line-clamp-2 text-xs sm:text-sm">{item.title}</h4>
                         {item.subtitle && (
                           <p className="text-slate-400 text-xs line-clamp-1">{item.subtitle}</p>
                         )}
