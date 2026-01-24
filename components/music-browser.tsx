@@ -1540,16 +1540,16 @@ useEffect(() => {
   return (
     <>
       <div 
-      className={`flex flex-col min-h-screen h-screen w-full overflow-hidden transition-colors duration-700 ${showFullPlayer ? 'invisible' : ''}`}
-      style={{
-      background: dynamicThemeEnabled && showPlayer && currentTrack
-      ? `linear-gradient(to bottom, ${lightColor}, ${secondaryColor})`
-      : 'linear-gradient(to bottom, #0f172a, #000000)'
-      }}
+        className={`flex flex-col min-h-screen h-screen w-full overflow-hidden transition-colors duration-700 ${showFullPlayer ? 'invisible' : ''}`}
+        style={{
+          background: dynamicThemeEnabled && showPlayer && currentTrack
+            ? `linear-gradient(to bottom, ${lightColor}, ${secondaryColor})`
+            : 'linear-gradient(to bottom, #0f172a, #000000)'
+        }}
       >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-black/30">
-        <div className="flex items-center gap-3">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 bg-black/30">
+          <div className="flex items-center gap-3">
           {onBack && (
             <Button
               variant="ghost"
@@ -1664,48 +1664,48 @@ useEffect(() => {
                     </button>
                   ))}
                   
-  {/* Song Suggestions */}
-  {songSuggestions.map((song, index) => {
-  const track: Track = {
-  id: song.videoId,
-  videoId: song.videoId,
-  title: song.title,
-  artist: song.artist,
-  thumbnail: song.thumbnail,
-  }
-  return (
-  <div
-  key={`song-${index}`}
-  className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors cursor-pointer"
-  onMouseDown={(e) => e.preventDefault()}
-  onClick={() => {
-  setShowSuggestions(false)
-  playTrack(track, [track])
-  }}
-  >
-  <div className="flex items-center gap-3 flex-1 min-w-0">
-  <img
-  src={song.thumbnail || "/placeholder.svg"}
-  alt={song.title}
-  className="w-12 h-12 rounded object-cover flex-shrink-0"
-  />
-  <div className="flex flex-col min-w-0">
-  <span className="truncate font-medium text-[15px]">{song.title}</span>
-  <span className="truncate text-sm text-slate-400">{song.artist}</span>
-  </div>
-  </div>
-  <button
-  className="p-2 -mr-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
-  onClick={(e) => {
-  setShowSuggestions(false)
-  openTrackMenu(track, e)
-  }}
-  >
-  <MoreVertical className="h-5 w-5 text-slate-400" />
-  </button>
-  </div>
-  )
-  })}
+                  {/* Song Suggestions */}
+                  {songSuggestions.map((song, index) => {
+                    const track: Track = {
+                      id: song.videoId,
+                      videoId: song.videoId,
+                      title: song.title,
+                      artist: song.artist,
+                      thumbnail: song.thumbnail,
+                    }
+                    return (
+                      <div
+                        key={`song-${index}`}
+                        className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors cursor-pointer"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setShowSuggestions(false)
+                          playTrack(track, [track])
+                        }}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <img
+                            src={song.thumbnail || "/placeholder.svg"}
+                            alt={song.title}
+                            className="w-12 h-12 rounded object-cover flex-shrink-0"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="truncate font-medium text-[15px]">{song.title}</span>
+                            <span className="truncate text-sm text-slate-400">{song.artist}</span>
+                          </div>
+                        </div>
+                        <button
+                          className="p-2 -mr-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+                          onClick={(e) => {
+                            setShowSuggestions(false)
+                            openTrackMenu(track, e)
+                          }}
+                        >
+                          <MoreVertical className="h-5 w-5 text-slate-400" />
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1964,126 +1964,126 @@ useEffect(() => {
               </div>
             )}
 
-  {activeTab === "library" && (
-  <div>
-  {/* Offline Status Banner */}
-  {!isOnline && (
-    <div className="flex items-center gap-2 px-4 py-2 mb-4 bg-amber-500/20 border border-amber-500/30 rounded-lg">
-      <WifiOff className="w-4 h-4 text-amber-400" />
-      <span className="text-sm text-amber-200">You're offline. Only downloaded music is available.</span>
-    </div>
-  )}
-  
-  {/* Library Sub-tabs */}
-  <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-    {[
-      { id: "liked", label: "Liked", icon: Heart },
-      { id: "downloads", label: "Downloads", icon: Download },
-      { id: "history", label: "History", icon: Clock },
-      { id: "playlists", label: "Playlists", icon: ListMusic },
-    ].map(tab => (
-      <button
-        key={tab.id}
-        onClick={() => setLibrarySubTab(tab.id as any)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-colors ${
-          librarySubTab === tab.id 
-            ? "bg-white text-black" 
-            : "bg-white/10 text-white hover:bg-white/20"
-        }`}
-      >
-        <tab.icon className="w-4 h-4" />
-        <span className="text-sm font-medium">{tab.label}</span>
-        {tab.id === "downloads" && downloadedTracks.length > 0 && (
-          <span className={`text-xs px-1.5 rounded-full ${librarySubTab === "downloads" ? "bg-black/20" : "bg-white/20"}`}>
-            {downloadedTracks.length}
-          </span>
-        )}
-      </button>
-    ))}
-  </div>
-
-  {/* Downloads Tab */}
-  {librarySubTab === "downloads" && (
-    <div className="mb-8">
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
-          <Download className="w-10 h-10 text-white" />
-        </div>
-        <div>
-          <h3 className="text-2xl font-bold text-white">Downloads</h3>
-          <p className="text-slate-400">{downloadedTracks.length} songs saved offline</p>
-          {storageInfo && (
-            <p className="text-xs text-slate-500 mt-1">
-              <HardDrive className="w-3 h-3 inline mr-1" />
-              {(storageInfo.used / 1024 / 1024).toFixed(1)} MB used
-            </p>
-          )}
-        </div>
-      </div>
-      
-      {isLoadingDownloads ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-        </div>
-      ) : downloadedTracks.length === 0 ? (
-        <div className="text-center py-8">
-          <Download className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No downloaded songs yet</p>
-          <p className="text-sm text-slate-500 mt-1">Download songs to play them offline</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {downloadedTracks.map((track, idx) => (
-            <div
-              key={`download-${track.videoId}-${idx}`}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
-            >
-              <button
-                onClick={() => playTrack(track as Track, downloadedTracks as Track[])}
-                className="flex items-center gap-3 flex-1"
-              >
-                <span className="text-slate-500 w-6 text-sm">{idx + 1}</span>
-                <div className="relative">
-                  <img
-                    src={track.thumbnail || "/placeholder.svg"}
-                    alt={track.title}
-                    className="w-10 h-10 rounded object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <CheckCircle2 className="absolute -bottom-1 -right-1 w-4 h-4 text-emerald-400 bg-black rounded-full" />
+            {activeTab === "library" && (
+              <div>
+                {/* Offline Status Banner */}
+                {!isOnline && (
+                  <div className="flex items-center gap-2 px-4 py-2 mb-4 bg-amber-500/20 border border-amber-500/30 rounded-lg">
+                    <WifiOff className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm text-amber-200">{"You're offline. Only downloaded music is available."}</span>
+                  </div>
+                )}
+                
+                {/* Library Sub-tabs */}
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                  {[
+                    { id: "liked", label: "Liked", icon: Heart },
+                    { id: "downloads", label: "Downloads", icon: Download },
+                    { id: "history", label: "History", icon: Clock },
+                    { id: "playlists", label: "Playlists", icon: ListMusic },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setLibrarySubTab(tab.id as any)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-colors ${
+                        librarySubTab === tab.id 
+                          ? "bg-white text-black" 
+                          : "bg-white/10 text-white hover:bg-white/20"
+                      }`}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      <span className="text-sm font-medium">{tab.label}</span>
+                      {tab.id === "downloads" && downloadedTracks.length > 0 && (
+                        <span className={`text-xs px-1.5 rounded-full ${librarySubTab === "downloads" ? "bg-black/20" : "bg-white/20"}`}>
+                          {downloadedTracks.length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex-1 text-left">
-                  <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
-                  <p className="text-sm text-slate-400 line-clamp-1">{track.artist}</p>
-                </div>
-              </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => deleteTrack(track.videoId)}
-                className="h-8 w-8 text-slate-400 hover:text-red-400"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )}
 
-  {/* Liked Songs Tab */}
-  {librarySubTab === "liked" && (
-  <div className="mb-8">
-  <div className="flex items-center gap-4 mb-4">
-  <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-purple-700 to-blue-500 flex items-center justify-center">
-  <Heart className="w-10 h-10 text-white fill-white" />
-  </div>
-  <div>
-  <h3 className="text-2xl font-bold text-white">Liked Songs</h3>
-  <p className="text-slate-400">{likedTracks.length} songs</p>
-  </div>
-  </div>
+                {/* Downloads Tab */}
+                {librarySubTab === "downloads" && (
+                  <div className="mb-8">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
+                        <Download className="w-10 h-10 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">Downloads</h3>
+                        <p className="text-slate-400">{downloadedTracks.length} songs saved offline</p>
+                        {storageInfo && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            <HardDrive className="w-3 h-3 inline mr-1" />
+                            {(storageInfo.used / 1024 / 1024).toFixed(1)} MB used
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {isLoadingDownloads ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                      </div>
+                    ) : downloadedTracks.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Download className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400">No downloaded songs yet</p>
+                        <p className="text-sm text-slate-500 mt-1">Download songs to play them offline</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {downloadedTracks.map((track, idx) => (
+                          <div
+                            key={`download-${track.videoId}-${idx}`}
+                            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
+                          >
+                            <button
+                              onClick={() => playTrack(track as Track, downloadedTracks as Track[])}
+                              className="flex items-center gap-3 flex-1"
+                            >
+                              <span className="text-slate-500 w-6 text-sm">{idx + 1}</span>
+                              <div className="relative">
+                                <img
+                                  src={track.thumbnail || "/placeholder.svg"}
+                                  alt={track.title}
+                                  className="w-10 h-10 rounded object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <CheckCircle2 className="absolute -bottom-1 -right-1 w-4 h-4 text-emerald-400 bg-black rounded-full" />
+                              </div>
+                              <div className="flex-1 text-left">
+                                <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+                                <p className="text-sm text-slate-400 line-clamp-1">{track.artist}</p>
+                              </div>
+                            </button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteTrack(track.videoId)}
+                              className="h-8 w-8 text-slate-400 hover:text-red-400"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Liked Songs Tab */}
+                {librarySubTab === "liked" && (
+                  <div className="mb-8">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-purple-700 to-blue-500 flex items-center justify-center">
+                        <Heart className="w-10 h-10 text-white fill-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">Liked Songs</h3>
+                        <p className="text-slate-400">{likedTracks.length} songs</p>
+                      </div>
+                    </div>
                   
                   {likedTracks.length === 0 ? (
                     <p className="text-slate-400 text-center py-8">Songs you like will appear here</p>
@@ -2197,8 +2197,6 @@ useEffect(() => {
                 )}
               </div>
             )}
-          </div>
-        )}
 
         {/* Padding at bottom for mini player */}
         {showPlayer && <div className="h-20" />}
