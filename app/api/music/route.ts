@@ -344,6 +344,59 @@ export async function GET(request: Request) {
         })
       }
       
+      case "album": {
+        // Get album/playlist tracks
+        const browseId = searchParams.get("browseId")
+        if (!browseId) {
+          return NextResponse.json({ error: "browseId is required" }, { status: 400 })
+        }
+        
+        const data = await innertubeRequest("browse", {
+          browseId,
+        })
+        
+        const header = data.header?.musicDetailHeaderRenderer || data.header?.musicImmersiveHeaderRenderer
+        const albumTitle = header?.title?.runs?.[0]?.text || ""
+        const albumArtist = header?.subtitle?.runs?.find((r: any) => r.navigationEndpoint?.browseEndpoint?.browseId?.startsWith("UC"))?.text || 
+                          header?.subtitle?.runs?.[0]?.text || ""
+        const albumThumbnail = header?.thumbnail?.croppedSquareThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
+                              header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || ""
+        
+        const tracks: any[] = []
+        const contents = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || []
+        
+        for (const content of contents) {
+          if (content.musicShelfRenderer) {
+            const items = content.musicShelfRenderer.contents || []
+            for (const item of items) {
+              if (item.musicResponsiveListItemRenderer) {
+                const renderer = item.musicResponsiveListItemRenderer
+                const videoId = renderer.playlistItemData?.videoId ||
+                              renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
+                if (videoId) {
+                  tracks.push({
+                    videoId,
+                    title: renderer.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || "",
+                    artist: renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || albumArtist,
+                    thumbnail: renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || albumThumbnail,
+                  })
+                }
+              }
+            }
+          }
+        }
+        
+        return NextResponse.json({
+          album: {
+            id: browseId,
+            title: albumTitle,
+            artist: albumArtist,
+            thumbnail: albumThumbnail,
+          },
+          tracks,
+        })
+      }
+      
       case "artist": {
         // Get artist page data
         const browseId = searchParams.get("browseId")

@@ -2250,8 +2250,9 @@ useEffect(() => {
                       <button
                         key={`item-${idx}`}
                         className="flex-shrink-0 w-32 sm:w-36 text-left"
-                        onClick={() => {
+                        onClick={async () => {
                           if (item.videoId) {
+                            // Direct video - play it
                             const track: Track = {
                               id: item.videoId,
                               videoId: item.videoId,
@@ -2260,6 +2261,24 @@ useEffect(() => {
                               thumbnail: item.thumbnail,
                             }
                             playTrack(track, [track])
+                          } else if (item.browseId) {
+                            // Album/Playlist - fetch tracks and play first one
+                            try {
+                              const response = await fetch(`/api/music?action=album&browseId=${encodeURIComponent(item.browseId)}`)
+                              const data = await response.json()
+                              if (data.tracks && data.tracks.length > 0) {
+                                const tracks: Track[] = data.tracks.map((t: any) => ({
+                                  id: t.videoId,
+                                  videoId: t.videoId,
+                                  title: t.title,
+                                  artist: t.artist || currentArtist?.name,
+                                  thumbnail: t.thumbnail || item.thumbnail,
+                                }))
+                                playTrack(tracks[0], tracks)
+                              }
+                            } catch (err) {
+                              console.error("Error loading album:", err)
+                            }
                           }
                         }}
                       >
@@ -2270,11 +2289,9 @@ useEffect(() => {
                             className={`w-32 h-32 sm:w-36 sm:h-36 object-cover ${shelf.title?.toLowerCase().includes("artist") || shelf.title?.toLowerCase().includes("fan") ? "rounded-full" : "rounded-lg"}`}
                             referrerPolicy="no-referrer"
                           />
-                          {item.videoId && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg">
-                              <Play className="h-8 w-8 sm:h-10 sm:w-10 text-white fill-white" />
-                            </div>
-                          )}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg">
+                            <Play className="h-8 w-8 sm:h-10 sm:w-10 text-white fill-white" />
+                          </div>
                         </div>
                         <h4 className="text-white font-medium line-clamp-2 text-xs sm:text-sm">{item.title}</h4>
                         {item.subtitle && (
