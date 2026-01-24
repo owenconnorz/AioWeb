@@ -2,15 +2,26 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic"
 
-// Working Cobalt API instances (sorted by reliability score)
-const COBALT_INSTANCES = [
-  "https://cobalt-api.meowing.de",
-  "https://cobalt-backend.canine.tools",
-  "https://capi.3kh0.net",
-  "https://downloadapi.stuff.solutions",
-]
+// Extract best audio URL from InnerTube streaming data
+function extractAudioUrl(streamingData: any): string | null {
+  const formats = streamingData?.adaptiveFormats || []
+  const audioFormats = formats.filter((f: any) => f.mimeType?.startsWith("audio/") && f.url)
+  audioFormats.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))
+  
+  if (audioFormats.length > 0) {
+    return audioFormats[0].url
+  }
+  
+  // Fallback to combined formats
+  const combinedFormats = streamingData?.formats || []
+  if (combinedFormats.length > 0 && combinedFormats[0].url) {
+    return combinedFormats[0].url
+  }
+  
+  return null
+}
 
-// Get audio stream URL for a YouTube video using Cobalt API
+// Get audio stream URL for a YouTube video
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -22,57 +33,171 @@ export async function GET(request: NextRequest) {
 
     let audioUrl: string | null = null
     let error: string | null = null
-    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
 
-    // Try Cobalt API instances
-    for (const instance of COBALT_INSTANCES) {
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 20000)
-
-        const response = await fetch(instance, {
+    // Try InnerTube ANDROID_TESTSUITE client (doesn't require login)
+    try {
+      const response = await fetch(
+        "https://www.youtube.com/youtubei/v1/player?key=AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w",
+        {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Accept": "application/json",
+            "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 13) gzip",
+            "X-YouTube-Client-Name": "30",
+            "X-YouTube-Client-Version": "1.9",
           },
           body: JSON.stringify({
-            url: youtubeUrl,
-            downloadMode: "audio",
-            audioFormat: "mp3",
+            videoId,
+            context: {
+              client: {
+                clientName: "ANDROID_TESTSUITE",
+                clientVersion: "1.9",
+                androidSdkVersion: 33,
+                hl: "en",
+                gl: "US",
+              },
+            },
+            contentCheckOk: true,
+            racyCheckOk: true,
           }),
-          signal: controller.signal,
-        })
+        },
+      )
 
-        clearTimeout(timeoutId)
-
-        if (!response.ok) {
-          error = `${instance} returned ${response.status}`
-          continue
-        }
-
+      if (response.ok) {
         const data = await response.json()
+        if (data.playabilityStatus?.status === "OK" && data.streamingData) {
+          audioUrl = extractAudioUrl(data.streamingData)
+        } else {
+          error = data.playabilityStatus?.reason || "ANDROID_TESTSUITE failed"
+        }
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : "ANDROID_TESTSUITE error"
+    }
 
-        // Handle different response formats from Cobalt
-        if (data.status === "tunnel" && data.url) {
-          audioUrl = data.url
-          break
-        } else if (data.status === "redirect" && data.url) {
-          audioUrl = data.url
-          break
-        } else if (data.status === "stream" && data.url) {
-          audioUrl = data.url
-          break
-        } else if (data.url) {
-          audioUrl = data.url
-          break
-        } else if (data.status === "error") {
-          error = data.error?.code || data.text || "Cobalt error"
-          continue
+    // Fallback: Try ANDROID_VR client (also bypasses login)
+    if (!audioUrl) {
+      try {
+        const response = await fetch(
+          "https://www.youtube.com/youtubei/v1/player?key=AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.57.29 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+              "X-YouTube-Client-Name": "28",
+              "X-YouTube-Client-Version": "1.57.29",
+            },
+            body: JSON.stringify({
+              videoId,
+              context: {
+                client: {
+                  clientName: "ANDROID_VR",
+                  clientVersion: "1.57.29",
+                  deviceMake: "Oculus",
+                  deviceModel: "Quest 3",
+                  androidSdkVersion: 32,
+                  hl: "en",
+                  gl: "US",
+                },
+              },
+              contentCheckOk: true,
+              racyCheckOk: true,
+            }),
+          },
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.playabilityStatus?.status === "OK" && data.streamingData) {
+            audioUrl = extractAudioUrl(data.streamingData)
+          } else {
+            error = data.playabilityStatus?.reason || "ANDROID_VR failed"
+          }
         }
       } catch (e) {
-        error = e instanceof Error ? e.message : "Unknown error"
-        continue
+        error = e instanceof Error ? e.message : "ANDROID_VR error"
+      }
+    }
+
+    // Fallback: Try TVHTML5_SIMPLY_EMBEDDED_PLAYER
+    if (!audioUrl) {
+      try {
+        const response = await fetch(
+          "https://www.youtube.com/youtubei/v1/player?key=AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "User-Agent": "Mozilla/5.0",
+            },
+            body: JSON.stringify({
+              videoId,
+              context: {
+                client: {
+                  clientName: "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+                  clientVersion: "2.0",
+                  hl: "en",
+                  gl: "US",
+                },
+                thirdParty: {
+                  embedUrl: "https://www.google.com",
+                },
+              },
+            }),
+          },
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.playabilityStatus?.status === "OK" && data.streamingData) {
+            audioUrl = extractAudioUrl(data.streamingData)
+          }
+        }
+      } catch (e) {
+        error = e instanceof Error ? e.message : "TVHTML5 error"
+      }
+    }
+
+    // Final fallback: Try IOS client
+    if (!audioUrl) {
+      try {
+        const response = await fetch(
+          "https://www.youtube.com/youtubei/v1/player?key=AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)",
+              "X-YouTube-Client-Name": "5",
+              "X-YouTube-Client-Version": "19.29.1",
+            },
+            body: JSON.stringify({
+              videoId,
+              context: {
+                client: {
+                  clientName: "IOS",
+                  clientVersion: "19.29.1",
+                  deviceMake: "Apple",
+                  deviceModel: "iPhone16,2",
+                  hl: "en",
+                  gl: "US",
+                },
+              },
+              contentCheckOk: true,
+              racyCheckOk: true,
+            }),
+          },
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.playabilityStatus?.status === "OK" && data.streamingData) {
+            audioUrl = extractAudioUrl(data.streamingData)
+          }
+        }
+      } catch (e) {
+        error = e instanceof Error ? e.message : "IOS error"
       }
     }
 
@@ -80,7 +205,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Could not get audio stream",
-          details: error || "All Cobalt instances failed",
+          details: error || "All methods failed",
         },
         { status: 500 },
       )
