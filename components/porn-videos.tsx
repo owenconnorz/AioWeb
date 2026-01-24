@@ -278,9 +278,9 @@ const safeStorage = {
   }
 }
 
-  type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai" | "youporn"
-  
-  const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "youporn", "redtube", "redgifs", "cam4", "pornpics", "chaturbate", "hentai"]
+type ApiSource = "redgifs" | "eporner" | "xvidapi" | "cam4" | "pornpics" | "chaturbate" | "redtube" | "hentai" | "youporn" | "reddit"
+
+const DEFAULT_API_ORDER: ApiSource[] = ["xvidapi", "eporner", "youporn", "redtube", "redgifs", "cam4", "pornpics", "chaturbate", "hentai", "reddit"]
 
 const XVIDAPI_CATEGORIES = [
   "xvidapi",
@@ -585,9 +585,9 @@ export function PornVideos() {
     setHasMore(true)
 
     try {
-      const searchParam = category || query || "popular"
+      const searchParam = category || query || (apiSource === "reddit" ? "nsfw" : "popular")
       const apiEndpoint =
-        apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34"
+        apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34" || apiSource === "reddit"
           ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=1&refresh=${refreshKey}`
           : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=1&refresh=${refreshKey}`
 
@@ -615,11 +615,11 @@ export function PornVideos() {
     const nextPage = page + 1
 
     try {
-      const searchParam = selectedCategory || searchQuery || "popular"
-      const apiEndpoint =
-        apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34"
-          ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=${nextPage}`
-          : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=${nextPage}`
+    const searchParam = selectedCategory || searchQuery || (apiSource === "reddit" ? "nsfw" : "popular")
+    const apiEndpoint =
+      apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34" || apiSource === "reddit"
+        ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=${nextPage}`
+        : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=${nextPage}`
 
       const response = await fetch(apiEndpoint)
       const data = await response.json()
@@ -652,11 +652,11 @@ export function PornVideos() {
     setPage(targetPage)
     
     try {
-      const searchParam = selectedCategory || searchQuery || "popular"
-      const apiEndpoint =
-        apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34"
-          ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=${targetPage}`
-          : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=${targetPage}`
+    const searchParam = selectedCategory || searchQuery || (apiSource === "reddit" ? "nsfw" : "popular")
+    const apiEndpoint =
+      apiSource === "redgifs" || apiSource === "pornpics" || apiSource === "rule34" || apiSource === "reddit"
+        ? `/api/search-pictures?query=${encodeURIComponent(searchParam)}&api=${apiSource}&page=${targetPage}`
+        : `/api/search-videos?query=${encodeURIComponent(searchParam)}&source=${apiSource}&page=${targetPage}`
 
       const response = await fetch(apiEndpoint)
       const data = await response.json()
@@ -703,7 +703,7 @@ export function PornVideos() {
       console.error("Error loading API order:", err)
     }
 
-    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")
+    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate" || apiSource === "reddit")
     loadVideos()
     loadLibraryData()
     setLoadedIframes(new Set([0]))
@@ -727,7 +727,7 @@ export function PornVideos() {
   }, [showAddToPlaylist, showCreatePlaylist, selectedVideo])
 
   useEffect(() => {
-    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource === "chaturbate")) return
+    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "chaturbate" && apiSource !== "reddit")) return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -767,17 +767,17 @@ export function PornVideos() {
         setActiveVideoIndex(mostVisibleIndex)
         setCurrentVideoIndex(mostVisibleIndex)
 
-        if (apiSource === "redgifs") {
-          iframeRefs.current.forEach((element, idx) => {
-            if (element && element instanceof HTMLVideoElement) {
-              if (idx === mostVisibleIndex) {
-                element.play().catch(() => {})
-              } else {
-                element.pause()
-              }
-            }
-          })
-        }
+if (apiSource === "redgifs" || apiSource === "reddit") {
+                          iframeRefs.current.forEach((element, idx) => {
+                            if (element && element instanceof HTMLVideoElement) {
+                              if (idx === mostVisibleIndex) {
+                                element.play().catch(() => {})
+                              } else {
+                                element.pause()
+                              }
+                            }
+                          })
+                        }
 
         if (apiSource === "cam4" || apiSource === "chaturbate") {
           setLoadedIframes((prev) => {
@@ -807,7 +807,7 @@ export function PornVideos() {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-    if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")) {
+if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate" || apiSource === "reddit")) {
       if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
@@ -1263,8 +1263,8 @@ const getEmbedUrl = (video: Video, quality?: string) => {
   return embedUrl
 }
 
-  // Feed View for live cams
-  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")) {
+  // Feed View for live cams and swipeable feeds
+  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate" || apiSource === "reddit")) {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <button
@@ -1278,21 +1278,32 @@ const getEmbedUrl = (video: Video, quality?: string) => {
         <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
           {videos.map((video, index) => (
             <div key={`${video.id}-${index}`} className="relative h-screen w-full snap-start snap-always">
-              {apiSource === "redgifs" ? (
-                <video
-                  ref={(el) => {
-                    iframeRefs.current[index] = el as any
-                  }}
-                  src={getVideoUrl(video.url || video.embed)}
-                  poster={video.thumbnail || ""}
-                  preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
-                  loop
-                  playsInline
-                  controls
-                  muted={index !== activeVideoIndex}
-                  autoPlay={index === activeVideoIndex}
-                  className="h-full w-full object-contain bg-black"
-                />
+              {apiSource === "redgifs" || apiSource === "reddit" ? (
+                (video as any).isVideo || video.url?.includes('.mp4') || video.url?.includes('.webm') || (video as any).videoUrl ? (
+                  <video
+                    ref={(el) => {
+                      iframeRefs.current[index] = el as any
+                    }}
+                    src={apiSource === "reddit" ? ((video as any).videoUrl || video.url) : getVideoUrl(video.url || video.embed)}
+                    poster={video.thumbnail || ""}
+                    preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
+                    loop
+                    playsInline
+                    controls
+                    muted={index !== activeVideoIndex}
+                    autoPlay={index === activeVideoIndex}
+                    className="h-full w-full object-contain bg-black"
+                  />
+                ) : (
+                  <div className="relative h-full w-full flex items-center justify-center bg-black">
+                    <img
+                      src={video.url || video.thumbnail || ""}
+                      alt={video.title}
+                      className="max-h-full max-w-full object-contain"
+                      loading={Math.abs(index - currentVideoIndex) <= 2 ? "eager" : "lazy"}
+                    />
+                  </div>
+                )
               ) : apiSource === "xvidapi" && video.directUrl && loadedIframes.has(index) ? (
                 <iframe
                   ref={(el) => {
@@ -1324,8 +1335,14 @@ const getEmbedUrl = (video: Video, quality?: string) => {
               )}
 
               <div className="absolute bottom-20 left-4 right-16 text-white">
-                <h3 className="text-lg font-semibold drop-shadow-lg">{video.title}</h3>
-                {video.views > 0 && <p className="text-sm opacity-80">{video.views.toLocaleString()} viewers</p>}
+                <h3 className="text-lg font-semibold drop-shadow-lg line-clamp-2">{video.title}</h3>
+                {apiSource === "reddit" && (video as any).subreddit && (
+                  <p className="text-sm opacity-80 mt-1">
+                    r/{(video as any).subreddit}
+                    {(video as any).score > 0 && ` • ${(video as any).score.toLocaleString()} upvotes`}
+                  </p>
+                )}
+                {video.views > 0 && apiSource !== "reddit" && <p className="text-sm opacity-80">{video.views.toLocaleString()} viewers</p>}
               </div>
 
               <div className="absolute bottom-20 right-4 flex flex-col gap-4">
@@ -1401,7 +1418,9 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                                   ? "Rule34"
                                   : api === "youporn"
                                     ? "YouPorn"
-                                    : api}
+                                    : api === "reddit"
+                                      ? "Reddit"
+                                      : api}
               </span>
             </button>
           ))}

@@ -28,7 +28,8 @@ export function PornPictures() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [apiSource, setApiSource] = useState<"pornpics" | "redgifs">("redgifs")
+  const [apiSource, setApiSource] = useState<"pornpics" | "redgifs" | "reddit">("redgifs")
+  const [redditSubreddit, setRedditSubreddit] = useState("pics")
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null)
   const [feedView, setFeedView] = useState(false)
@@ -205,7 +206,8 @@ export function PornPictures() {
       setLoading(true)
       setError("")
 
-      const response = await fetch(`/api/search-pictures?page=1&api=${apiSource}&refresh=${refreshKey}`)
+      const subredditParam = apiSource === "reddit" ? `&subreddit=${encodeURIComponent(redditSubreddit)}` : ""
+      const response = await fetch(`/api/search-pictures?page=1&api=${apiSource}&refresh=${refreshKey}${subredditParam}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -370,11 +372,45 @@ export function PornPictures() {
               ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
               : "text-slate-400 hover:text-white"
           }`}
-        >
+  >
           PornPics
         </button>
+        <button
+          onClick={() => setApiSource("reddit")}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+            apiSource === "reddit"
+              ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          Reddit
+        </button>
       </div>
-
+      
+      {apiSource === "reddit" && (
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">r/</span>
+            <Input
+              type="text"
+              placeholder="Enter subreddit"
+              value={redditSubreddit}
+              onChange={(e) => setRedditSubreddit(e.target.value.replace(/^r\//, "").replace(/\s/g, ""))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  loadGalleries()
+                }
+              }}
+              className="pl-8 dark:bg-slate-700 dark:text-white"
+            />
+          </div>
+          <Button onClick={loadGalleries} disabled={loading} className="bg-orange-500 hover:bg-orange-600">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Go"}
+          </Button>
+        </div>
+      )}
+      
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />

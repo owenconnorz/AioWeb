@@ -275,6 +275,7 @@ export default function Home() {
     "pornpics",
     "redtube",
     "hentai",
+    "reddit",
   ])
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [touchStartY, setTouchStartY] = useState<number | null>(null)
@@ -308,13 +309,13 @@ export default function Home() {
       const savedApiOrder = localStorage.getItem("porn_api_order")
       if (savedApiOrder) {
         const parsed = JSON.parse(savedApiOrder)
-        const newApis = ["chaturbate", "redtube", "hentai"]
+        const newApis = ["chaturbate", "redtube", "hentai", "reddit"]
         for (const api of newApis) {
           if (!parsed.includes(api)) {
             parsed.push(api)
           }
         }
-        const workingApis = ["xvidapi", "eporner", "redgifs", "cam4", "chaturbate", "pornpics", "redtube", "hentai"]
+        const workingApis = ["xvidapi", "eporner", "redgifs", "cam4", "chaturbate", "pornpics", "redtube", "hentai", "reddit"]
         const filteredOrder = parsed.filter((api: string) => workingApis.includes(api))
         setApiOrder(filteredOrder)
       }
@@ -515,11 +516,13 @@ export default function Home() {
         return "Chaturbate"
       case "redtube":
         return "RedTube"
-  case "hentai":
-  return "Anime"
-  default:
-  return api
-  }
+      case "hentai":
+        return "Anime"
+      case "reddit":
+        return "Reddit"
+      default:
+        return api
+    }
   }
 
   if (!mounted) {

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { fetchReddit } from "./fetchReddit" // Declare or import the fetchReddit function
 
 let cachedToken: { token: string; expires: number } | null = null
 
@@ -12,14 +13,19 @@ export async function GET(request: NextRequest) {
     const api = searchParams.get("api") || "pornpics"
     const endpointType = searchParams.get("endpointType") || ""
 
-    
-
     if (api === "redgifs") {
       return await fetchRedGifs(query, page)
     }
     
     if (api === "rule34") {
       return await fetchRule34(query, page)
+    }
+    
+    if (api === "reddit") {
+      const subreddit = searchParams.get("subreddit") || query || "pics"
+      const sort = searchParams.get("sort") || "hot"
+      const after = searchParams.get("after") || ""
+      return await fetchReddit(subreddit, sort, after)
     }
 
     return await fetchPornPics({ query, category, galleryId, page, endpointType })
@@ -174,8 +180,6 @@ async function fetchPornPics({
       isCategory: true,
     }))
   }
-
-  
 
   return NextResponse.json({
     galleries,
