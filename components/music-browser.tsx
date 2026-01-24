@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import React from "react"
 
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio, Link2, User, Disc, Pencil, ListPlus, PlayCircle, Info, RefreshCw } from "lucide-react"
+import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio, Link2, User, Disc, Pencil, ListPlus, PlayCircle, Info, RefreshCw, ImageIcon, Film, MessageSquare, ArrowUp, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOfflineMusic } from "@/hooks/use-offline-music"
@@ -106,7 +106,7 @@ interface MusicBrowserProps {
 
 export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<"home" | "explore" | "library">("home")
+  const [activeTab, setActiveTab] = useState<"home" | "explore" | "library" | "reddit">("home")
   const [shelves, setShelves] = useState<Shelf[]>([])
   const [searchResults, setSearchResults] = useState<Track[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -119,6 +119,34 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const suggestionsDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Reddit state
+  interface RedditPost {
+    id: string
+    title: string
+    subreddit: string
+    author: string
+    score: number
+    numComments: number
+    created: number
+    permalink: string
+    mediaUrl: string
+    mediaType: "image" | "video" | "gallery"
+    videoUrl: string | null
+    galleryImages: string[]
+    thumbnail: string | null
+    width?: number
+    height?: number
+  }
+  const [redditPosts, setRedditPosts] = useState<RedditPost[]>([])
+  const [redditSubreddit, setRedditSubreddit] = useState("pics")
+  const [redditSubredditInput, setRedditSubredditInput] = useState("pics")
+  const [redditLoading, setRedditLoading] = useState(false)
+  const [redditError, setRedditError] = useState("")
+  const [redditAfter, setRedditAfter] = useState<string | null>(null)
+  const [redditSort, setRedditSort] = useState<"hot" | "new" | "top">("hot")
+  const [selectedRedditPost, setSelectedRedditPost] = useState<RedditPost | null>(null)
+  const [redditGalleryIndex, setRedditGalleryIndex] = useState(0)
   
   // Artist page state
   const [showArtistPage, setShowArtistPage] = useState(false)
@@ -839,6 +867,39 @@ useEffect(() => {
       playTrack(track)
     } finally {
       setLoadingPlaylist(false)
+    }
+  }
+  
+  // Fetch Reddit posts
+  const fetchReddit = async (subreddit: string, loadMore = false) => {
+    setRedditLoading(true)
+    setRedditError("")
+    
+    try {
+      const afterParam = loadMore && redditAfter ? `&after=${redditAfter}` : ""
+      const response = await fetch(`/api/reddit?subreddit=${encodeURIComponent(subreddit)}&sort=${redditSort}${afterParam}`)
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          setRedditError("Subreddit not found")
+          return
+        }
+        throw new Error("Failed to fetch")
+      }
+      
+      const data = await response.json()
+      
+      if (loadMore) {
+        setRedditPosts(prev => [...prev, ...data.posts])
+      } else {
+        setRedditPosts(data.posts)
+      }
+      setRedditAfter(data.after)
+      setRedditSubreddit(subreddit)
+    } catch (err) {
+      setRedditError("Failed to load posts")
+    } finally {
+      setRedditLoading(false)
     }
   }
   
@@ -2200,6 +2261,180 @@ useEffect(() => {
           </>
         )}
 
+        {/* Reddit Tab */}
+        {activeTab === "reddit" && (
+          <div>
+            {/* Subreddit Input */}
+            <div className="flex gap-2 mb-4">
+              <div className="flex-1 relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">r/</span>
+                <Input
+                  value={redditSubredditInput}
+                  onChange={(e) => setRedditSubredditInput(e.target.value.replace(/^r\//, "").replace(/\s/g, ""))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && redditSubredditInput.trim()) {
+                      fetchReddit(redditSubredditInput.trim())
+                    }
+                  }}
+                  placeholder="Enter subreddit name"
+                  className="pl-8 bg-white/10 border-white/20 text-white placeholder:text-slate-500"
+                />
+              </div>
+              <Button
+                onClick={() => redditSubredditInput.trim() && fetchReddit(redditSubredditInput.trim())}
+                disabled={redditLoading || !redditSubredditInput.trim()}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                {redditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Go"}
+              </Button>
+            </div>
+
+            {/* Sort Options */}
+            <div className="flex gap-2 mb-4">
+              {(["hot", "new", "top"] as const).map((sort) => (
+                <button
+                  key={sort}
+                  onClick={() => {
+                    setRedditSort(sort)
+                    if (redditSubreddit) {
+                      setRedditAfter(null)
+                      fetchReddit(redditSubreddit)
+                    }
+                  }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    redditSort === sort
+                      ? "bg-orange-500 text-white"
+                      : "bg-white/10 text-slate-300 hover:bg-white/20"
+                  }`}
+                >
+                  {sort.charAt(0).toUpperCase() + sort.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Current Subreddit Header */}
+            {redditSubreddit && !redditLoading && redditPosts.length > 0 && (
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">r/{redditSubreddit}</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setRedditAfter(null)
+                    fetchReddit(redditSubreddit)
+                  }}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Error State */}
+            {redditError && (
+              <div className="text-center py-8">
+                <X className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                <p className="text-red-400">{redditError}</p>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {redditLoading && redditPosts.length === 0 && (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!redditLoading && !redditError && redditPosts.length === 0 && (
+              <div className="text-center py-12">
+                <ImageIcon className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-white mb-2">Browse Reddit</h3>
+                <p className="text-slate-400 mb-4">Enter a subreddit name to view images and videos</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {["pics", "aww", "EarthPorn", "space", "Art", "memes", "gifs", "videos"].map((sub) => (
+                    <button
+                      key={sub}
+                      onClick={() => {
+                        setRedditSubredditInput(sub)
+                        fetchReddit(sub)
+                      }}
+                      className="px-3 py-1.5 rounded-full bg-white/10 text-sm text-slate-300 hover:bg-white/20 transition-colors"
+                    >
+                      r/{sub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Posts Grid */}
+            {redditPosts.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {redditPosts.map((post) => (
+                  <button
+                    key={post.id}
+                    onClick={() => {
+                      setSelectedRedditPost(post)
+                      setRedditGalleryIndex(0)
+                    }}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-slate-800 group"
+                  >
+                    <img
+                      src={post.mediaType === "video" ? (post.thumbnail || post.mediaUrl) : post.mediaUrl}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                    {/* Media Type Indicator */}
+                    {post.mediaType === "video" && (
+                      <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5">
+                        <Film className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    {post.mediaType === "gallery" && (
+                      <div className="absolute top-2 right-2 bg-black/60 rounded-full px-2 py-1 flex items-center gap-1">
+                        <ImageIcon className="w-3 h-3 text-white" />
+                        <span className="text-xs text-white">{post.galleryImages.length}</span>
+                      </div>
+                    )}
+                    {/* Score Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                      <div className="flex items-center gap-2 text-xs text-white">
+                        <span className="flex items-center gap-1">
+                          <ArrowUp className="w-3 h-3" />
+                          {post.score >= 1000 ? `${(post.score / 1000).toFixed(1)}k` : post.score}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="w-3 h-3" />
+                          {post.numComments >= 1000 ? `${(post.numComments / 1000).toFixed(1)}k` : post.numComments}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Load More Button */}
+            {redditPosts.length > 0 && redditAfter && (
+              <div className="mt-4 text-center">
+                <Button
+                  onClick={() => fetchReddit(redditSubreddit, true)}
+                  disabled={redditLoading}
+                  variant="outline"
+                  className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                >
+                  {redditLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Load More
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Padding at bottom for mini player */}
         {showPlayer && <div className="h-20" />}
       </div>
@@ -2342,9 +2577,16 @@ useEffect(() => {
           <Library className="h-5 w-5" />
           <span className="text-xs">Library</span>
         </button>
+        <button
+          onClick={() => setActiveTab("reddit")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${activeTab === "reddit" ? "text-orange-500" : "text-slate-400"}`}
+        >
+          <ImageIcon className="h-5 w-5" />
+          <span className="text-xs">Reddit</span>
+        </button>
       </div>
     </div>
-
+  
       {/* Artist Page - Full Screen Portal */}
     {showArtistPage && isMounted && createPortal(
       <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
@@ -3816,6 +4058,116 @@ useEffect(() => {
           </div>
         </div>
       )}
+    </div>,
+    document.body
+  )}
+
+  {/* Reddit Post Viewer Modal */}
+  {selectedRedditPost && isMounted && createPortal(
+    <div 
+      className="fixed inset-0 z-[9999] bg-black/95 flex flex-col"
+      onClick={() => setSelectedRedditPost(null)}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 bg-black/50">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 text-white hover:bg-white/10"
+          onClick={() => setSelectedRedditPost(null)}
+        >
+          <X className="h-6 w-6" />
+        </Button>
+        <div className="flex-1 text-center">
+          <p className="text-sm text-orange-400">r/{selectedRedditPost.subreddit}</p>
+        </div>
+        <a
+          href={selectedRedditPost.permalink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="h-10 w-10 flex items-center justify-center text-white hover:bg-white/10 rounded-lg"
+        >
+          <ExternalLink className="h-5 w-5" />
+        </a>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {selectedRedditPost.mediaType === "video" && selectedRedditPost.videoUrl ? (
+          <video
+            src={selectedRedditPost.videoUrl}
+            controls
+            autoPlay
+            loop
+            className="max-w-full max-h-full rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : selectedRedditPost.mediaType === "gallery" ? (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img
+              src={selectedRedditPost.galleryImages[redditGalleryIndex] || "/placeholder.svg"}
+              alt={selectedRedditPost.title}
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+            {/* Gallery Navigation */}
+            {selectedRedditPost.galleryImages.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setRedditGalleryIndex((prev) => 
+                      prev > 0 ? prev - 1 : selectedRedditPost.galleryImages.length - 1
+                    )
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setRedditGalleryIndex((prev) => 
+                      prev < selectedRedditPost.galleryImages.length - 1 ? prev + 1 : 0
+                    )
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 px-3 py-1 rounded-full text-white text-sm">
+                  {redditGalleryIndex + 1} / {selectedRedditPost.galleryImages.length}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <img
+            src={selectedRedditPost.mediaUrl || "/placeholder.svg"}
+            alt={selectedRedditPost.title}
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
+        )}
+      </div>
+
+      {/* Footer - Post Info */}
+      <div className="p-4 bg-black/50">
+        <h3 className="text-white font-medium line-clamp-2 mb-2">{selectedRedditPost.title}</h3>
+        <div className="flex items-center gap-4 text-sm text-slate-400">
+          <span className="flex items-center gap-1">
+            <User className="w-4 h-4" />
+            u/{selectedRedditPost.author}
+          </span>
+          <span className="flex items-center gap-1">
+            <ArrowUp className="w-4 h-4" />
+            {selectedRedditPost.score.toLocaleString()}
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageSquare className="w-4 h-4" />
+            {selectedRedditPost.numComments.toLocaleString()}
+          </span>
+        </div>
+      </div>
     </div>,
     document.body
   )}
