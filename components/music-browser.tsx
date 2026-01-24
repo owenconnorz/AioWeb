@@ -2197,6 +2197,8 @@ useEffect(() => {
                 )}
               </div>
             )}
+          </>
+        )}
 
         {/* Padding at bottom for mini player */}
         {showPlayer && <div className="h-20" />}
