@@ -2,9 +2,10 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import React from "react"
 
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music } from "lucide-react"
+import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useOfflineMusic } from "@/hooks/use-offline-music"
 
 interface Track {
   id: string
@@ -93,6 +94,26 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [isSeeking, setIsSeeking] = useState(false)
   const [expandedShelf, setExpandedShelf] = useState<Shelf | null>(null)
   const [loadingPlaylist, setLoadingPlaylist] = useState(false)
+  const [librarySubTab, setLibrarySubTab] = useState<"liked" | "history" | "playlists" | "downloads">("liked")
+  
+  // Offline music storage
+  const {
+    downloadedTracks,
+    downloadProgress,
+    isOnline,
+    isLoading: isLoadingDownloads,
+    downloadTrack,
+    deleteTrack,
+    isDownloaded,
+    getOfflineUrl,
+    getStorageUsage,
+  } = useOfflineMusic()
+  
+  const [storageInfo, setStorageInfo] = useState<{ used: number; quota: number; percentage: number } | null>(null)
+  
+  // Audio element for offline playback
+  const offlineAudioRef = useRef<HTMLAudioElement>(null)
+  const [isOfflinePlayback, setIsOfflinePlayback] = useState(false)
   
   const progressBarRef = useRef<HTMLDivElement>(null)
   
@@ -200,6 +221,14 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
       // ignore
     }
   }, [mounted])
+  
+  // Load storage info
+  useEffect(() => {
+    if (!mounted) return
+    getStorageUsage().then(info => {
+      if (info) setStorageInfo(info)
+    })
+  }, [mounted, downloadedTracks.length, getStorageUsage])
   
   // Extract dominant color from album art
   const extractColors = useCallback((imageUrl: string) => {
@@ -543,9 +572,26 @@ useEffect(() => {
     }
   }
 
-  // Play track using YouTube embed
+  // Play track using YouTube embed or offline audio
   const playTrack = (track: Track, trackList?: Track[]) => {
     if (!track.videoId) return
+    
+    // Check if track is downloaded for offline playback
+    const offlineUrl = getOfflineUrl(track.videoId)
+    
+    if (offlineUrl && offlineAudioRef.current) {
+      // Use offline audio playback
+      setIsOfflinePlayback(true)
+      offlineAudioRef.current.src = offlineUrl
+      offlineAudioRef.current.play().catch(e => console.log("Offline playback error:", e))
+    } else if (!isOnline && !offlineUrl) {
+      // Offline and track not downloaded - show error
+      alert("You're offline and this track isn't downloaded")
+      return
+    } else {
+      // Online playback via YouTube embed
+      setIsOfflinePlayback(false)
+    }
     
     setCurrentTrack(track)
     setIsPlaying(true)
@@ -566,6 +612,16 @@ useEffect(() => {
   const togglePlay = () => {
     const newState = !isPlaying
     setIsPlaying(newState)
+    
+    // Handle offline playback
+    if (isOfflinePlayback && offlineAudioRef.current) {
+      if (newState) {
+        offlineAudioRef.current.play().catch(e => console.log("Play error:", e))
+      } else {
+        offlineAudioRef.current.pause()
+      }
+      return
+    }
     
     // Send command to YouTube iframe
     if (playerRef.current?.contentWindow) {
@@ -1010,19 +1066,40 @@ useEffect(() => {
                       {track.artist} {track.album && `• ${track.album}`}
                     </p>
                   </div>
-                  <span className="text-sm text-slate-500">{track.duration}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleLike(track)
-                    }}
-                  >
-                    <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : ""}`} />
-                  </Button>
-                </button>
+  <span className="text-sm text-slate-500">{track.duration}</span>
+  <Button
+  variant="ghost"
+  size="icon"
+  className="h-8 w-8"
+  onClick={(e) => {
+  e.stopPropagation()
+  if (isDownloaded(track.videoId)) {
+    deleteTrack(track.videoId)
+  } else {
+    downloadTrack(track)
+  }
+  }}
+  >
+  {downloadProgress.get(track.videoId)?.status === "downloading" ? (
+    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+  ) : isDownloaded(track.videoId) ? (
+    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+  ) : (
+    <Download className="h-4 w-4" />
+  )}
+  </Button>
+  <Button
+  variant="ghost"
+  size="icon"
+  className="h-8 w-8"
+  onClick={(e) => {
+  e.stopPropagation()
+  toggleLike(track)
+  }}
+  >
+  <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : ""}`} />
+  </Button>
+  </button>
               ))}
             </div>
           </div>
@@ -1112,19 +1189,126 @@ useEffect(() => {
               </div>
             )}
 
-            {activeTab === "library" && (
-              <div>
-                {/* Liked Songs */}
-                <div className="mb-8">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-purple-700 to-blue-500 flex items-center justify-center">
-                      <Heart className="w-10 h-10 text-white fill-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-white">Liked Songs</h3>
-                      <p className="text-slate-400">{likedTracks.length} songs</p>
-                    </div>
-                  </div>
+  {activeTab === "library" && (
+  <div>
+  {/* Offline Status Banner */}
+  {!isOnline && (
+    <div className="flex items-center gap-2 px-4 py-2 mb-4 bg-amber-500/20 border border-amber-500/30 rounded-lg">
+      <WifiOff className="w-4 h-4 text-amber-400" />
+      <span className="text-sm text-amber-200">You're offline. Only downloaded music is available.</span>
+    </div>
+  )}
+  
+  {/* Library Sub-tabs */}
+  <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+    {[
+      { id: "liked", label: "Liked", icon: Heart },
+      { id: "downloads", label: "Downloads", icon: Download },
+      { id: "history", label: "History", icon: Clock },
+      { id: "playlists", label: "Playlists", icon: ListMusic },
+    ].map(tab => (
+      <button
+        key={tab.id}
+        onClick={() => setLibrarySubTab(tab.id as any)}
+        className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-colors ${
+          librarySubTab === tab.id 
+            ? "bg-white text-black" 
+            : "bg-white/10 text-white hover:bg-white/20"
+        }`}
+      >
+        <tab.icon className="w-4 h-4" />
+        <span className="text-sm font-medium">{tab.label}</span>
+        {tab.id === "downloads" && downloadedTracks.length > 0 && (
+          <span className={`text-xs px-1.5 rounded-full ${librarySubTab === "downloads" ? "bg-black/20" : "bg-white/20"}`}>
+            {downloadedTracks.length}
+          </span>
+        )}
+      </button>
+    ))}
+  </div>
+
+  {/* Downloads Tab */}
+  {librarySubTab === "downloads" && (
+    <div className="mb-8">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
+          <Download className="w-10 h-10 text-white" />
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold text-white">Downloads</h3>
+          <p className="text-slate-400">{downloadedTracks.length} songs saved offline</p>
+          {storageInfo && (
+            <p className="text-xs text-slate-500 mt-1">
+              <HardDrive className="w-3 h-3 inline mr-1" />
+              {(storageInfo.used / 1024 / 1024).toFixed(1)} MB used
+            </p>
+          )}
+        </div>
+      </div>
+      
+      {isLoadingDownloads ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+        </div>
+      ) : downloadedTracks.length === 0 ? (
+        <div className="text-center py-8">
+          <Download className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-400">No downloaded songs yet</p>
+          <p className="text-sm text-slate-500 mt-1">Download songs to play them offline</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {downloadedTracks.map((track, idx) => (
+            <div
+              key={`download-${track.videoId}-${idx}`}
+              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <button
+                onClick={() => playTrack(track as Track, downloadedTracks as Track[])}
+                className="flex items-center gap-3 flex-1"
+              >
+                <span className="text-slate-500 w-6 text-sm">{idx + 1}</span>
+                <div className="relative">
+                  <img
+                    src={track.thumbnail || "/placeholder.svg"}
+                    alt={track.title}
+                    className="w-10 h-10 rounded object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <CheckCircle2 className="absolute -bottom-1 -right-1 w-4 h-4 text-emerald-400 bg-black rounded-full" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+                  <p className="text-sm text-slate-400 line-clamp-1">{track.artist}</p>
+                </div>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => deleteTrack(track.videoId)}
+                className="h-8 w-8 text-slate-400 hover:text-red-400"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )}
+
+  {/* Liked Songs Tab */}
+  {librarySubTab === "liked" && (
+  <div className="mb-8">
+  <div className="flex items-center gap-4 mb-4">
+  <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-purple-700 to-blue-500 flex items-center justify-center">
+  <Heart className="w-10 h-10 text-white fill-white" />
+  </div>
+  <div>
+  <h3 className="text-2xl font-bold text-white">Liked Songs</h3>
+  <p className="text-slate-400">{likedTracks.length} songs</p>
+  </div>
+  </div>
                   
                   {likedTracks.length === 0 ? (
                     <p className="text-slate-400 text-center py-8">Songs you like will appear here</p>
@@ -1163,8 +1347,10 @@ useEffect(() => {
                     </div>
                   )}
                 </div>
+                )}
                 
-                {/* Playlists */}
+                {/* Playlists Tab */}
+                {librarySubTab === "playlists" && (
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-white">Playlists</h3>
@@ -1198,33 +1384,42 @@ useEffect(() => {
                     </div>
                   )}
                 </div>
-                
-                {/* Recently Played in Library */}
-                {recentlyPlayed.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-bold text-white mb-4">Recently Played</h3>
-                    <div className="space-y-2">
-                      {recentlyPlayed.slice(0, 20).map((track, idx) => (
-                        <button
-                          key={`history-${track.videoId}-${idx}`}
-                          onClick={() => playTrack(track)}
-                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
-                        >
-                          <img
-                            src={track.thumbnail || "/placeholder.svg"}
-                            alt={track.title}
-                            className="w-10 h-10 rounded object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="flex-1 text-left">
-                            <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
-                            <p className="text-sm text-slate-400 line-clamp-1">{track.artist || track.subtitle}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 )}
+                
+  {/* History Tab */}
+  {librarySubTab === "history" && (
+  <div>
+  <h3 className="text-xl font-bold text-white mb-4">Recently Played</h3>
+  {recentlyPlayed.length === 0 ? (
+    <div className="text-center py-8">
+      <Clock className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+      <p className="text-slate-400">No listening history yet</p>
+      <p className="text-sm text-slate-500 mt-1">Songs you play will appear here</p>
+    </div>
+  ) : (
+  <div className="space-y-2">
+  {recentlyPlayed.slice(0, 20).map((track, idx) => (
+  <button
+  key={`history-${track.videoId}-${idx}`}
+  onClick={() => playTrack(track)}
+  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
+  >
+  <img
+  src={track.thumbnail || "/placeholder.svg"}
+  alt={track.title}
+  className="w-10 h-10 rounded object-cover"
+  referrerPolicy="no-referrer"
+  />
+  <div className="flex-1 text-left">
+  <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+  <p className="text-sm text-slate-400 line-clamp-1">{track.artist || track.subtitle}</p>
+  </div>
+  </button>
+  ))}
+  </div>
+  )}
+  </div>
+  )}
               </div>
             )}
             
@@ -1324,17 +1519,34 @@ useEffect(() => {
         style={{ display: 'none' }}
       />
 
-      {/* YouTube Embed for audio playback - hidden */}
-      {showPlayer && currentTrack && (
-        <iframe
-          key={currentTrack.videoId}
-          ref={playerRef}
-          src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
-          className="w-0 h-0 absolute"
-          allow="autoplay; encrypted-media"
-          style={{ height: 0, width: 0, border: 0, position: 'absolute', left: -9999 }}
-        />
-      )}
+  {/* Hidden Audio element for offline playback */}
+  <audio
+    ref={offlineAudioRef}
+    onEnded={playNext}
+    onTimeUpdate={(e) => {
+      if (!isSeeking) {
+        setCurrentTime(e.currentTarget.currentTime)
+      }
+    }}
+    onLoadedMetadata={(e) => {
+      setDuration(e.currentTarget.duration)
+    }}
+    onPlay={() => setIsPlaying(true)}
+    onPause={() => setIsPlaying(false)}
+    style={{ display: 'none' }}
+  />
+
+  {/* YouTube Embed for audio playback - hidden (only when online and not offline playback) */}
+  {showPlayer && currentTrack && !isOfflinePlayback && (
+  <iframe
+  key={currentTrack.videoId}
+  ref={playerRef}
+  src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
+  className="w-0 h-0 absolute"
+  allow="autoplay; encrypted-media"
+  style={{ height: 0, width: 0, border: 0, position: 'absolute', left: -9999 }}
+  />
+  )}
 
       {/* Mini Player - Above tab bar, swipe up to expand */}
       {showPlayer && currentTrack && !showFullPlayer && (
@@ -1363,10 +1575,18 @@ useEffect(() => {
               className="w-12 h-12 rounded object-cover"
               referrerPolicy="no-referrer"
             />
-            <div className="flex-1 min-w-0">
-              <h4 className="text-white font-medium text-sm line-clamp-1">{currentTrack.title}</h4>
-              <p className="text-xs text-slate-400 line-clamp-1">{currentTrack.artist || currentTrack.subtitle}</p>
-            </div>
+  <div className="flex-1 min-w-0">
+  <div className="flex items-center gap-2">
+    <h4 className="text-white font-medium text-sm line-clamp-1">{currentTrack.title}</h4>
+    {isOfflinePlayback && (
+      <span className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px]">
+        <Download className="w-3 h-3" />
+        Offline
+      </span>
+    )}
+  </div>
+  <p className="text-xs text-slate-400 line-clamp-1">{currentTrack.artist || currentTrack.subtitle}</p>
+  </div>
             
             {/* Controls */}
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -1611,6 +1831,33 @@ useEffect(() => {
               <span className="text-xs">{sleepTimer ? `${sleepTimer}m` : "Timer"}</span>
             </Button>
           </div>
+          
+          {/* Download */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`flex flex-col items-center gap-1 ${isDownloaded(currentTrack.videoId) ? "text-emerald-400" : "text-white/70 hover:text-white"}`}
+            onClick={() => {
+              if (isDownloaded(currentTrack.videoId)) {
+                deleteTrack(currentTrack.videoId)
+              } else {
+                downloadTrack(currentTrack)
+              }
+            }}
+          >
+            {downloadProgress.get(currentTrack.videoId)?.status === "downloading" ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : isDownloaded(currentTrack.videoId) ? (
+              <CheckCircle2 className="h-5 w-5" />
+            ) : (
+              <Download className="h-5 w-5" />
+            )}
+            <span className="text-xs">
+              {downloadProgress.get(currentTrack.videoId)?.status === "downloading" 
+                ? `${downloadProgress.get(currentTrack.videoId)?.progress}%`
+                : isDownloaded(currentTrack.videoId) ? "Saved" : "Download"}
+            </span>
+          </Button>
           
           {/* Share */}
           <Button
@@ -1868,20 +2115,41 @@ useEffect(() => {
                     {track.artist || track.subtitle}
                   </p>
                 </div>
-                <span className="text-sm text-slate-500 shrink-0">{track.duration}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleLike(track)
-                  }}
-                >
-                  <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : "text-slate-400"}`} />
-                </Button>
-                <Button
-                  variant="ghost"
+  <span className="text-sm text-slate-500 shrink-0">{track.duration}</span>
+  <Button
+  variant="ghost"
+  size="icon"
+  className="h-8 w-8 shrink-0"
+  onClick={(e) => {
+  e.stopPropagation()
+  if (isDownloaded(track.videoId)) {
+    deleteTrack(track.videoId)
+  } else {
+    downloadTrack(track)
+  }
+  }}
+  >
+  {downloadProgress.get(track.videoId)?.status === "downloading" ? (
+    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+  ) : isDownloaded(track.videoId) ? (
+    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+  ) : (
+    <Download className="h-4 w-4 text-slate-400" />
+  )}
+  </Button>
+  <Button
+  variant="ghost"
+  size="icon"
+  className="h-8 w-8 shrink-0"
+  onClick={(e) => {
+  e.stopPropagation()
+  toggleLike(track)
+  }}
+  >
+  <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : "text-slate-400"}`} />
+  </Button>
+  <Button
+  variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0"
                   onClick={(e) => {
