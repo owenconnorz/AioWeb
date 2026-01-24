@@ -177,6 +177,10 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState("")
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
+  const [showPlaylistPicker, setShowPlaylistPicker] = useState(false)
+  const [playlistPickerVisible, setPlaylistPickerVisible] = useState(false)
+  const [trackForPlaylist, setTrackForPlaylist] = useState<Track | null>(null)
+  const [playlistSortBy, setPlaylistSortBy] = useState<"name" | "recent">("name")
   const [sleepTimer, setSleepTimer] = useState<number | null>(null)
   const [sleepTimerEnd, setSleepTimerEnd] = useState<number | null>(null)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
@@ -558,63 +562,126 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   
   // Media Session API for Bluetooth/system media controls
   useEffect(() => {
-    if (!mounted || !currentTrack || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
-    
-    // Set metadata
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentTrack.title,
-      artist: currentTrack.artist || currentTrack.subtitle || 'Unknown Artist',
-      album: currentTrack.album || 'Unknown Album',
-      artwork: currentTrack.thumbnail ? [
-        { src: currentTrack.thumbnail, sizes: '320x320', type: 'image/jpeg' },
-        { src: currentTrack.thumbnail.replace('mqdefault', 'maxresdefault'), sizes: '1280x720', type: 'image/jpeg' }
-      ] : []
-    })
-    
-    // Set action handlers
-    navigator.mediaSession.setActionHandler('play', () => {
-      setIsPlaying(true)
-      if (playerRef.current?.contentWindow) {
-        playerRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func: 'playVideo' }),
-          '*'
-        )
-      }
-    })
-    
-    navigator.mediaSession.setActionHandler('pause', () => {
-      setIsPlaying(false)
-      if (playerRef.current?.contentWindow) {
-        playerRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func: 'pauseVideo' }),
-          '*'
-        )
-      }
-    })
-    
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-      playPrev()
-    })
-    
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-      playNext()
-    })
-    
-    // Update playback state
-    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
-    
-    return () => {
-      // Cleanup handlers on unmount
-      try {
-        navigator.mediaSession.setActionHandler('play', null)
-        navigator.mediaSession.setActionHandler('pause', null)
-        navigator.mediaSession.setActionHandler('previoustrack', null)
-        navigator.mediaSession.setActionHandler('nexttrack', null)
-      } catch (e) {
-        // Some browsers may not support null handlers
-      }
-    }
-  }, [mounted, currentTrack, isPlaying])
+  if (!mounted || !currentTrack || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+  
+  // Set metadata
+  navigator.mediaSession.metadata = new MediaMetadata({
+  title: currentTrack.title,
+  artist: currentTrack.artist || currentTrack.subtitle || 'Unknown Artist',
+  album: currentTrack.album || 'Unknown Album',
+  artwork: currentTrack.thumbnail ? [
+  { src: currentTrack.thumbnail, sizes: '320x320', type: 'image/jpeg' },
+  ] : []
+  })
+  
+  // Set action handlers
+  navigator.mediaSession.setActionHandler('play', () => {
+  setIsPlaying(true)
+  if (playerRef.current?.contentWindow) {
+  playerRef.current.contentWindow.postMessage(
+  JSON.stringify({ event: 'command', func: 'playVideo' }),
+  '*'
+  )
+  }
+  })
+  
+  navigator.mediaSession.setActionHandler('pause', () => {
+  setIsPlaying(false)
+  if (playerRef.current?.contentWindow) {
+  playerRef.current.contentWindow.postMessage(
+  JSON.stringify({ event: 'command', func: 'pauseVideo' }),
+  '*'
+  )
+  }
+  })
+  
+  navigator.mediaSession.setActionHandler('previoustrack', () => {
+  playPrev()
+  })
+  
+  navigator.mediaSession.setActionHandler('nexttrack', () => {
+  playNext()
+  })
+  
+  // Seek handlers for notification seek bar
+  navigator.mediaSession.setActionHandler('seekto', (details) => {
+  if (details.seekTime !== undefined && details.seekTime !== null) {
+  setCurrentTime(details.seekTime)
+  // Seek in offline audio
+  if (isOfflinePlayback && offlineAudioRef.current) {
+  offlineAudioRef.current.currentTime = details.seekTime
+  }
+  // Seek in YouTube iframe
+  if (!isOfflinePlayback && playerRef.current?.contentWindow) {
+  playerRef.current.contentWindow.postMessage(
+  JSON.stringify({ event: 'command', func: 'seekTo', args: [details.seekTime, true] }),
+  '*'
+  )
+  }
+  }
+  })
+  
+  navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+  const skipTime = details.seekOffset || 10
+  const newTime = Math.max(currentTime - skipTime, 0)
+  setCurrentTime(newTime)
+  if (isOfflinePlayback && offlineAudioRef.current) {
+  offlineAudioRef.current.currentTime = newTime
+  }
+  if (!isOfflinePlayback && playerRef.current?.contentWindow) {
+  playerRef.current.contentWindow.postMessage(
+  JSON.stringify({ event: 'command', func: 'seekTo', args: [newTime, true] }),
+  '*'
+  )
+  }
+  })
+  
+  navigator.mediaSession.setActionHandler('seekforward', (details) => {
+  const skipTime = details.seekOffset || 10
+  const newTime = Math.min(currentTime + skipTime, duration)
+  setCurrentTime(newTime)
+  if (isOfflinePlayback && offlineAudioRef.current) {
+  offlineAudioRef.current.currentTime = newTime
+  }
+  if (!isOfflinePlayback && playerRef.current?.contentWindow) {
+  playerRef.current.contentWindow.postMessage(
+  JSON.stringify({ event: 'command', func: 'seekTo', args: [newTime, true] }),
+  '*'
+  )
+  }
+  })
+  
+  // Update playback state
+  navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
+  
+  // Update position state for seek bar in notification
+  if (duration > 0 && 'setPositionState' in navigator.mediaSession) {
+  try {
+  navigator.mediaSession.setPositionState({
+  duration: duration,
+  playbackRate: playbackSpeed,
+  position: Math.min(currentTime, duration)
+  })
+  } catch (e) {
+  // Some browsers may throw if values are invalid
+  }
+  }
+  
+  return () => {
+  // Cleanup handlers on unmount
+  try {
+  navigator.mediaSession.setActionHandler('play', null)
+  navigator.mediaSession.setActionHandler('pause', null)
+  navigator.mediaSession.setActionHandler('previoustrack', null)
+  navigator.mediaSession.setActionHandler('nexttrack', null)
+  navigator.mediaSession.setActionHandler('seekto', null)
+  navigator.mediaSession.setActionHandler('seekbackward', null)
+  navigator.mediaSession.setActionHandler('seekforward', null)
+  } catch (e) {
+  // Some browsers may not support null handlers
+  }
+  }
+  }, [mounted, currentTrack, isPlaying, currentTime, duration, playbackSpeed, isOfflinePlayback])
 
   // Load library from localStorage - only on client
   useEffect(() => {
@@ -1087,14 +1154,42 @@ useEffect(() => {
   }
   
   const playPlaylist = (playlistId: string) => {
-    const playlist = playlists.find(p => p.id === playlistId)
-    if (playlist && playlist.tracks.length > 0) {
-      setQueue(playlist.tracks)
-      setQueueIndex(0)
-      setCurrentTrack(playlist.tracks[0])
-      setShowPlayer(true)
-      setIsPlaying(true)
-    }
+  const playlist = playlists.find(p => p.id === playlistId)
+  if (playlist && playlist.tracks.length > 0) {
+  setQueue(playlist.tracks)
+  setQueueIndex(0)
+  setCurrentTrack(playlist.tracks[0])
+  setShowPlayer(true)
+  setIsPlaying(true)
+  }
+  }
+  
+  // Open playlist picker for a track
+  const openPlaylistPicker = (track: Track) => {
+  setTrackForPlaylist(track)
+  setShowPlaylistPicker(true)
+  }
+  
+  // Close playlist picker
+  const closePlaylistPicker = () => {
+  setPlaylistPickerVisible(false)
+  setTimeout(() => {
+  setShowPlaylistPicker(false)
+  setTrackForPlaylist(null)
+  }, 300)
+  }
+  
+  // Add track to playlist from picker
+  const addToPlaylistFromPicker = (playlistId: string) => {
+  if (trackForPlaylist) {
+  addToPlaylist(playlistId, trackForPlaylist)
+  closePlaylistPicker()
+  }
+  }
+  
+  // Get playlist cover art (first 4 track thumbnails in a grid)
+  const getPlaylistCoverArt = (playlist: {tracks: Track[]}) => {
+  return playlist.tracks.slice(0, 4).map(t => t.thumbnail)
   }
   
   // Sleep timer
@@ -3307,12 +3402,12 @@ useEffect(() => {
             variant="ghost"
             className="flex-1 h-16 rounded-xl bg-[#2a3545] text-[#7a8599] hover:bg-[#3a4556] hover:text-white flex flex-col items-center justify-center gap-1"
             onClick={() => {
-              addToQueue(selectedTrackForMenu)
+              openPlaylistPicker(selectedTrackForMenu)
               closeTrackMenu()
             }}
           >
             <ListPlus className="h-5 w-5" />
-            <span className="text-xs">Add to playl</span>
+            <span className="text-xs">Add to playlist</span>
           </Button>
           <Button
             variant="ghost"
@@ -3475,8 +3570,156 @@ useEffect(() => {
               <p className="text-[#7a8599] text-sm">View the song's information</p>
             </div>
           </button>
+  </div>
+  </div>
+  </div>,
+  document.body
+  )}
+  
+  {/* Playlist Picker Modal */}
+  {showPlaylistPicker && trackForPlaylist && isMounted && createPortal(
+    <div className="fixed inset-0 z-[999999]">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/70 transition-opacity duration-300"
+        style={{ opacity: playlistPickerVisible ? 1 : 0 }}
+        onClick={closePlaylistPicker}
+      />
+      
+      {/* Modal */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 bg-[#1a2332] rounded-t-3xl transition-transform duration-300 ease-out max-h-[70vh] flex flex-col"
+        style={{ 
+          transform: playlistPickerVisible ? 'translateY(0)' : 'translateY(100%)',
+        }}
+        ref={(el) => {
+          if (el && showPlaylistPicker && !playlistPickerVisible) {
+            setTimeout(() => setPlaylistPickerVisible(true), 10)
+          }
+        }}
+      >
+        {/* Drag Handle */}
+        <div className="flex justify-center py-3 shrink-0">
+          <div className="w-10 h-1 bg-[#3a4556] rounded-full" />
+        </div>
+        
+        {/* Create Playlist Button */}
+        <button
+          className="flex items-center gap-4 px-6 py-4 hover:bg-[#2a3545] transition-colors shrink-0"
+          onClick={() => {
+            setShowPlaylistModal(true)
+          }}
+        >
+          <div className="w-12 h-12 rounded-lg bg-[#2a3545] flex items-center justify-center">
+            <Plus className="h-6 w-6 text-[#7dd3c0]" />
+          </div>
+          <span className="text-[#7dd3c0] font-medium text-lg">Create playlist</span>
+        </button>
+        
+        {/* Sort Header */}
+        <div className="px-6 py-2 shrink-0">
+          <button 
+            className="flex items-center gap-2 text-[#7dd3c0] text-sm font-medium"
+            onClick={() => setPlaylistSortBy(playlistSortBy === "name" ? "recent" : "name")}
+          >
+            <span>Name</span>
+            <ChevronRight className={`h-4 w-4 transition-transform ${playlistSortBy === "name" ? "rotate-90" : "-rotate-90"}`} />
+          </button>
+        </div>
+        
+        {/* Playlist List */}
+        <div className="flex-1 overflow-y-auto pb-8">
+          {playlists.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-6">
+              <ListMusic className="h-16 w-16 text-[#3a4556] mb-4" />
+              <p className="text-[#7a8599] text-center">No playlists yet</p>
+              <p className="text-[#5a6579] text-sm text-center mt-1">Create a playlist to add songs</p>
+            </div>
+          ) : (
+            [...playlists]
+              .sort((a, b) => playlistSortBy === "name" ? a.name.localeCompare(b.name) : 0)
+              .map((playlist) => {
+                const coverArts = getPlaylistCoverArt(playlist)
+                return (
+                  <button
+                    key={playlist.id}
+                    className="w-full flex items-center gap-4 px-6 py-3 hover:bg-[#2a3545] transition-colors"
+                    onClick={() => addToPlaylistFromPicker(playlist.id)}
+                  >
+                    {/* Playlist Cover Art Grid */}
+                    <div className="w-12 h-12 rounded-lg bg-[#2a3545] overflow-hidden flex-shrink-0 grid grid-cols-2 grid-rows-2">
+                      {coverArts.length > 0 ? (
+                        coverArts.map((art, idx) => (
+                          <img
+                            key={idx}
+                            src={art || "/placeholder.svg"}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ))
+                      ) : (
+                        <div className="col-span-2 row-span-2 flex items-center justify-center">
+                          <Music className="h-6 w-6 text-[#5a6579]" />
+                        </div>
+                      )}
+                      {coverArts.length > 0 && coverArts.length < 4 && (
+                        Array(4 - coverArts.length).fill(0).map((_, idx) => (
+                          <div key={`empty-${idx}`} className="bg-[#3a4556]" />
+                        ))
+                      )}
+                    </div>
+                    
+                    {/* Playlist Info */}
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-white font-medium truncate">{playlist.name}</p>
+                      <p className="text-[#7a8599] text-sm">{playlist.tracks.length} songs</p>
+                    </div>
+                  </button>
+                )
+              })
+          )}
         </div>
       </div>
+      
+      {/* Create Playlist Sub-Modal */}
+      {showPlaylistModal && (
+        <div className="absolute inset-0 flex items-center justify-center p-6 z-10">
+          <div 
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowPlaylistModal(false)}
+          />
+          <div className="relative bg-[#1a2332] rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-white text-lg font-semibold mb-4">Create Playlist</h3>
+            <Input
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+              placeholder="Playlist name"
+              className="bg-[#2a3545] border-[#3a4556] text-white mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 border-[#3a4556] text-[#7a8599] hover:bg-[#2a3545] bg-transparent"
+                onClick={() => setShowPlaylistModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-[#7dd3c0] text-[#1a2332] hover:bg-[#6bc3b0]"
+                onClick={() => {
+                  createPlaylist(newPlaylistName)
+                  setShowPlaylistModal(false)
+                }}
+                disabled={!newPlaylistName.trim()}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   )}
