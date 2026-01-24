@@ -355,36 +355,64 @@ export async function GET(request: Request) {
           browseId,
         })
         
-        const header = data.header?.musicDetailHeaderRenderer || data.header?.musicImmersiveHeaderRenderer
+        // Try multiple header formats
+        const header = data.header?.musicDetailHeaderRenderer || 
+                      data.header?.musicImmersiveHeaderRenderer ||
+                      data.header?.musicHeaderRenderer
         const albumTitle = header?.title?.runs?.[0]?.text || ""
         const albumArtist = header?.subtitle?.runs?.find((r: any) => r.navigationEndpoint?.browseEndpoint?.browseId?.startsWith("UC"))?.text || 
-                          header?.subtitle?.runs?.[0]?.text || ""
+                          header?.subtitle?.runs?.[0]?.text ||
+                          header?.straplineTextOne?.runs?.[0]?.text || ""
         const albumThumbnail = header?.thumbnail?.croppedSquareThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
-                              header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || ""
+                              header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
+                              data.background?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || ""
         
         const tracks: any[] = []
-        const contents = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || []
         
-        for (const content of contents) {
-          if (content.musicShelfRenderer) {
-            const items = content.musicShelfRenderer.contents || []
-            for (const item of items) {
-              if (item.musicResponsiveListItemRenderer) {
-                const renderer = item.musicResponsiveListItemRenderer
-                const videoId = renderer.playlistItemData?.videoId ||
-                              renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
-                if (videoId) {
-                  tracks.push({
-                    videoId,
-                    title: renderer.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || "",
-                    artist: renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || albumArtist,
-                    thumbnail: renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || albumThumbnail,
-                  })
-                }
-              }
+        // Helper function to recursively find all items with videoId
+        const findTracksRecursive = (obj: any, defaultThumbnail: string, depth = 0): void => {
+          if (!obj || depth > 10) return
+          
+          if (Array.isArray(obj)) {
+            for (const item of obj) {
+              findTracksRecursive(item, defaultThumbnail, depth + 1)
+            }
+            return
+          }
+          
+          if (typeof obj !== 'object') return
+          
+          // Check if this object has a videoId we can use
+          const videoId = obj.playlistItemData?.videoId ||
+                        obj.videoId ||
+                        obj.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId ||
+                        obj.navigationEndpoint?.watchEndpoint?.videoId
+          
+          if (videoId && !tracks.find(t => t.videoId === videoId)) {
+            const title = obj.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text ||
+                        obj.title?.runs?.[0]?.text ||
+                        obj.title?.simpleText || ""
+            const artist = obj.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text ||
+                          obj.shortBylineText?.runs?.[0]?.text ||
+                          obj.longBylineText?.runs?.[0]?.text || albumArtist
+            const thumbnail = obj.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
+                            obj.thumbnail?.thumbnails?.slice(-1)[0]?.url || defaultThumbnail
+            
+            if (title) {
+              tracks.push({ videoId, title, artist, thumbnail })
+            }
+          }
+          
+          // Recurse into object properties
+          for (const key of Object.keys(obj)) {
+            if (key !== 'responseContext' && key !== 'trackingParams') {
+              findTracksRecursive(obj[key], defaultThumbnail, depth + 1)
             }
           }
         }
+        
+        // Search through the entire contents structure
+        findTracksRecursive(data.contents, albumThumbnail)
         
         return NextResponse.json({
           album: {
@@ -394,6 +422,11 @@ export async function GET(request: Request) {
             thumbnail: albumThumbnail,
           },
           tracks,
+          debug: {
+            headerKeys: Object.keys(data.header || {}),
+            contentKeys: Object.keys(data.contents || {}),
+            tracksFound: tracks.length,
+          }
         })
       }
       

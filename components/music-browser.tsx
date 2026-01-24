@@ -846,6 +846,8 @@ useEffect(() => {
     try {
       const response = await fetch(`/api/music?action=album&browseId=${encodeURIComponent(browseId)}`)
       const data = await response.json()
+      console.log("[v0] Album API response:", data)
+      console.log("[v0] Debug info:", data.debug)
       if (data.album) {
         setCurrentAlbum({
           id: browseId,
@@ -855,7 +857,7 @@ useEffect(() => {
           year: year,
         })
       }
-      if (data.tracks) {
+      if (data.tracks && data.tracks.length > 0) {
         const tracks: Track[] = data.tracks.map((t: any) => ({
           id: t.videoId,
           videoId: t.videoId,
@@ -864,9 +866,11 @@ useEffect(() => {
           thumbnail: t.thumbnail,
         }))
         setAlbumTracks(tracks)
+      } else {
+        console.log("[v0] No tracks found in response")
       }
     } catch (err) {
-      console.error("Error loading album:", err)
+      console.error("[v0] Error loading album:", err)
     } finally {
       setLoadingAlbum(false)
     }
