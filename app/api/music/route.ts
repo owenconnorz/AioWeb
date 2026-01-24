@@ -269,7 +269,9 @@ export async function GET(request: Request) {
           input: query,
         })
         
-        const suggestions: string[] = []
+        const textSuggestions: string[] = []
+        const artistResults: any[] = []
+        const songResults: any[] = []
         const contents = data.contents || []
         
         for (const section of contents) {
@@ -279,32 +281,54 @@ export async function GET(request: Request) {
               if (item.searchSuggestionRenderer) {
                 const text = item.searchSuggestionRenderer.suggestion?.runs?.map((r: any) => r.text).join("") ||
                             item.searchSuggestionRenderer.navigationEndpoint?.searchEndpoint?.query
-                if (text) suggestions.push(text)
+                if (text) textSuggestions.push(text)
               }
               if (item.musicResponsiveListItemRenderer) {
                 const renderer = item.musicResponsiveListItemRenderer
                 const title = renderer.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text
-                const artist = renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text
-                if (title) suggestions.push(artist ? `${title} - ${artist}` : title)
+                const subtitle = renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text
+                const thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || ""
+                const browseId = renderer.navigationEndpoint?.browseEndpoint?.browseId
+                const videoId = renderer.playlistItemData?.videoId ||
+                              renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
+                
+                // Check if it's an artist (browseId starts with UC) or a song
+                if (browseId?.startsWith("UC")) {
+                  artistResults.push({
+                    type: "artist",
+                    id: browseId,
+                    browseId,
+                    name: title,
+                    thumbnail,
+                  })
+                } else if (videoId) {
+                  songResults.push({
+                    type: "song",
+                    id: videoId,
+                    videoId,
+                    title,
+                    artist: subtitle,
+                    thumbnail,
+                  })
+                }
               }
             }
           }
         }
         
         // Fallback: Use YouTube's suggest API if InnerTube fails
-        if (suggestions.length === 0 && query.length > 1) {
+        if (textSuggestions.length === 0 && query.length > 1) {
           try {
             const suggestResponse = await fetch(
               `https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}&callback=_`
             )
             const text = await suggestResponse.text()
-            // Parse JSONP response
             const jsonStr = text.replace(/^[^(]+\(/, '').replace(/\)$/, '')
             const parsed = JSON.parse(jsonStr)
             if (parsed[1]) {
               for (const item of parsed[1]) {
                 if (typeof item[0] === 'string') {
-                  suggestions.push(item[0])
+                  textSuggestions.push(item[0])
                 }
               }
             }
@@ -313,7 +337,110 @@ export async function GET(request: Request) {
           }
         }
         
-        return NextResponse.json({ suggestions: suggestions.slice(0, 8) })
+        return NextResponse.json({ 
+          textSuggestions: textSuggestions.slice(0, 7),
+          artistResults: artistResults.slice(0, 3),
+          songResults: songResults.slice(0, 3),
+        })
+      }
+      
+      case "artist": {
+        // Get artist page data
+        const browseId = searchParams.get("browseId")
+        if (!browseId) {
+          return NextResponse.json({ error: "browseId is required" }, { status: 400 })
+        }
+        
+        const data = await innertubeRequest("browse", {
+          browseId,
+        })
+        
+        const header = data.header?.musicImmersiveHeaderRenderer || data.header?.musicVisualHeaderRenderer
+        const artistName = header?.title?.runs?.[0]?.text || ""
+        const thumbnail = header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || ""
+        const bannerThumbnails = header?.foregroundThumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || 
+                                 header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || []
+        const banner = bannerThumbnails.slice(-1)[0]?.url || thumbnail
+        const description = header?.description?.runs?.map((r: any) => r.text).join("") || ""
+        const subscriberCount = header?.subscriptionButton?.subscribeButtonRenderer?.subscriberCountText?.runs?.[0]?.text || ""
+        
+        const shelves: any[] = []
+        const contents = data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || []
+        
+        for (const content of contents) {
+          if (content.musicShelfRenderer) {
+            const shelf = content.musicShelfRenderer
+            const title = shelf.title?.runs?.[0]?.text || ""
+            const items = shelf.contents?.map((item: any) => {
+              if (item.musicResponsiveListItemRenderer) {
+                const renderer = item.musicResponsiveListItemRenderer
+                const videoId = renderer.playlistItemData?.videoId ||
+                              renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
+                return {
+                  type: "track",
+                  id: videoId,
+                  videoId,
+                  title: renderer.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || "",
+                  artist: renderer.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || artistName,
+                  thumbnail: renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || "",
+                }
+              }
+              return null
+            }).filter(Boolean) || []
+            
+            if (items.length > 0) {
+              shelves.push({ title, type: "tracks", items })
+            }
+          }
+          
+          if (content.musicCarouselShelfRenderer) {
+            const shelf = content.musicCarouselShelfRenderer
+            const title = shelf.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.[0]?.text || ""
+            const items = shelf.contents?.map((item: any) => {
+              if (item.musicTwoRowItemRenderer) {
+                const renderer = item.musicTwoRowItemRenderer
+                const browseId = renderer.navigationEndpoint?.browseEndpoint?.browseId
+                const videoId = renderer.navigationEndpoint?.watchEndpoint?.videoId
+                const thumbnailUrl = renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails?.slice(-1)[0]?.url || ""
+                const itemTitle = renderer.title?.runs?.[0]?.text || ""
+                const subtitle = renderer.subtitle?.runs?.map((r: any) => r.text).join("") || ""
+                
+                // Determine type based on browseId prefix
+                let type = "playlist"
+                if (browseId?.startsWith("UC")) type = "artist"
+                else if (browseId?.startsWith("MPREb")) type = "album"
+                else if (videoId) type = "video"
+                
+                return {
+                  type,
+                  id: browseId || videoId,
+                  browseId,
+                  videoId,
+                  title: itemTitle,
+                  subtitle,
+                  thumbnail: thumbnailUrl,
+                }
+              }
+              return null
+            }).filter(Boolean) || []
+            
+            if (items.length > 0) {
+              shelves.push({ title, type: "carousel", items })
+            }
+          }
+        }
+        
+        return NextResponse.json({
+          artist: {
+            id: browseId,
+            name: artistName,
+            thumbnail,
+            banner,
+            description,
+            subscriberCount,
+          },
+          shelves,
+        })
       }
       
       case "charts": {

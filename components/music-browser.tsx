@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import React from "react"
 
-import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive } from "lucide-react"
+import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compass, Library, X, ChevronLeft, ChevronRight, Loader2, ListMusic, ArrowLeft, Shuffle, Clock, Share2, Volume2, Plus, Trash2, GripVertical, Music, Download, CheckCircle2, WifiOff, HardDrive, MoreVertical, Radio } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOfflineMusic } from "@/hooks/use-offline-music"
@@ -110,11 +110,19 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
-  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([])
+  const [textSuggestions, setTextSuggestions] = useState<string[]>([])
+  const [artistSuggestions, setArtistSuggestions] = useState<{type: string, id: string, browseId: string, name: string, thumbnail: string}[]>([])
+  const [songSuggestions, setSongSuggestions] = useState<{type: string, id: string, videoId: string, title: string, artist: string, thumbnail: string}[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const suggestionsDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Artist page state
+  const [showArtistPage, setShowArtistPage] = useState(false)
+  const [currentArtist, setCurrentArtist] = useState<{id: string, name: string, thumbnail: string, banner: string, description: string, subscriberCount: string} | null>(null)
+  const [artistShelves, setArtistShelves] = useState<any[]>([])
+  const [loadingArtist, setLoadingArtist] = useState(false)
   
   // Player state
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
@@ -712,7 +720,9 @@ useEffect(() => {
   // Fetch search suggestions
   const fetchSuggestions = async (query: string) => {
     if (!query.trim() || query.length < 2) {
-      setSearchSuggestions([])
+      setTextSuggestions([])
+      setArtistSuggestions([])
+      setSongSuggestions([])
       setShowSuggestions(false)
       return
     }
@@ -720,10 +730,15 @@ useEffect(() => {
     try {
       const response = await fetch(`/api/music?action=suggestions&query=${encodeURIComponent(query)}`)
       const data = await response.json()
-      setSearchSuggestions(data.suggestions || [])
-      setShowSuggestions(data.suggestions?.length > 0)
+      setTextSuggestions(data.textSuggestions || [])
+      setArtistSuggestions(data.artistResults || [])
+      setSongSuggestions(data.songResults || [])
+      const hasResults = (data.textSuggestions?.length > 0) || (data.artistResults?.length > 0) || (data.songResults?.length > 0)
+      setShowSuggestions(hasResults)
     } catch {
-      setSearchSuggestions([])
+      setTextSuggestions([])
+      setArtistSuggestions([])
+      setSongSuggestions([])
     }
   }
   
@@ -742,11 +757,13 @@ useEffect(() => {
     }, 200)
   }
   
-  // Select a suggestion
+  // Select a text suggestion
   const selectSuggestion = (suggestion: string) => {
     setSearchQuery(suggestion)
     setShowSuggestions(false)
-    setSearchSuggestions([])
+    setTextSuggestions([])
+    setArtistSuggestions([])
+    setSongSuggestions([])
     // Trigger search
     setIsSearching(true)
     fetch(`/api/music?action=search&query=${encodeURIComponent(suggestion)}`)
@@ -756,6 +773,45 @@ useEffect(() => {
       })
       .catch(err => console.error("Search error:", err))
       .finally(() => setIsSearching(false))
+  }
+  
+  // Fill suggestion into search box (arrow button)
+  const fillSuggestion = (suggestion: string) => {
+    setSearchQuery(suggestion)
+    fetchSuggestions(suggestion)
+  }
+  
+  // Open artist page
+  const openArtistPage = async (browseId: string, artistName?: string, thumbnail?: string) => {
+    setShowSuggestions(false)
+    setShowSearch(false)
+    setLoadingArtist(true)
+    setShowArtistPage(true)
+    
+    // Set initial data if available
+    if (artistName) {
+      setCurrentArtist({
+        id: browseId,
+        name: artistName,
+        thumbnail: thumbnail || "",
+        banner: thumbnail || "",
+        description: "",
+        subscriberCount: "",
+      })
+    }
+    
+    try {
+      const response = await fetch(`/api/music?action=artist&browseId=${encodeURIComponent(browseId)}`)
+      const data = await response.json()
+      if (data.artist) {
+        setCurrentArtist(data.artist)
+      }
+      setArtistShelves(data.shelves || [])
+    } catch (err) {
+      console.error("Error loading artist:", err)
+    } finally {
+      setLoadingArtist(false)
+    }
   }
   
   // Search
@@ -1079,13 +1135,27 @@ useEffect(() => {
             </div>
           )}
         </div>
-        <h4 className={`mt-2 font-medium text-white line-clamp-2 ${size === "small" ? "text-xs" : "text-sm"}`}>
-          {track.title}
-        </h4>
-        <p className={`text-slate-400 line-clamp-1 ${size === "small" ? "text-xs" : "text-xs"}`}>
-          {track.artist || track.subtitle || ""}
+      <h4 className={`mt-2 font-medium text-white line-clamp-2 ${size === "small" ? "text-xs" : "text-sm"}`}>
+        {track.title}
+      </h4>
+      {(track.artist || track.subtitle) && (
+        <p 
+          className={`text-slate-400 line-clamp-1 hover:underline cursor-pointer ${size === "small" ? "text-xs" : "text-xs"}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            // Search for artist to get their browseId
+            const artistName = track.artist || track.subtitle || ""
+            if (artistName) {
+              setSearchQuery(artistName)
+              setShowSearch(true)
+              handleSearch()
+            }
+          }}
+        >
+          {track.artist || track.subtitle}
         </p>
-      </button>
+      )}
+    </button>
     )
   }
 
@@ -1211,7 +1281,7 @@ useEffect(() => {
                         setShowSuggestions(false)
                       }
                     }}
-                    onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
+                    onFocus={() => textSuggestions.length > 0 && setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder="Search songs, artists..."
                     className="bg-white/10 border-0 text-white placeholder:text-slate-400"
@@ -1225,7 +1295,7 @@ useEffect(() => {
                     setShowSearch(false)
                     setSearchQuery("")
                     setSearchResults([])
-                    setSearchSuggestions([])
+                    setTextSuggestions([])
                     setShowSuggestions(false)
                   }}
                 >
@@ -1233,18 +1303,92 @@ useEffect(() => {
                 </Button>
               </div>
               
-              {/* Search Suggestions Dropdown */}
-              {showSuggestions && searchSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-12 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50">
-                  {searchSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      className="w-full px-4 py-3 text-left text-white hover:bg-slate-700 flex items-center gap-3 transition-colors"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => selectSuggestion(suggestion)}
+              {/* Search Suggestions Dropdown - YT Music Style */}
+              {showSuggestions && (textSuggestions.length > 0 || artistSuggestions.length > 0 || songSuggestions.length > 0) && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#212121] rounded-lg shadow-2xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto">
+                  {/* Text Suggestions */}
+                  {textSuggestions.map((suggestion, index) => (
+                    <div
+                      key={`text-${index}`}
+                      className="flex items-center hover:bg-white/10 transition-colors"
                     >
-                      <Search className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                      <span className="truncate">{suggestion}</span>
+                      <button
+                        className="flex-1 px-4 py-3 text-left text-white flex items-center gap-4 min-w-0"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => selectSuggestion(suggestion)}
+                      >
+                        <Search className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                        <span className="truncate text-[15px]">{suggestion}</span>
+                      </button>
+                      <button
+                        className="px-4 py-3 text-slate-400 hover:text-white transition-colors"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          fillSuggestion(suggestion)
+                        }}
+                        title="Fill search"
+                      >
+                        <ArrowLeft className="h-4 w-4 rotate-[135deg]" />
+                      </button>
+                    </div>
+                  ))}
+                  
+                  {/* Artist & Song Results */}
+                  {(artistSuggestions.length > 0 || songSuggestions.length > 0) && textSuggestions.length > 0 && (
+                    <div className="border-t border-white/10 my-1" />
+                  )}
+                  
+                  {/* Artist Suggestions */}
+                  {artistSuggestions.map((artist, index) => (
+                    <button
+                      key={`artist-${index}`}
+                      className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => openArtistPage(artist.browseId, artist.name, artist.thumbnail)}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <img 
+                          src={artist.thumbnail || "/placeholder.svg"} 
+                          alt={artist.name}
+                          className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                        />
+                        <span className="truncate font-medium text-[15px]">{artist.name}</span>
+                      </div>
+                      <MoreVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                    </button>
+                  ))}
+                  
+                  {/* Song Suggestions */}
+                  {songSuggestions.map((song, index) => (
+                    <button
+                      key={`song-${index}`}
+                      className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setShowSuggestions(false)
+                        const track: Track = {
+                          id: song.videoId,
+                          videoId: song.videoId,
+                          title: song.title,
+                          artist: song.artist,
+                          thumbnail: song.thumbnail,
+                        }
+                        playTrack(track, [track])
+                      }}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <img 
+                          src={song.thumbnail || "/placeholder.svg"} 
+                          alt={song.title}
+                          className="w-12 h-12 rounded object-cover flex-shrink-0"
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate font-medium text-[15px]">{song.title}</span>
+                          <span className="truncate text-sm text-slate-400">{song.artist}</span>
+                        </div>
+                      </div>
+                      <MoreVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -1957,6 +2101,189 @@ useEffect(() => {
         </button>
       </div>
     </div>
+
+    {/* Artist Page - Full Screen */}
+    {showArtistPage && (
+      <div className="fixed top-0 left-0 right-0 bottom-0 z-[9998] flex flex-col bg-black overflow-hidden">
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 text-white hover:bg-white/10"
+            onClick={() => {
+              setShowArtistPage(false)
+              setCurrentArtist(null)
+              setArtistShelves([])
+            }}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-bold text-white truncate flex-1 mx-4">{currentArtist?.name}</h1>
+          <div className="w-10" />
+        </div>
+        
+        {loadingArtist ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            {/* Artist Banner/Image */}
+            <div className="relative h-80">
+              <img
+                src={currentArtist?.banner || currentArtist?.thumbnail || "/placeholder.svg"}
+                alt={currentArtist?.name}
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+              
+              {/* Artist Info Overlay */}
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <h2 className="text-3xl font-bold text-white mb-2">{currentArtist?.name}</h2>
+                <div className="flex items-center gap-4 mb-4">
+                  <Button
+                    variant="outline"
+                    className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10"
+                  >
+                    Subscribe
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10 flex items-center gap-2"
+                  >
+                    <Radio className="h-4 w-4" />
+                    Radio
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Shuffle className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* About Section */}
+            {(currentArtist?.subscriberCount || currentArtist?.description) && (
+              <div className="px-4 py-4">
+                <h3 className="text-lg font-bold text-white mb-2">About</h3>
+                {currentArtist?.subscriberCount && (
+                  <p className="text-slate-400 text-sm mb-1">{currentArtist.subscriberCount} subscribers</p>
+                )}
+                {currentArtist?.description && (
+                  <p className="text-slate-400 text-sm line-clamp-3">{currentArtist.description}</p>
+                )}
+                {currentArtist?.description && (
+                  <button className="text-blue-500 text-sm font-medium mt-1">Show more</button>
+                )}
+              </div>
+            )}
+            
+            {/* Artist Shelves (Top Songs, Albums, Singles & EPs, etc.) */}
+            {artistShelves.map((shelf, shelfIdx) => (
+              <div key={`artist-shelf-${shelfIdx}`} className="mb-6">
+                <div className="flex items-center justify-between px-4 mb-3">
+                  <h3 className="text-xl font-bold text-blue-500">{shelf.title}</h3>
+                  {shelf.items?.length > 4 && (
+                    <ChevronRight className="h-6 w-6 text-blue-500" />
+                  )}
+                </div>
+                
+                {/* Songs list format */}
+                {shelf.type === "songs" || shelf.title?.toLowerCase().includes("song") ? (
+                  <div className="px-4 space-y-1">
+                    {shelf.items?.slice(0, 5).map((item: any, idx: number) => (
+                      <button
+                        key={`song-${idx}`}
+                        className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
+                        onClick={() => {
+                          const track: Track = {
+                            id: item.videoId,
+                            videoId: item.videoId,
+                            title: item.title,
+                            artist: item.artist || currentArtist?.name,
+                            thumbnail: item.thumbnail,
+                          }
+                          playTrack(track, shelf.items?.map((i: any) => ({
+                            id: i.videoId,
+                            videoId: i.videoId,
+                            title: i.title,
+                            artist: i.artist || currentArtist?.name,
+                            thumbnail: i.thumbnail,
+                          })))
+                        }}
+                      >
+                        <img
+                          src={item.thumbnail || "/placeholder.svg"}
+                          alt={item.title}
+                          className="w-12 h-12 rounded object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="flex-1 text-left min-w-0">
+                          <h4 className="text-white font-medium line-clamp-1">{item.title}</h4>
+                          <p className="text-sm text-slate-400 line-clamp-1 flex items-center gap-1">
+                            {item.explicit && <span className="text-xs bg-slate-600 px-1 rounded">E</span>}
+                            {item.artist || currentArtist?.name}
+                          </p>
+                        </div>
+                        <MoreVertical className="h-5 w-5 text-slate-400" />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  /* Horizontal scroll for albums, videos, etc. */
+                  <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
+                    {shelf.items?.map((item: any, idx: number) => (
+                      <button
+                        key={`item-${idx}`}
+                        className="flex-shrink-0 w-36 text-left"
+                        onClick={() => {
+                          if (item.videoId) {
+                            const track: Track = {
+                              id: item.videoId,
+                              videoId: item.videoId,
+                              title: item.title,
+                              artist: item.artist || currentArtist?.name,
+                              thumbnail: item.thumbnail,
+                            }
+                            playTrack(track, [track])
+                          }
+                        }}
+                      >
+                        <div className="relative mb-2">
+                          <img
+                            src={item.thumbnail || "/placeholder.svg"}
+                            alt={item.title}
+                            className={`w-36 h-36 object-cover ${shelf.title?.toLowerCase().includes("artist") || shelf.title?.toLowerCase().includes("fan") ? "rounded-full" : "rounded-lg"}`}
+                            referrerPolicy="no-referrer"
+                          />
+                          {item.videoId && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg">
+                              <Play className="h-10 w-10 text-white fill-white" />
+                            </div>
+                          )}
+                        </div>
+                        <h4 className="text-white font-medium line-clamp-2 text-sm">{item.title}</h4>
+                        {item.subtitle && (
+                          <p className="text-slate-400 text-xs line-clamp-1">{item.subtitle}</p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {/* Padding at bottom for mini player */}
+            <div className="h-32" />
+          </div>
+        )}
+      </div>
+    )}
 
     {/* Full Screen Player - Rendered outside main container for proper fixed positioning */}
     {showFullPlayer && currentTrack && (
