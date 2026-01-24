@@ -126,6 +126,12 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [loadingArtist, setLoadingArtist] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   
+  // Album/Playlist page state
+  const [showAlbumPage, setShowAlbumPage] = useState(false)
+  const [currentAlbum, setCurrentAlbum] = useState<{id: string, title: string, artist: string, thumbnail: string, year?: string} | null>(null)
+  const [albumTracks, setAlbumTracks] = useState<Track[]>([])
+  const [loadingAlbum, setLoadingAlbum] = useState(false)
+  
   // Set mounted state for portal
   useEffect(() => {
     setIsMounted(true)
@@ -818,6 +824,51 @@ useEffect(() => {
       console.error("Error loading artist:", err)
     } finally {
       setLoadingArtist(false)
+    }
+  }
+  
+  // Open album/playlist page
+  const openAlbumPage = async (browseId: string, title?: string, artist?: string, thumbnail?: string, year?: string) => {
+    setLoadingAlbum(true)
+    setShowAlbumPage(true)
+    
+    // Set initial data if available
+    if (title) {
+      setCurrentAlbum({
+        id: browseId,
+        title: title,
+        artist: artist || "",
+        thumbnail: thumbnail || "",
+        year: year,
+      })
+    }
+    
+    try {
+      const response = await fetch(`/api/music?action=album&browseId=${encodeURIComponent(browseId)}`)
+      const data = await response.json()
+      if (data.album) {
+        setCurrentAlbum({
+          id: browseId,
+          title: data.album.title || title || "",
+          artist: data.album.artist || artist || "",
+          thumbnail: data.album.thumbnail || thumbnail || "",
+          year: year,
+        })
+      }
+      if (data.tracks) {
+        const tracks: Track[] = data.tracks.map((t: any) => ({
+          id: t.videoId,
+          videoId: t.videoId,
+          title: t.title,
+          artist: t.artist,
+          thumbnail: t.thumbnail,
+        }))
+        setAlbumTracks(tracks)
+      }
+    } catch (err) {
+      console.error("Error loading album:", err)
+    } finally {
+      setLoadingAlbum(false)
     }
   }
   
@@ -2250,7 +2301,7 @@ useEffect(() => {
                       <button
                         key={`item-${idx}`}
                         className="flex-shrink-0 w-32 sm:w-36 text-left"
-                        onClick={async () => {
+                        onClick={() => {
                           if (item.videoId) {
                             // Direct video - play it
                             const track: Track = {
@@ -2262,23 +2313,8 @@ useEffect(() => {
                             }
                             playTrack(track, [track])
                           } else if (item.browseId) {
-                            // Album/Playlist - fetch tracks and play first one
-                            try {
-                              const response = await fetch(`/api/music?action=album&browseId=${encodeURIComponent(item.browseId)}`)
-                              const data = await response.json()
-                              if (data.tracks && data.tracks.length > 0) {
-                                const tracks: Track[] = data.tracks.map((t: any) => ({
-                                  id: t.videoId,
-                                  videoId: t.videoId,
-                                  title: t.title,
-                                  artist: t.artist || currentArtist?.name,
-                                  thumbnail: t.thumbnail || item.thumbnail,
-                                }))
-                                playTrack(tracks[0], tracks)
-                              }
-                            } catch (err) {
-                              console.error("Error loading album:", err)
-                            }
+                            // Album/Playlist - open album page
+                            openAlbumPage(item.browseId, item.title, item.artist || currentArtist?.name, item.thumbnail, item.subtitle)
                           }
                         }}
                       >
@@ -2307,11 +2343,119 @@ useEffect(() => {
             {/* Padding at bottom for mini player */}
             <div className="h-32" />
           </div>
+    )}
+    </div>,
+    document.body
+    )}
+    
+    {/* Album/Playlist Page - Full Screen Portal */}
+    {showAlbumPage && isMounted && createPortal(
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 text-white hover:bg-white/10 flex-shrink-0"
+            onClick={() => {
+              setShowAlbumPage(false)
+              setCurrentAlbum(null)
+              setAlbumTracks([])
+            }}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-bold text-white truncate flex-1 mx-4 text-center">{currentAlbum?.title}</h1>
+          <div className="w-10 flex-shrink-0" />
+        </div>
+        
+        {loadingAlbum ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden w-full pt-16">
+            {/* Album Header */}
+            <div className="flex flex-col items-center px-4 py-6">
+              <img
+                src={currentAlbum?.thumbnail || "/placeholder.svg"}
+                alt={currentAlbum?.title}
+                className="w-48 h-48 sm:w-56 sm:h-56 rounded-lg object-cover shadow-2xl"
+                referrerPolicy="no-referrer"
+              />
+              <h2 className="text-xl sm:text-2xl font-bold text-white mt-4 text-center">{currentAlbum?.title}</h2>
+              <p className="text-slate-400 text-sm mt-1">{currentAlbum?.artist}</p>
+              {currentAlbum?.year && (
+                <p className="text-slate-500 text-xs mt-1">{currentAlbum.year}</p>
+              )}
+              
+              {/* Play/Shuffle Buttons */}
+              <div className="flex items-center gap-4 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10 flex items-center gap-2 px-6"
+                  onClick={() => {
+                    if (albumTracks.length > 0) {
+                      playTrack(albumTracks[0], albumTracks)
+                    }
+                  }}
+                >
+                  <Play className="h-4 w-4 fill-white" />
+                  Play
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full bg-blue-600 hover:bg-blue-700 text-white h-10 w-10"
+                  onClick={() => {
+                    if (albumTracks.length > 0) {
+                      const shuffled = [...albumTracks].sort(() => Math.random() - 0.5)
+                      playTrack(shuffled[0], shuffled)
+                    }
+                  }}
+                >
+                  <Shuffle className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Track List */}
+            <div className="px-4 pb-32">
+              <h3 className="text-lg font-bold text-white mb-3">Tracks</h3>
+              <div className="space-y-1">
+                {albumTracks.map((track, idx) => (
+                  <button
+                    key={`album-track-${idx}`}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition-colors"
+                    onClick={() => playTrack(track, albumTracks)}
+                  >
+                    <span className="w-6 text-slate-500 text-sm text-center">{idx + 1}</span>
+                    <img
+                      src={track.thumbnail || currentAlbum?.thumbnail || "/placeholder.svg"}
+                      alt={track.title}
+                      className="w-12 h-12 rounded object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="flex-1 text-left min-w-0">
+                      <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+                      <p className="text-sm text-slate-400 line-clamp-1">{track.artist}</p>
+                    </div>
+                    <MoreVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+              
+              {albumTracks.length === 0 && !loadingAlbum && (
+                <p className="text-slate-500 text-center py-8">No tracks found</p>
+              )}
+            </div>
+          </div>
         )}
       </div>,
       document.body
     )}
-
+    
     {/* Full Screen Player - Rendered outside main container for proper fixed positioning */}
     {showFullPlayer && currentTrack && (
       <div 
