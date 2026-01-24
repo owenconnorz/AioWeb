@@ -1278,32 +1278,78 @@ const getEmbedUrl = (video: Video, quality?: string) => {
         <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
           {videos.map((video, index) => (
             <div key={`${video.id}-${index}`} className="relative h-screen w-full snap-start snap-always">
-              {apiSource === "redgifs" || apiSource === "reddit" ? (
-                (video as any).isVideo || video.url?.includes('.mp4') || video.url?.includes('.webm') || (video as any).videoUrl ? (
-                  <video
-                    ref={(el) => {
-                      iframeRefs.current[index] = el as any
-                    }}
-                    src={apiSource === "reddit" ? ((video as any).videoUrl || video.url) : getVideoUrl(video.url || video.embed)}
-                    poster={video.thumbnail || ""}
-                    preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
-                    loop
-                    playsInline
-                    controls
-                    muted={index !== activeVideoIndex}
-                    autoPlay={index === activeVideoIndex}
-                    className="h-full w-full object-contain bg-black"
-                  />
-                ) : (
-                  <div className="relative h-full w-full flex items-center justify-center bg-black">
-                    <img
-                      src={video.url || video.thumbnail || ""}
-                      alt={video.title}
-                      className="max-h-full max-w-full object-contain"
-                      loading={Math.abs(index - currentVideoIndex) <= 2 ? "eager" : "lazy"}
-                    />
-                  </div>
-                )
+              {apiSource === "redgifs" ? (
+                <video
+                  ref={(el) => {
+                    iframeRefs.current[index] = el as any
+                  }}
+                  src={getVideoUrl(video.url || video.embed)}
+                  poster={video.thumbnail || ""}
+                  preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
+                  loop
+                  playsInline
+                  controls
+                  muted={index !== activeVideoIndex}
+                  autoPlay={index === activeVideoIndex}
+                  className="h-full w-full object-contain bg-black"
+                />
+              ) : apiSource === "reddit" ? (
+                // Reddit content - handle videos, embedded content, and images
+                (() => {
+                  const videoUrl = (video as any).videoUrl
+                  const isEmbeddedVideo = videoUrl && (videoUrl.includes("redgifs.com") || videoUrl.includes("gfycat.com"))
+                  const isDirectVideo = videoUrl && (videoUrl.includes(".mp4") || videoUrl.includes(".webm") || videoUrl.includes("v.redd.it"))
+                  const isHlsVideo = videoUrl && videoUrl.includes(".m3u8")
+                  const isImage = !(video as any).isVideo && !videoUrl
+                  
+                  if (isEmbeddedVideo) {
+                    // Use iframe for external embeds
+                    return (
+                      <iframe
+                        ref={(el) => {
+                          iframeRefs.current[index] = el
+                        }}
+                        src={videoUrl}
+                        className="h-full w-full"
+                        frameBorder="0"
+                        allowFullScreen
+                        allow="autoplay"
+                        title={video.title}
+                      />
+                    )
+                  } else if (isDirectVideo || isHlsVideo) {
+                    // Direct video playback
+                    return (
+                      <video
+                        ref={(el) => {
+                          iframeRefs.current[index] = el as any
+                        }}
+                        src={videoUrl}
+                        poster={video.thumbnail || (video as any).preview || ""}
+                        preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
+                        loop
+                        playsInline
+                        controls
+                        muted={index !== activeVideoIndex}
+                        autoPlay={index === activeVideoIndex}
+                        className="h-full w-full object-contain bg-black"
+                        crossOrigin="anonymous"
+                      />
+                    )
+                  } else {
+                    // Image content
+                    return (
+                      <div className="relative h-full w-full flex items-center justify-center bg-black">
+                        <img
+                          src={video.url || (video as any).preview || video.thumbnail || ""}
+                          alt={video.title}
+                          className="max-h-full max-w-full object-contain"
+                          loading={Math.abs(index - currentVideoIndex) <= 2 ? "eager" : "lazy"}
+                        />
+                      </div>
+                    )
+                  }
+                })()
               ) : apiSource === "xvidapi" && video.directUrl && loadedIframes.has(index) ? (
                 <iframe
                   ref={(el) => {
@@ -1427,11 +1473,54 @@ const getEmbedUrl = (video: Video, quality?: string) => {
         </div>
       </div>
 
+      {/* Reddit Quick Navigation */}
+      {apiSource === "reddit" && (
+        <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+          <div className="inline-flex items-center gap-2 py-1">
+            {[
+              { label: "r/nsfw", sub: "nsfw" },
+              { label: "r/gonewild", sub: "gonewild" },
+              { label: "r/RealGirls", sub: "RealGirls" },
+              { label: "r/Amateur", sub: "amateur" },
+              { label: "r/NSFW_GIF", sub: "nsfw_gif" },
+              { label: "r/porn", sub: "porn" },
+              { label: "r/LegalTeens", sub: "LegalTeens" },
+              { label: "r/collegesluts", sub: "collegesluts" },
+              { label: "r/Boobies", sub: "Boobies" },
+              { label: "r/ass", sub: "ass" },
+              { label: "r/pawg", sub: "pawg" },
+              { label: "r/thick", sub: "thick" },
+              { label: "r/milf", sub: "milf" },
+              { label: "r/Asian_Hotties", sub: "Asian_Hotties" },
+              { label: "r/latinas", sub: "latinas" },
+              { label: "r/ebony", sub: "ebony" },
+              { label: "r/cumsluts", sub: "cumsluts" },
+              { label: "r/nsfw_videos", sub: "nsfw_videos" },
+            ].map((item) => (
+              <button
+                key={item.sub}
+                onClick={() => {
+                  setSearchQuery(item.sub)
+                  loadVideos(item.sub)
+                }}
+                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-all ${
+                  searchQuery === item.sub
+                    ? "bg-orange-500 text-white"
+                    : "bg-slate-700/50 text-slate-300 hover:bg-slate-600/50 hover:text-white"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Search Bar */}
       <div className="flex gap-2">
         <Input
           type="text"
-          placeholder="Search videos..."
+          placeholder={apiSource === "reddit" ? "Enter subreddit name..." : "Search videos..."}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}

@@ -117,14 +117,28 @@ export async function fetchReddit(subreddit: string, sort: string, after: string
         let videoUrl = null
         let isVideo = false
         
-        // Reddit hosted video
+        // Reddit hosted video - use HLS playlist for better compatibility
         if (p.is_video && p.media?.reddit_video) {
-          videoUrl = p.media.reddit_video.fallback_url
+          const redditVideo = p.media.reddit_video
+          // Prefer HLS stream if available, fallback to direct URL
+          if (redditVideo.hls_url) {
+            videoUrl = redditVideo.hls_url
+          } else if (redditVideo.fallback_url) {
+            // Remove the query param that can cause issues
+            videoUrl = redditVideo.fallback_url.replace(/\?source=fallback$/, "")
+          }
           isVideo = true
         }
         // Embedded video (redgifs, gfycat, etc)
-        else if (p.post_hint === "rich:video" && p.secure_media?.oembed) {
-          videoUrl = p.url
+        else if (p.post_hint === "rich:video") {
+          // Try to get the actual video URL from secure_media
+          if (p.secure_media?.reddit_video?.fallback_url) {
+            videoUrl = p.secure_media.reddit_video.fallback_url.replace(/\?source=fallback$/, "")
+          } else if (p.preview?.reddit_video_preview?.fallback_url) {
+            videoUrl = p.preview.reddit_video_preview.fallback_url.replace(/\?source=fallback$/, "")
+          } else {
+            videoUrl = p.url
+          }
           isVideo = true
         }
         // Direct video link
@@ -132,9 +146,25 @@ export async function fetchReddit(subreddit: string, sort: string, after: string
           videoUrl = mediaUrl
           isVideo = true
         }
-        // RedGifs
+        // RedGifs - mark as video but keep URL for iframe embedding
         else if (mediaUrl.includes("redgifs.com")) {
+          // Extract the ID and construct embed URL
+          const redgifsMatch = mediaUrl.match(/redgifs\.com\/watch\/(\w+)/i)
+          if (redgifsMatch) {
+            videoUrl = `https://www.redgifs.com/ifr/${redgifsMatch[1]}`
+          } else {
+            videoUrl = mediaUrl
+          }
+          isVideo = true
+        }
+        // Gfycat
+        else if (mediaUrl.includes("gfycat.com")) {
+          isVideo = true
           videoUrl = mediaUrl
+        }
+        // Imgur gifv/mp4
+        else if (mediaUrl.includes("imgur.com") && (mediaUrl.includes(".gifv") || mediaUrl.includes(".mp4"))) {
+          videoUrl = mediaUrl.replace(".gifv", ".mp4")
           isVideo = true
         }
         
