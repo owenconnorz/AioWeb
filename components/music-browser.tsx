@@ -560,7 +560,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
     }
   }, [mounted, showPlayer, isPlaying])
   
-  // Media Session API for Bluetooth/system media controls
+  // Media Session API for Bluetooth/system media controls - handlers only
   useEffect(() => {
   if (!mounted || !currentTrack || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
   
@@ -603,69 +603,22 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   playNext()
   })
   
-  // Seek handlers for notification seek bar
+  // Seek handler - uses functional setState to get current values
   navigator.mediaSession.setActionHandler('seekto', (details) => {
   if (details.seekTime !== undefined && details.seekTime !== null) {
-  setCurrentTime(details.seekTime)
-  // Seek in offline audio
-  if (isOfflinePlayback && offlineAudioRef.current) {
-  offlineAudioRef.current.currentTime = details.seekTime
+  const seekTime = details.seekTime
+  setCurrentTime(seekTime)
+  if (offlineAudioRef.current) {
+  offlineAudioRef.current.currentTime = seekTime
   }
-  // Seek in YouTube iframe
-  if (!isOfflinePlayback && playerRef.current?.contentWindow) {
+  if (playerRef.current?.contentWindow) {
   playerRef.current.contentWindow.postMessage(
-  JSON.stringify({ event: 'command', func: 'seekTo', args: [details.seekTime, true] }),
+  JSON.stringify({ event: 'command', func: 'seekTo', args: [seekTime, true] }),
   '*'
   )
   }
   }
   })
-  
-  navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-  const skipTime = details.seekOffset || 10
-  const newTime = Math.max(currentTime - skipTime, 0)
-  setCurrentTime(newTime)
-  if (isOfflinePlayback && offlineAudioRef.current) {
-  offlineAudioRef.current.currentTime = newTime
-  }
-  if (!isOfflinePlayback && playerRef.current?.contentWindow) {
-  playerRef.current.contentWindow.postMessage(
-  JSON.stringify({ event: 'command', func: 'seekTo', args: [newTime, true] }),
-  '*'
-  )
-  }
-  })
-  
-  navigator.mediaSession.setActionHandler('seekforward', (details) => {
-  const skipTime = details.seekOffset || 10
-  const newTime = Math.min(currentTime + skipTime, duration)
-  setCurrentTime(newTime)
-  if (isOfflinePlayback && offlineAudioRef.current) {
-  offlineAudioRef.current.currentTime = newTime
-  }
-  if (!isOfflinePlayback && playerRef.current?.contentWindow) {
-  playerRef.current.contentWindow.postMessage(
-  JSON.stringify({ event: 'command', func: 'seekTo', args: [newTime, true] }),
-  '*'
-  )
-  }
-  })
-  
-  // Update playback state
-  navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
-  
-  // Update position state for seek bar in notification
-  if (duration > 0 && 'setPositionState' in navigator.mediaSession) {
-  try {
-  navigator.mediaSession.setPositionState({
-  duration: duration,
-  playbackRate: playbackSpeed,
-  position: Math.min(currentTime, duration)
-  })
-  } catch (e) {
-  // Some browsers may throw if values are invalid
-  }
-  }
   
   return () => {
   // Cleanup handlers on unmount
@@ -675,13 +628,78 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   navigator.mediaSession.setActionHandler('previoustrack', null)
   navigator.mediaSession.setActionHandler('nexttrack', null)
   navigator.mediaSession.setActionHandler('seekto', null)
-  navigator.mediaSession.setActionHandler('seekbackward', null)
-  navigator.mediaSession.setActionHandler('seekforward', null)
   } catch (e) {
   // Some browsers may not support null handlers
   }
   }
-  }, [mounted, currentTrack, isPlaying, currentTime, duration, playbackSpeed, isOfflinePlayback])
+  }, [mounted, currentTrack]) // Only re-run when track changes
+  
+  // Separate effect for playback state updates (runs when play/pause changes)
+  useEffect(() => {
+  if (!mounted || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+  navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
+  }, [mounted, isPlaying])
+  
+  // YouTube iframe message listener for continuous playback
+  useEffect(() => {
+  if (!mounted) return
+  
+  const handleYouTubeMessage = (event: MessageEvent) => {
+  // Only process YouTube messages
+  if (!event.origin.includes('youtube.com')) return
+  
+  try {
+  const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+  
+  // YouTube player state: 0 = ended, 1 = playing, 2 = paused
+  if (data.event === 'onStateChange') {
+  if (data.info === 0) {
+  // Video ended - play next track
+  playNext()
+  } else if (data.info === 1) {
+  setIsPlaying(true)
+  } else if (data.info === 2) {
+  setIsPlaying(false)
+  }
+  }
+  
+  // Handle player info for time updates
+  if (data.event === 'infoDelivery' && data.info) {
+  if (data.info.currentTime !== undefined && !isSeeking) {
+  setCurrentTime(Math.floor(data.info.currentTime))
+  }
+  if (data.info.duration !== undefined && data.info.duration > 0) {
+  setDuration(Math.floor(data.info.duration))
+  }
+  }
+  } catch (e) {
+  // Not a JSON message, ignore
+  }
+  }
+  
+  window.addEventListener('message', handleYouTubeMessage)
+  return () => window.removeEventListener('message', handleYouTubeMessage)
+  }, [mounted, isSeeking])
+  
+  // Separate effect for position state updates (runs periodically but doesn't re-register handlers)
+  useEffect(() => {
+  if (!mounted || !currentTrack || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+  if (!('setPositionState' in navigator.mediaSession)) return
+  
+  // Only update if we have valid duration
+  const trackDuration = parseDuration(currentTrack.duration)
+  if (trackDuration <= 0) return
+  
+  try {
+  navigator.mediaSession.setPositionState({
+  duration: trackDuration,
+  playbackRate: playbackSpeed,
+  position: Math.max(0, Math.min(currentTime, trackDuration))
+  })
+  } catch (e) {
+  // Some browsers may throw if values are invalid
+  }
+  }, [mounted, currentTrack, currentTime, playbackSpeed])
 
   // Load library from localStorage - only on client
   useEffect(() => {
@@ -1037,37 +1055,78 @@ useEffect(() => {
     }
   }
 
-  const playNext = () => {
-    if (queue.length === 0) return
-    
-    let nextIndex = queueIndex + 1
-    if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * queue.length)
-    } else if (nextIndex >= queue.length) {
-      nextIndex = isRepeat ? 0 : queueIndex
-    }
-    
-    if (queue[nextIndex]) {
-      setQueueIndex(nextIndex)
-      setCurrentTrack(queue[nextIndex])
-      setIsPlaying(true) // Auto-play on skip
-    }
+  const playNext = useCallback(() => {
+  if (queue.length === 0) return
+  
+  let nextIndex = queueIndex + 1
+  if (isShuffle) {
+  // In shuffle mode, pick a random track that's not the current one
+  const availableIndices = queue.map((_, i) => i).filter(i => i !== queueIndex)
+  if (availableIndices.length > 0) {
+  nextIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)]
+  } else {
+  nextIndex = 0
   }
+  } else if (nextIndex >= queue.length) {
+  // Reached end of queue
+  if (isRepeat) {
+  nextIndex = 0 // Loop back to start
+  } else {
+  // Stop playback at end of queue (don't stay on last track)
+  setIsPlaying(false)
+  return
+  }
+  }
+  
+  const nextTrack = queue[nextIndex]
+  if (nextTrack) {
+  // Reset time before changing track
+  setCurrentTime(0)
+  setDuration(0)
+  setQueueIndex(nextIndex)
+  setCurrentTrack(nextTrack)
+  setIsPlaying(true) // Auto-play on skip
+  
+  // Force iframe reload by updating showPlayer
+  if (!isOfflinePlayback) {
+  setShowPlayer(true)
+  }
+  }
+  }, [queue, queueIndex, isShuffle, isRepeat, isOfflinePlayback])
 
-  const playPrev = () => {
-    if (queue.length === 0) return
-    
-    let prevIndex = queueIndex - 1
-    if (prevIndex < 0) {
-      prevIndex = isRepeat ? queue.length - 1 : 0
-    }
-    
-    if (queue[prevIndex]) {
-      setQueueIndex(prevIndex)
-      setCurrentTrack(queue[prevIndex])
-      setIsPlaying(true) // Auto-play on skip
-    }
+  const playPrev = useCallback(() => {
+  if (queue.length === 0) return
+  
+  // If more than 3 seconds into the song, restart it instead of going to previous
+  if (currentTime > 3) {
+  setCurrentTime(0)
+  if (offlineAudioRef.current) {
+  offlineAudioRef.current.currentTime = 0
   }
+  if (playerRef.current?.contentWindow) {
+  playerRef.current.contentWindow.postMessage(
+  JSON.stringify({ event: 'command', func: 'seekTo', args: [0, true] }),
+  '*'
+  )
+  }
+  return
+  }
+  
+  let prevIndex = queueIndex - 1
+  if (prevIndex < 0) {
+  prevIndex = isRepeat ? queue.length - 1 : 0
+  }
+  
+  const prevTrack = queue[prevIndex]
+  if (prevTrack) {
+  // Reset time before changing track
+  setCurrentTime(0)
+  setDuration(0)
+  setQueueIndex(prevIndex)
+  setCurrentTrack(prevTrack)
+  setIsPlaying(true) // Auto-play on skip
+  }
+  }, [queue, queueIndex, isRepeat, currentTime])
 
   const toggleLike = (track: Track) => {
     setLikedTracks(prev => {
@@ -2240,10 +2299,19 @@ useEffect(() => {
         <iframe
           key={currentTrack.videoId}
           ref={playerRef}
-          src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
+          src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&widget_referrer=${typeof window !== 'undefined' ? window.location.origin : ''}&playsinline=1`}
           className="w-0 h-0 absolute"
           allow="autoplay; encrypted-media"
           style={{ height: 0, width: 0, border: 0, position: 'absolute', left: -9999 }}
+          onLoad={() => {
+            // Request player state updates from YouTube
+            if (playerRef.current?.contentWindow) {
+              playerRef.current.contentWindow.postMessage(
+                JSON.stringify({ event: 'listening', id: 1 }),
+                '*'
+              )
+            }
+          }}
         />
       )}
 
