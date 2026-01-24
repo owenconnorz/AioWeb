@@ -708,7 +708,8 @@ export function PornVideos() {
       console.error("Error loading API order:", err)
     }
 
-    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")
+    // Feed view is now always inline, no popup needed
+    setFeedView(false)
     loadVideos()
     loadLibraryData()
     setLoadedIframes(new Set([0]))
@@ -744,7 +745,8 @@ export function PornVideos() {
   }, [showAddToPlaylist, showCreatePlaylist, selectedVideo])
 
   useEffect(() => {
-    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "chaturbate")) return
+    // Popup feed view no longer used - scroll handling is inline
+    return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -784,17 +786,7 @@ export function PornVideos() {
         setActiveVideoIndex(mostVisibleIndex)
         setCurrentVideoIndex(mostVisibleIndex)
 
-if (apiSource === "redgifs") {
-                          iframeRefs.current.forEach((element, idx) => {
-                            if (element && element instanceof HTMLVideoElement) {
-                              if (idx === mostVisibleIndex) {
-                                element.play().catch(() => {})
-                              } else {
-                                element.pause()
-                              }
-                            }
-                          })
-                        }
+// Video play/pause now handled in inline feed scroll handler
 
         if (apiSource === "cam4" || apiSource === "chaturbate") {
           setLoadedIframes((prev) => {
@@ -824,7 +816,7 @@ if (apiSource === "redgifs") {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")) {
+if (false) { // Popup feed view no longer used
       if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
@@ -1280,175 +1272,6 @@ const getEmbedUrl = (video: Video, quality?: string) => {
   return embedUrl
 }
 
-  // Feed View for live cams and swipeable feeds (popup mode - not for Reddit)
-  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate") && apiSource !== "reddit") {
-    return (
-      <div className="fixed inset-0 z-50 bg-black">
-        <button
-          onClick={() => setFeedView(false)}
-          className="absolute left-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
-          aria-label="Back"
-        >
-          <X className="h-6 w-6 text-white" />
-        </button>
-
-        <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
-          {videos.map((video, index) => (
-            <div key={`${video.id}-${index}`} className="relative h-screen w-full snap-start snap-always">
-              {apiSource === "redgifs" ? (
-                <video
-                  ref={(el) => {
-                    iframeRefs.current[index] = el as any
-                  }}
-                  src={getVideoUrl(video.url || video.embed)}
-                  poster={video.thumbnail || ""}
-                  preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
-                  loop
-                  playsInline
-                  controls
-                  muted={index !== activeVideoIndex}
-                  autoPlay={index === activeVideoIndex}
-                  className="h-full w-full object-contain bg-black"
-                />
-              ) : apiSource === "reddit" ? (
-                // Reddit content - handle videos, embedded content, and images
-                (() => {
-                  const videoUrl = (video as any).videoUrl
-                  const isEmbeddedVideo = videoUrl && (videoUrl.includes("redgifs.com") || videoUrl.includes("gfycat.com"))
-                  const isDirectVideo = videoUrl && (videoUrl.includes(".mp4") || videoUrl.includes(".webm") || videoUrl.includes("v.redd.it"))
-                  const isHlsVideo = videoUrl && videoUrl.includes(".m3u8")
-                  const isImage = !(video as any).isVideo && !videoUrl
-                  
-                  if (isEmbeddedVideo) {
-                    // Use iframe for external embeds
-                    return (
-                      <iframe
-                        ref={(el) => {
-                          iframeRefs.current[index] = el
-                        }}
-                        src={videoUrl}
-                        className="h-full w-full"
-                        frameBorder="0"
-                        allowFullScreen
-                        allow="autoplay"
-                        title={video.title}
-                      />
-                    )
-                  } else if (isDirectVideo || isHlsVideo) {
-                    // Direct video playback
-                    return (
-                      <video
-                        ref={(el) => {
-                          iframeRefs.current[index] = el as any
-                        }}
-                        src={videoUrl}
-                        poster={video.thumbnail || (video as any).preview || ""}
-                        preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
-                        loop
-                        playsInline
-                        controls
-                        muted={index !== activeVideoIndex}
-                        autoPlay={index === activeVideoIndex}
-                        className="h-full w-full object-contain bg-black"
-                        crossOrigin="anonymous"
-                      />
-                    )
-                  } else {
-                    // Image content
-                    return (
-                      <div className="relative h-full w-full flex items-center justify-center bg-black">
-                        <img
-                          src={video.url || (video as any).preview || video.thumbnail || ""}
-                          alt={video.title}
-                          className="max-h-full max-w-full object-contain"
-                          loading={Math.abs(index - currentVideoIndex) <= 2 ? "eager" : "lazy"}
-                        />
-                      </div>
-                    )
-                  }
-                })()
-              ) : apiSource === "xvidapi" && video.directUrl && loadedIframes.has(index) ? (
-                <iframe
-                  ref={(el) => {
-                    iframeRefs.current[index] = el
-                  }}
-                  src={`/api/xvideo-player?url=${encodeURIComponent(video.directUrl)}&poster=${encodeURIComponent(video.thumbnail || '')}`}
-                  className="h-full w-full"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay"
-                  title={video.title}
-                />
-              ) : loadedIframes.has(index) ? (
-                <iframe
-                  ref={(el) => {
-                    iframeRefs.current[index] = el
-                  }}
-                  src={getEmbedUrl(video, selectedQuality)}
-                  className="h-full w-full"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay"
-                  title={video.title}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-black">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
-                </div>
-              )}
-
-              <div className="absolute bottom-20 left-4 right-16 text-white">
-                <h3 className="text-lg font-semibold drop-shadow-lg line-clamp-2">{video.title}</h3>
-                {apiSource === "reddit" && (video as any).subreddit && (
-                  <p className="text-sm opacity-80 mt-1">
-                    r/{(video as any).subreddit}
-                    {(video as any).score > 0 && ` • ${(video as any).score.toLocaleString()} upvotes`}
-                  </p>
-                )}
-                {video.views > 0 && apiSource !== "reddit" && <p className="text-sm opacity-80">{video.views.toLocaleString()} viewers</p>}
-              </div>
-
-              <div className="absolute bottom-20 right-4 flex flex-col gap-4">
-                <button onClick={() => saveVideo(video)} className="flex flex-col items-center gap-1">
-                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    {isVideoSaved(video.id) ? (
-                      <BookmarkCheck className="h-6 w-6 text-violet-400" />
-                    ) : (
-                      <Bookmark className="h-6 w-6 text-white" />
-                    )}
-                  </div>
-                  <span className="text-xs text-white">Save</span>
-                </button>
-
-                <button onClick={() => handleShare(video)} className="flex flex-col items-center gap-1">
-                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    <Share2 className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-xs text-white">Share</span>
-                </button>
-
-                <button onClick={() => handleDownload(video)} className="flex flex-col items-center gap-1">
-                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    <Download className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-xs text-white">Download</span>
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {hasMore && (
-            <div className="flex h-20 w-full items-center justify-center">
-              {loadingMore && (
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6 pb-24">
       {/* API Source Selector */}
@@ -1652,8 +1475,8 @@ const getEmbedUrl = (video: Video, quality?: string) => {
         )}
       </div>
 
-      {/* Reddit Inline Feed View */}
-      {apiSource === "reddit" && videos.length > 0 && !loading ? (
+      {/* Inline Feed View for Reddit, RedGifs, Cam4, Chaturbate */}
+      {(apiSource === "reddit" || apiSource === "redgifs" || apiSource === "cam4" || apiSource === "chaturbate") && videos.length > 0 && !loading ? (
         <div className="relative -mx-4 sm:-mx-6">
           <div 
             className="feed-container h-[calc(100vh-280px)] w-full snap-y snap-mandatory overflow-y-scroll"
@@ -1692,33 +1515,15 @@ const getEmbedUrl = (video: Video, quality?: string) => {
             {videos.map((video, index) => (
               <div key={`${video.id}-${index}`} className="relative h-[calc(100vh-280px)] w-full snap-start snap-always bg-black">
                 {(() => {
-                  const videoUrl = (video as any).videoUrl
-                  const isEmbeddedVideo = videoUrl && (videoUrl.includes("redgifs.com") || videoUrl.includes("gfycat.com"))
-                  const isDirectVideo = videoUrl && (videoUrl.includes(".mp4") || videoUrl.includes(".webm") || videoUrl.includes("v.redd.it"))
-                  const isHlsVideo = videoUrl && videoUrl.includes(".m3u8")
-                  
-                  if (isEmbeddedVideo) {
-                    return (
-                      <iframe
-                        ref={(el) => {
-                          iframeRefs.current[index] = el
-                        }}
-                        src={videoUrl}
-                        className="h-full w-full"
-                        frameBorder="0"
-                        allowFullScreen
-                        allow="autoplay"
-                        title={video.title}
-                      />
-                    )
-                  } else if (isDirectVideo || isHlsVideo) {
+                  // Handle different API sources
+                  if (apiSource === "redgifs") {
                     return (
                       <video
                         ref={(el) => {
                           iframeRefs.current[index] = el as any
                         }}
-                        src={videoUrl}
-                        poster={video.thumbnail || (video as any).preview || ""}
+                        src={getVideoUrl(video.url || video.embed)}
+                        poster={video.thumbnail || ""}
                         preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
                         loop
                         playsInline
@@ -1726,31 +1531,92 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                         muted={index !== activeVideoIndex}
                         autoPlay={index === activeVideoIndex}
                         className="h-full w-full object-contain bg-black"
-                        crossOrigin="anonymous"
                       />
                     )
-                  } else {
-                    return (
-                      <div className="relative h-full w-full flex items-center justify-center bg-black">
-                        <img
-                          src={video.url || (video as any).preview || video.thumbnail || ""}
-                          alt={video.title}
-                          className="max-h-full max-w-full object-contain"
-                          loading={Math.abs(index - currentVideoIndex) <= 2 ? "eager" : "lazy"}
-                        />
+                  } else if (apiSource === "cam4" || apiSource === "chaturbate") {
+                    // Live cam iframe embed
+                    return loadedIframes.has(index) ? (
+                      <iframe
+                        ref={(el) => {
+                          iframeRefs.current[index] = el
+                        }}
+                        src={getEmbedUrl(video, selectedQuality)}
+                        className="h-full w-full"
+                        frameBorder="0"
+                        allowFullScreen
+                        allow="autoplay"
+                        title={video.title}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-black">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
                       </div>
                     )
+                  } else {
+                    // Reddit content
+                    const videoUrl = (video as any).videoUrl
+                    const isEmbeddedVideo = videoUrl && (videoUrl.includes("redgifs.com") || videoUrl.includes("gfycat.com"))
+                    const isDirectVideo = videoUrl && (videoUrl.includes(".mp4") || videoUrl.includes(".webm") || videoUrl.includes("v.redd.it"))
+                    const isHlsVideo = videoUrl && videoUrl.includes(".m3u8")
+                    
+                    if (isEmbeddedVideo) {
+                      return (
+                        <iframe
+                          ref={(el) => {
+                            iframeRefs.current[index] = el
+                          }}
+                          src={videoUrl}
+                          className="h-full w-full"
+                          frameBorder="0"
+                          allowFullScreen
+                          allow="autoplay"
+                          title={video.title}
+                        />
+                      )
+                    } else if (isDirectVideo || isHlsVideo) {
+                      return (
+                        <video
+                          ref={(el) => {
+                            iframeRefs.current[index] = el as any
+                          }}
+                          src={videoUrl}
+                          poster={video.thumbnail || (video as any).preview || ""}
+                          preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
+                          loop
+                          playsInline
+                          controls
+                          muted={index !== activeVideoIndex}
+                          autoPlay={index === activeVideoIndex}
+                          className="h-full w-full object-contain bg-black"
+                          crossOrigin="anonymous"
+                        />
+                      )
+                    } else {
+                      return (
+                        <div className="relative h-full w-full flex items-center justify-center bg-black">
+                          <img
+                            src={video.url || (video as any).preview || video.thumbnail || ""}
+                            alt={video.title}
+                            className="max-h-full max-w-full object-contain"
+                            loading={Math.abs(index - currentVideoIndex) <= 2 ? "eager" : "lazy"}
+                          />
+                        </div>
+                      )
+                    }
                   }
                 })()}
                 
-                {/* Reddit post info overlay */}
+                {/* Post info overlay */}
                 <div className="absolute bottom-20 left-4 right-16 text-white pointer-events-none">
                   <h3 className="text-lg font-semibold drop-shadow-lg line-clamp-2">{video.title}</h3>
-                  {(video as any).subreddit && (
+                  {apiSource === "reddit" && (video as any).subreddit && (
                     <p className="text-sm opacity-80 mt-1">
                       r/{(video as any).subreddit}
                       {(video as any).score > 0 && ` • ${(video as any).score.toLocaleString()} upvotes`}
                     </p>
+                  )}
+                  {(apiSource === "cam4" || apiSource === "chaturbate") && video.views > 0 && (
+                    <p className="text-sm opacity-80 mt-1">{video.views.toLocaleString()} viewers</p>
                   )}
                 </div>
                 
@@ -1774,20 +1640,12 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                     <span className="text-xs text-white">Share</span>
                   </button>
                   
-                  {((video as any).videoUrl || video.url) && (
-                    <a
-                      href={(video as any).videoUrl || video.url}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-1"
-                    >
-                      <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                        <Download className="h-6 w-6 text-white" />
-                      </div>
-                      <span className="text-xs text-white">Download</span>
-                    </a>
-                  )}
+                  <button onClick={() => handleDownload(video)} className="flex flex-col items-center gap-1">
+                    <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                      <Download className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs text-white">Download</span>
+                  </button>
                 </div>
               </div>
             ))}
