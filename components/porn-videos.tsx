@@ -514,6 +514,11 @@ export function PornVideos() {
   const hoverIntervalsRef = useRef<{ [key: string]: NodeJS.Timeout }>({})
   const touchStartRef = useRef<{ [key: string]: number }>({})
   const activeTouchRef = useRef<string | null>(null)
+  
+  // Custom subreddits state
+  const [customSubreddits, setCustomSubreddits] = useState<{ label: string; sub: string }[]>([])
+  const [showAddSubreddit, setShowAddSubreddit] = useState(false)
+  const [newSubredditName, setNewSubredditName] = useState("")
 
   const startThumbnailPreview = (videoId: string, thumbs: Array<{ src: string }>) => {
     if (!thumbs || thumbs.length <= 1) return
@@ -703,15 +708,27 @@ export function PornVideos() {
       console.error("Error loading API order:", err)
     }
 
-    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate" || apiSource === "reddit")
+    setFeedView(apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")
     loadVideos()
     loadLibraryData()
     setLoadedIframes(new Set([0]))
   }, [apiSource])
 
-  // Set mounted state for portal rendering
+// Set mounted state for portal rendering
   useEffect(() => {
-    setIsMounted(true)
+  setIsMounted(true)
+  }, [])
+  
+  // Load custom subreddits from cookies
+  useEffect(() => {
+    const savedSubs = cookieStorage.get("customSubreddits")
+    if (savedSubs) {
+      try {
+        setCustomSubreddits(JSON.parse(savedSubs))
+      } catch (e) {
+        console.error("Failed to parse custom subreddits")
+      }
+    }
   }, [])
 
   // Lock body scroll when modal is open
@@ -727,7 +744,7 @@ export function PornVideos() {
   }, [showAddToPlaylist, showCreatePlaylist, selectedVideo])
 
   useEffect(() => {
-    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "chaturbate" && apiSource !== "reddit")) return
+    if (!feedView || (apiSource !== "cam4" && apiSource !== "redgifs" && apiSource !== "chaturbate")) return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -767,7 +784,7 @@ export function PornVideos() {
         setActiveVideoIndex(mostVisibleIndex)
         setCurrentVideoIndex(mostVisibleIndex)
 
-if (apiSource === "redgifs" || apiSource === "reddit") {
+if (apiSource === "redgifs") {
                           iframeRefs.current.forEach((element, idx) => {
                             if (element && element instanceof HTMLVideoElement) {
                               if (idx === mostVisibleIndex) {
@@ -807,7 +824,7 @@ if (apiSource === "redgifs" || apiSource === "reddit") {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate" || apiSource === "reddit")) {
+if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate")) {
       if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
@@ -1263,8 +1280,8 @@ const getEmbedUrl = (video: Video, quality?: string) => {
   return embedUrl
 }
 
-  // Feed View for live cams and swipeable feeds
-  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate" || apiSource === "reddit")) {
+  // Feed View for live cams and swipeable feeds (popup mode - not for Reddit)
+  if (feedView && (apiSource === "cam4" || apiSource === "redgifs" || apiSource === "chaturbate") && apiSource !== "reddit") {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <button
@@ -1477,6 +1494,45 @@ const getEmbedUrl = (video: Video, quality?: string) => {
       {apiSource === "reddit" && (
         <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
           <div className="inline-flex items-center gap-2 py-1">
+            {/* Add custom subreddit button */}
+            <button
+              onClick={() => setShowAddSubreddit(true)}
+              className="flex items-center justify-center whitespace-nowrap rounded-full bg-orange-500/20 px-3 py-1.5 text-sm font-medium text-orange-400 transition-all hover:bg-orange-500/30 border border-orange-500/30"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            
+            {/* Custom subreddits */}
+            {customSubreddits.map((item) => (
+              <div key={`custom-${item.sub}`} className="group relative">
+                <button
+                  onClick={() => {
+                    setSearchQuery(item.sub)
+                    loadVideos(item.sub)
+                  }}
+                  className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-all ${
+                    searchQuery === item.sub
+                      ? "bg-orange-500 text-white"
+                      : "bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-white border border-orange-500/30"
+                  }`}
+                >
+                  {item.label}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const updated = customSubreddits.filter(s => s.sub !== item.sub)
+                    setCustomSubreddits(updated)
+                    cookieStorage.set("customSubreddits", JSON.stringify(updated))
+                  }}
+                  className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white group-hover:block"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            
+            {/* Preset subreddits */}
             {[
               { label: "r/nsfw", sub: "nsfw" },
               { label: "r/gonewild", sub: "gonewild" },
@@ -1515,6 +1571,62 @@ const getEmbedUrl = (video: Video, quality?: string) => {
           </div>
         </div>
       )}
+      
+      {/* Add Custom Subreddit Modal */}
+      {showAddSubreddit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowAddSubreddit(false)}>
+          <div className="mx-4 w-full max-w-sm rounded-xl bg-slate-800 p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-4 text-lg font-semibold text-white">Add Custom Subreddit</h3>
+            <div className="flex gap-2">
+              <div className="flex flex-1 items-center rounded-lg border border-slate-600 bg-slate-700/50 px-3">
+                <span className="text-slate-400">r/</span>
+                <input
+                  type="text"
+                  placeholder="subreddit name"
+                  value={newSubredditName}
+                  onChange={(e) => setNewSubredditName(e.target.value.replace(/\s/g, ""))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newSubredditName.trim()) {
+                      const sub = newSubredditName.trim()
+                      const newSub = { label: `r/${sub}`, sub }
+                      const updated = [...customSubreddits, newSub]
+                      setCustomSubreddits(updated)
+                      cookieStorage.set("customSubreddits", JSON.stringify(updated))
+                      setNewSubredditName("")
+                      setShowAddSubreddit(false)
+                      setSearchQuery(sub)
+                      loadVideos(sub)
+                    }
+                  }}
+                  className="flex-1 bg-transparent py-2 text-white outline-none placeholder:text-slate-500"
+                  autoFocus
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  if (newSubredditName.trim()) {
+                    const sub = newSubredditName.trim()
+                    const newSub = { label: `r/${sub}`, sub }
+                    const updated = [...customSubreddits, newSub]
+                    setCustomSubreddits(updated)
+                    cookieStorage.set("customSubreddits", JSON.stringify(updated))
+                    setNewSubredditName("")
+                    setShowAddSubreddit(false)
+                    setSearchQuery(sub)
+                    loadVideos(sub)
+                  }
+                }}
+                className="bg-orange-500 hover:bg-orange-600"
+              >
+                Add
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">
+              Enter the subreddit name without the r/ prefix. It will be saved for quick access.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="flex gap-2">
@@ -1540,8 +1652,154 @@ const getEmbedUrl = (video: Video, quality?: string) => {
         )}
       </div>
 
-      {/* Video Grid */}
-      {loading ? (
+      {/* Reddit Inline Feed View */}
+      {apiSource === "reddit" && videos.length > 0 && !loading ? (
+        <div className="relative -mx-4 sm:-mx-6">
+          <div 
+            className="feed-container h-[calc(100vh-280px)] w-full snap-y snap-mandatory overflow-y-scroll"
+            ref={(el) => {
+              if (el) {
+                el.addEventListener('scroll', () => {
+                  const scrollTop = el.scrollTop
+                  const itemHeight = el.clientHeight
+                  const newIndex = Math.round(scrollTop / itemHeight)
+                  if (newIndex !== currentVideoIndex) {
+                    setCurrentVideoIndex(newIndex)
+                    setActiveVideoIndex(newIndex)
+                    // Handle video play/pause
+                    iframeRefs.current.forEach((element, idx) => {
+                      if (element && element instanceof HTMLVideoElement) {
+                        if (idx === newIndex) {
+                          element.play().catch(() => {})
+                        } else {
+                          element.pause()
+                        }
+                      }
+                    })
+                  }
+                  // Preload next items
+                  for (let i = Math.max(0, newIndex - 1); i <= Math.min(videos.length - 1, newIndex + 2); i++) {
+                    setLoadedIframes(prev => new Set(prev).add(i))
+                  }
+                  // Load more when near end
+                  if (newIndex >= videos.length - 3 && !loadingMore && hasMore) {
+                    loadMoreVideos()
+                  }
+                })
+              }
+            }}
+          >
+            {videos.map((video, index) => (
+              <div key={`${video.id}-${index}`} className="relative h-[calc(100vh-280px)] w-full snap-start snap-always bg-black">
+                {(() => {
+                  const videoUrl = (video as any).videoUrl
+                  const isEmbeddedVideo = videoUrl && (videoUrl.includes("redgifs.com") || videoUrl.includes("gfycat.com"))
+                  const isDirectVideo = videoUrl && (videoUrl.includes(".mp4") || videoUrl.includes(".webm") || videoUrl.includes("v.redd.it"))
+                  const isHlsVideo = videoUrl && videoUrl.includes(".m3u8")
+                  
+                  if (isEmbeddedVideo) {
+                    return (
+                      <iframe
+                        ref={(el) => {
+                          iframeRefs.current[index] = el
+                        }}
+                        src={videoUrl}
+                        className="h-full w-full"
+                        frameBorder="0"
+                        allowFullScreen
+                        allow="autoplay"
+                        title={video.title}
+                      />
+                    )
+                  } else if (isDirectVideo || isHlsVideo) {
+                    return (
+                      <video
+                        ref={(el) => {
+                          iframeRefs.current[index] = el as any
+                        }}
+                        src={videoUrl}
+                        poster={video.thumbnail || (video as any).preview || ""}
+                        preload={Math.abs(index - currentVideoIndex) <= 1 ? "auto" : "none"}
+                        loop
+                        playsInline
+                        controls
+                        muted={index !== activeVideoIndex}
+                        autoPlay={index === activeVideoIndex}
+                        className="h-full w-full object-contain bg-black"
+                        crossOrigin="anonymous"
+                      />
+                    )
+                  } else {
+                    return (
+                      <div className="relative h-full w-full flex items-center justify-center bg-black">
+                        <img
+                          src={video.url || (video as any).preview || video.thumbnail || ""}
+                          alt={video.title}
+                          className="max-h-full max-w-full object-contain"
+                          loading={Math.abs(index - currentVideoIndex) <= 2 ? "eager" : "lazy"}
+                        />
+                      </div>
+                    )
+                  }
+                })()}
+                
+                {/* Reddit post info overlay */}
+                <div className="absolute bottom-20 left-4 right-16 text-white pointer-events-none">
+                  <h3 className="text-lg font-semibold drop-shadow-lg line-clamp-2">{video.title}</h3>
+                  {(video as any).subreddit && (
+                    <p className="text-sm opacity-80 mt-1">
+                      r/{(video as any).subreddit}
+                      {(video as any).score > 0 && ` • ${(video as any).score.toLocaleString()} upvotes`}
+                    </p>
+                  )}
+                </div>
+                
+                {/* Action buttons */}
+                <div className="absolute bottom-20 right-4 flex flex-col gap-4">
+                  <button onClick={() => saveVideo(video)} className="flex flex-col items-center gap-1">
+                    <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                      {isVideoSaved(video.id) ? (
+                        <BookmarkCheck className="h-6 w-6 text-violet-400" />
+                      ) : (
+                        <Bookmark className="h-6 w-6 text-white" />
+                      )}
+                    </div>
+                    <span className="text-xs text-white">Save</span>
+                  </button>
+                  
+                  <button onClick={() => handleShare(video)} className="flex flex-col items-center gap-1">
+                    <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                      <Share2 className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs text-white">Share</span>
+                  </button>
+                  
+                  {((video as any).videoUrl || video.url) && (
+                    <a
+                      href={(video as any).videoUrl || video.url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-1"
+                    >
+                      <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                        <Download className="h-6 w-6 text-white" />
+                      </div>
+                      <span className="text-xs text-white">Download</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {loadingMore && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
+            </div>
+          )}
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
         </div>
