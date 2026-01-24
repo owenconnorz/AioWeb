@@ -2163,38 +2163,38 @@ useEffect(() => {
                 
                 {/* History Tab */}
                 {librarySubTab === "history" && (
-  <div>
-  <h3 className="text-xl font-bold text-white mb-4">Recently Played</h3>
-  {recentlyPlayed.length === 0 ? (
-    <div className="text-center py-8">
-      <Clock className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-      <p className="text-slate-400">No listening history yet</p>
-      <p className="text-sm text-slate-500 mt-1">Songs you play will appear here</p>
-    </div>
-  ) : (
-  <div className="space-y-2">
-  {recentlyPlayed.slice(0, 20).map((track, idx) => (
-  <button
-  key={`history-${track.videoId}-${idx}`}
-  onClick={() => playTrack(track)}
-  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
-  >
-  <img
-  src={track.thumbnail || "/placeholder.svg"}
-  alt={track.title}
-  className="w-10 h-10 rounded object-cover"
-  referrerPolicy="no-referrer"
-  />
-  <div className="flex-1 text-left">
-  <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
-  <p className="text-sm text-slate-400 line-clamp-1">{track.artist || track.subtitle}</p>
-  </div>
-  </button>
-  ))}
-              </div>
-            )}
-          </>
-        )}
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-4">Recently Played</h3>
+                    {recentlyPlayed.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Clock className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400">No listening history yet</p>
+                        <p className="text-sm text-slate-500 mt-1">Songs you play will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {recentlyPlayed.slice(0, 20).map((track, idx) => (
+                          <button
+                            key={`history-${track.videoId}-${idx}`}
+                            onClick={() => playTrack(track)}
+                            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
+                          >
+                            <img
+                              src={track.thumbnail || "/placeholder.svg"}
+                              alt={track.title}
+                              className="w-10 h-10 rounded object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="flex-1 text-left">
+                              <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+                              <p className="text-sm text-slate-400 line-clamp-1">{track.artist || track.subtitle}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
         
         {/* Padding at bottom for mini player */}
         {showPlayer && <div className="h-20" />}
