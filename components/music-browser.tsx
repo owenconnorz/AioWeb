@@ -2463,32 +2463,41 @@ useEffect(() => {
       document.body
     )}
     
-    {/* Full Screen Player - Metrolist Style */}
+    {/* Full Screen Player - Metrolist Style with Dynamic Theme */}
     {showFullPlayer && currentTrack && (
-      <div 
-        className="fixed inset-0 z-[9999] flex flex-col overscroll-none"
-        style={{ 
-          backgroundColor: '#1e2738',
-          minHeight: '100dvh',
-          touchAction: 'pan-x pinch-zoom',
-          transform: isDragging && dragOffset > 0 
-            ? `translateY(${dragOffset}px) scale(${1 - dragOffset * 0.0002})` 
-            : 'translateY(0) scale(1)',
-          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
-          borderRadius: isDragging && dragOffset > 0 ? `${Math.min(dragOffset * 0.1, 20)}px` : '0',
-        }}
-        onTouchStart={onTouchStartFull}
-        onTouchMove={onTouchMoveFull}
-        onTouchEnd={onTouchEndFull}
-      >
-        {/* Header - Now Playing */}
-        <div className="flex flex-col items-center pt-6 pb-4 shrink-0">
-          <p className="text-[#7a8599] text-sm font-medium">Now Playing</p>
-          <p className="text-[#7a8599] text-sm">{currentTrack.album || `${currentTrack.title} Mix`}</p>
-        </div>
+    <div
+    className="fixed inset-0 z-[9999] flex flex-col overscroll-none transition-colors duration-700"
+    style={{
+    backgroundColor: dynamicThemeEnabled ? secondaryColor : '#1e2738',
+    minHeight: '100dvh',
+    touchAction: 'pan-x pinch-zoom',
+    transform: isDragging && dragOffset > 0
+    ? `translateY(${dragOffset}px) scale(${1 - dragOffset * 0.0002})`
+    : 'translateY(0) scale(1)',
+    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.7s ease-out',
+    borderRadius: isDragging && dragOffset > 0 ? `${Math.min(dragOffset * 0.1, 20)}px` : '0',
+    }}
+    onTouchStart={onTouchStartFull}
+    onTouchMove={onTouchMoveFull}
+    onTouchEnd={onTouchEndFull}
+    >
+    {/* Gradient overlay for dynamic theme */}
+    <div 
+    className="absolute inset-0 transition-all duration-700 pointer-events-none"
+    style={{
+    background: dynamicThemeEnabled 
+    ? `linear-gradient(180deg, ${dominantColor}40 0%, ${secondaryColor} 40%, ${secondaryColor} 100%)`
+    : 'transparent'
+    }}
+    />
+    
+    {/* Header - Now Playing */}
+    <div className="relative z-10 flex flex-col items-center pt-6 pb-4 shrink-0">
+    <p className="text-white/60 text-sm font-medium">Now Playing</p>
+    </div>
 
-        {/* Album Art - Large with rounded corners */}
-        <div className="flex-1 flex items-center justify-center px-8 min-h-0">
+    {/* Album Art - Large with rounded corners */}
+    <div className="relative z-10 flex-1 flex items-center justify-center px-8 min-h-0">
           <img
             src={currentTrack.thumbnail?.replace('mqdefault', 'maxresdefault') || currentTrack.thumbnail || "/placeholder.svg"}
             alt={currentTrack.title}
@@ -2497,13 +2506,23 @@ useEffect(() => {
           />
         </div>
 
-        {/* Track Info with Share & Like buttons */}
-        <div className="px-8 py-4 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0 pr-4">
-              <h2 className="text-xl font-semibold text-white truncate">{currentTrack.title}</h2>
-              <p className="text-[#7a8599] truncate">{currentTrack.artist || currentTrack.subtitle}</p>
-            </div>
+    {/* Track Info with Share & Like buttons */}
+    <div className="relative z-10 px-8 py-4 shrink-0">
+    <div className="flex items-center justify-between">
+    <div className="flex-1 min-w-0 pr-4 overflow-hidden">
+    <div className="overflow-hidden">
+    <h2 
+    className={`text-xl font-semibold text-white whitespace-nowrap ${currentTrack.title.length > 25 ? 'animate-marquee' : ''}`}
+    style={{
+    animation: currentTrack.title.length > 25 ? 'marquee 10s linear infinite' : 'none',
+    }}
+    >
+    {currentTrack.title}
+    {currentTrack.title.length > 25 && <span className="px-12">{currentTrack.title}</span>}
+    </h2>
+    </div>
+    <p className="text-white/60 truncate">{currentTrack.artist || currentTrack.subtitle}</p>
+    </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -2525,8 +2544,8 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="px-8 py-2 shrink-0">
+    {/* Progress Bar */}
+    <div className="relative z-10 px-8 py-2 shrink-0">
           <div 
             ref={progressBarRef}
             className="w-full h-1 bg-[#3a4556] rounded-full overflow-hidden cursor-pointer touch-none"
@@ -2549,8 +2568,8 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Main Controls - Large rounded buttons */}
-        <div className="flex items-center justify-center gap-4 py-4 px-8 shrink-0">
+    {/* Main Controls - Large rounded buttons */}
+    <div className="relative z-10 flex items-center justify-center gap-4 py-4 px-8 shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -2586,8 +2605,8 @@ useEffect(() => {
           </Button>
         </div>
         
-        {/* Bottom Controls Row */}
-        <div className="flex items-center justify-between px-6 py-4 shrink-0">
+    {/* Bottom Controls Row */}
+    <div className="relative z-10 flex items-center justify-between px-6 py-4 shrink-0">
           <div className="flex items-center gap-2">
             {/* Queue */}
             <Button
