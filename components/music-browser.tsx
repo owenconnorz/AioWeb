@@ -1821,25 +1821,25 @@ useEffect(() => {
         {!loading && !error && searchResults.length === 0 && (
           <>
             {activeTab === "home" && (
-              <div>
-                {/* Listen Again (Recently Played) */}
+              <div className="space-y-6">
+                {/* Quick Picks - Metrolist Style Grid */}
                 {recentlyPlayed.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-xl font-bold text-white mb-4">Listen Again</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {recentlyPlayed.slice(0, 8).map((track, idx) => (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Quick picks</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {recentlyPlayed.slice(0, 6).map((track, idx) => (
                         <button
-                          key={`recent-${track.videoId}-${idx}`}
+                          key={`quick-${track.videoId}-${idx}`}
                           onClick={() => playTrack(track)}
-                          className="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-lg overflow-hidden transition-colors"
+                          className="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-md overflow-hidden transition-colors h-14"
                         >
                           <img
                             src={track.thumbnail || "/placeholder.svg"}
-                            alt={track.title}
-                            className="w-14 h-14 object-cover"
+                            alt=""
+                            className="w-14 h-14 object-cover flex-shrink-0"
                             referrerPolicy="no-referrer"
                           />
-                          <span className="text-sm text-white font-medium line-clamp-2 pr-2">
+                          <span className="text-sm text-white font-medium line-clamp-2 pr-3 text-left">
                             {track.title}
                           </span>
                         </button>
@@ -1848,114 +1848,130 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* Quick Picks - Charts */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-white mb-4">Quick Picks</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {CHARTS.map((chart) => (
-                      <button
-                        key={`home-${chart.id}`}
-                        onClick={() => {
-                          setSearchQuery(chart.id)
-                          setShowSearch(true)
-                          setTimeout(() => handleSearch(), 100)
-                        }}
-                        className={`aspect-[2/1] rounded-lg bg-gradient-to-br ${chart.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
-                      >
-                        <span className="text-white font-bold text-base drop-shadow-md">{chart.name}</span>
-                      </button>
-                    ))}
+                {/* Forgotten Favorites - Show if history exists */}
+                {recentlyPlayed.length > 6 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Forgotten favorites</h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+                      {recentlyPlayed.slice(6, 12).map((track, idx) => (
+                        <button
+                          key={`forgotten-${track.videoId}-${idx}`}
+                          onClick={() => playTrack(track)}
+                          className="flex-shrink-0 w-36 text-left group"
+                        >
+                          <div className="relative aspect-square rounded-lg overflow-hidden mb-2">
+                            <img
+                              src={track.thumbnail || "/placeholder.svg"}
+                              alt=""
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                              <Play className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="white" />
+                            </div>
+                          </div>
+                          <p className="text-sm text-white font-medium line-clamp-1">{track.title}</p>
+                          <p className="text-xs text-slate-400 line-clamp-1">{track.artist || "Unknown"}</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Moods for You */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-white mb-4">Moods for You</h3>
-                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {MOODS.slice(0, 6).map((mood) => (
-                      <button
-                        key={`home-mood-${mood.id}`}
-                        onClick={() => {
-                          setSearchQuery(`${mood.name} music`)
-                          setShowSearch(true)
-                          setTimeout(() => handleSearch(), 100)
-                        }}
-                        className={`flex-shrink-0 w-28 h-28 rounded-xl bg-gradient-to-br ${mood.color} hover:opacity-90 flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg`}
-                      >
-                        <span className="text-white font-bold text-sm drop-shadow-md">{mood.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Activities */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-white mb-4">Music for Every Moment</h3>
-                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {ACTIVITIES.slice(0, 6).map((activity) => (
-                      <button
-                        key={`home-activity-${activity.id}`}
-                        onClick={() => {
-                          setSearchQuery(activity.id)
-                          setShowSearch(true)
-                          setTimeout(() => handleSearch(), 100)
-                        }}
-                        className={`flex-shrink-0 w-32 h-20 rounded-xl bg-gradient-to-br ${activity.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
-                      >
-                        <span className="text-white font-bold text-sm drop-shadow-md">{activity.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Shelves from YT Music */}
+                {/* Shelves from YT Music - Clean Metrolist Style */}
                 {shelves.map((shelf, idx) => (
                   <ShelfSection key={`shelf-${idx}`} shelf={shelf} />
                 ))}
 
-                {/* Popular Genres */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-white mb-4">Popular Genres</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {GENRES.slice(0, 8).map((genre) => (
-                      <button
-                        key={`home-genre-${genre.id}`}
-                        onClick={() => {
-                          setSearchQuery(genre.id)
-                          setShowSearch(true)
-                          setTimeout(() => handleSearch(), 100)
-                        }}
-                        className={`aspect-video rounded-lg bg-gradient-to-br ${genre.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
-                      >
-                        <span className="text-white font-bold text-base drop-shadow-md">{genre.name}</span>
-                      </button>
-                    ))}
+                {/* Your Playlists - If user has any */}
+                {playlists.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Your playlists</h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+                      {playlists.map((playlist) => (
+                        <button
+                          key={`home-playlist-${playlist.id}`}
+                          onClick={() => {
+                            setSelectedPlaylist(playlist.id)
+                            setShowPlaylistPage(true)
+                          }}
+                          className="flex-shrink-0 w-36 text-left group"
+                        >
+                          <div className="relative aspect-square rounded-lg overflow-hidden mb-2 bg-white/5">
+                            {playlist.tracks.length >= 4 ? (
+                              <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+                                {playlist.tracks.slice(0, 4).map((track, tidx) => (
+                                  <img
+                                    key={`pl-cover-${tidx}`}
+                                    src={track.thumbnail || "/placeholder.svg"}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ))}
+                              </div>
+                            ) : playlist.tracks.length > 0 ? (
+                              <img
+                                src={playlist.tracks[0].thumbnail || "/placeholder.svg"}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Music className="w-12 h-12 text-slate-600" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm text-white font-medium line-clamp-1">{playlist.name}</p>
+                          <p className="text-xs text-slate-400">{playlist.tracks.length} songs</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Throwback */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-white mb-4">Throwback</h3>
-                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {DECADES.map((decade) => (
-                      <button
-                        key={`home-decade-${decade.id}`}
-                        onClick={() => {
-                          setSearchQuery(decade.id)
-                          setShowSearch(true)
-                          setTimeout(() => handleSearch(), 100)
-                        }}
-                        className={`flex-shrink-0 w-24 h-24 rounded-full bg-gradient-to-br ${decade.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                {/* Liked Songs Quick Access */}
+                {likedTracks.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-white">Liked songs</h3>
+                      <button 
+                        onClick={() => { setActiveTab("library"); setLibrarySubTab("liked"); }}
+                        className="text-sm text-slate-400 hover:text-white transition-colors"
                       >
-                        <span className="text-white font-bold text-lg drop-shadow-md">{decade.name}</span>
+                        View all
                       </button>
-                    ))}
+                    </div>
+                    <div className="space-y-1">
+                      {likedTracks.slice(0, 4).map((track, idx) => (
+                        <button
+                          key={`liked-home-${track.videoId}-${idx}`}
+                          onClick={() => playTrack(track, likedTracks)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        >
+                          <img
+                            src={track.thumbnail || "/placeholder.svg"}
+                            alt=""
+                            className="w-12 h-12 rounded object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm text-white font-medium line-clamp-1">{track.title}</p>
+                            <p className="text-xs text-slate-400 line-clamp-1">{track.artist || "Unknown"}</p>
+                          </div>
+                          <Heart className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" />
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 
-                {shelves.length === 0 && !loading && (
-                  <div className="text-center py-10">
-                    <p className="text-slate-400">Loading YouTube Music content...</p>
+                {shelves.length === 0 && recentlyPlayed.length === 0 && !loading && (
+                  <div className="text-center py-16">
+                    <Music className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">Welcome to Music</h3>
+                    <p className="text-slate-400 text-sm">Search for songs, artists, or albums to get started</p>
                   </div>
                 )}
               </div>
