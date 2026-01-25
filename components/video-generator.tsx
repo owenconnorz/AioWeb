@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Download, ThumbsUp, ThumbsDown, Play, Upload, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
+import { toast } from "sonner"
 
 interface VideoGenerationHistory {
   prompt: string
@@ -168,14 +169,21 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
             }
             setHistory((prev) => [...prev, newEntry])
             setIsLoading(false)
+            toast.success("Video generated", {
+              description: "Your animation is ready to view"
+            })
           } else if (statusData.status === "failed" || statusData.error) {
             clearInterval(pollInterval)
-            alert(`Error: ${statusData.error || "Video generation failed"}`)
+            toast.error("Generation failed", {
+              description: statusData.error || "Video generation failed"
+            })
             setProgress(0)
             setIsLoading(false)
           } else if (attempts >= maxAttempts) {
             clearInterval(pollInterval)
-            alert("Video generation timed out. Please try again.")
+            toast.error("Generation timed out", {
+              description: "Please try again"
+            })
             setProgress(0)
             setIsLoading(false)
           }
@@ -212,6 +220,10 @@ export function VideoGenerator({ selectedModel = "huggingface", onModelChange }:
     link.href = videoUrl
     link.download = videoUrl.includes("video/mp4") ? "generated-video.mp4" : "generated-video.png"
     link.click()
+    
+    toast.success("Download started", {
+      description: "Video is being downloaded"
+    })
   }
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {

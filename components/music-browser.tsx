@@ -8,6 +8,7 @@ import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compas
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOfflineMusic } from "@/hooks/use-offline-music"
+import { toast } from "sonner"
 
 interface Track {
   id: string
@@ -1140,20 +1141,27 @@ useEffect(() => {
   }, [queue, queueIndex, isRepeat, currentTime])
 
   const toggleLike = (track: Track) => {
-    setLikedTracks(prev => {
-      const isLiked = prev.some(t => t.videoId === track.videoId)
-      if (isLiked) {
-        return prev.filter(t => t.videoId !== track.videoId)
-      }
-      return [track, ...prev]
-    })
+  const wasLiked = likedTracks.some(t => t.videoId === track.videoId)
+  setLikedTracks(prev => {
+  const isLiked = prev.some(t => t.videoId === track.videoId)
+  if (isLiked) {
+  return prev.filter(t => t.videoId !== track.videoId)
+  }
+  return [track, ...prev]
+  })
+  toast(wasLiked ? "Removed from liked songs" : "Added to liked songs", {
+    description: track.title
+  })
   }
 
   const isLiked = (track: Track) => likedTracks.some(t => t.videoId === track.videoId)
   
   // Queue management
   const addToQueue = (track: Track) => {
-    setQueue(prev => [...prev, track])
+  setQueue(prev => [...prev, track])
+  toast.success("Added to queue", {
+    description: track.title
+  })
   }
   
   const removeFromQueue = (index: number) => {

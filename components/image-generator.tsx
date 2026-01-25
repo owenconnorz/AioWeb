@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2, Download, ThumbsUp, ThumbsDown, Upload, X } from "lucide-react"
-
+import { toast } from "sonner"
 import { Progress } from "@/components/ui/progress"
 
 interface ImageGenerationHistory {
@@ -141,6 +141,9 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
           timestamp: Date.now(),
         }
         setHistory((prev) => [...prev, newEntry])
+        toast.success("Image generated", {
+          description: `${data.images.length} image${data.images.length > 1 ? "s" : ""} ready`
+        })
       } else {
         throw new Error("No images were generated")
       }
@@ -148,6 +151,9 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
       console.error("Image generation error:", error)
       setError(error instanceof Error ? error.message : "Failed to generate image")
       setProgress(0)
+      toast.error("Generation failed", {
+        description: error instanceof Error ? error.message : "An error occurred"
+      })
     } finally {
       clearInterval(progressInterval)
       setIsLoading(false)
@@ -189,7 +195,14 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
       
       // Clean up the blob URL after a short delay
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+      
+      toast.success("Image downloaded", {
+        description: `generated-image-${index + 1}.png saved`
+      })
     } catch (err) {
+      toast.error("Download failed", {
+        description: "Opening image in new tab instead"
+      })
       // Fallback: open image in new tab if download fails
       const newTab = window.open()
       if (newTab) {
