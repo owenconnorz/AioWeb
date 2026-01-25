@@ -1848,10 +1848,110 @@ useEffect(() => {
                   </div>
                 )}
 
+                {/* Quick Picks - Charts */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Quick Picks</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {CHARTS.map((chart) => (
+                      <button
+                        key={`home-${chart.id}`}
+                        onClick={() => {
+                          setSearchQuery(chart.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`aspect-[2/1] rounded-lg bg-gradient-to-br ${chart.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-base drop-shadow-md">{chart.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Moods for You */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Moods for You</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {MOODS.slice(0, 6).map((mood) => (
+                      <button
+                        key={`home-mood-${mood.id}`}
+                        onClick={() => {
+                          setSearchQuery(`${mood.name} music`)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`flex-shrink-0 w-28 h-28 rounded-xl bg-gradient-to-br ${mood.color} hover:opacity-90 flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-sm drop-shadow-md">{mood.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Activities */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Music for Every Moment</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {ACTIVITIES.slice(0, 6).map((activity) => (
+                      <button
+                        key={`home-activity-${activity.id}`}
+                        onClick={() => {
+                          setSearchQuery(activity.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`flex-shrink-0 w-32 h-20 rounded-xl bg-gradient-to-br ${activity.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-sm drop-shadow-md">{activity.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Shelves from YT Music */}
                 {shelves.map((shelf, idx) => (
                   <ShelfSection key={`shelf-${idx}`} shelf={shelf} />
                 ))}
+
+                {/* Popular Genres */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Popular Genres</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {GENRES.slice(0, 8).map((genre) => (
+                      <button
+                        key={`home-genre-${genre.id}`}
+                        onClick={() => {
+                          setSearchQuery(genre.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`aspect-video rounded-lg bg-gradient-to-br ${genre.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-base drop-shadow-md">{genre.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Throwback */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Throwback</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {DECADES.map((decade) => (
+                      <button
+                        key={`home-decade-${decade.id}`}
+                        onClick={() => {
+                          setSearchQuery(decade.id)
+                          setShowSearch(true)
+                          setTimeout(() => handleSearch(), 100)
+                        }}
+                        className={`flex-shrink-0 w-24 h-24 rounded-full bg-gradient-to-br ${decade.color} hover:opacity-90 flex items-center justify-center transition-all hover:scale-105 shadow-lg`}
+                      >
+                        <span className="text-white font-bold text-lg drop-shadow-md">{decade.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 
                 {shelves.length === 0 && !loading && (
                   <div className="text-center py-10">
