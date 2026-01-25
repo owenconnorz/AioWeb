@@ -8,6 +8,7 @@ import { Search, Play, Pause, SkipForward, SkipBack, Heart, Repeat, Home, Compas
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOfflineMusic } from "@/hooks/use-offline-music"
+import { toast } from "sonner"
 
 interface Track {
   id: string
@@ -178,6 +179,7 @@ export function MusicBrowser({ onBack }: MusicBrowserProps) {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState("")
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
+  const [showPlaylistPage, setShowPlaylistPage] = useState(false)
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false)
   const [playlistPickerVisible, setPlaylistPickerVisible] = useState(false)
   const [trackForPlaylist, setTrackForPlaylist] = useState<Track | null>(null)
@@ -1139,20 +1141,27 @@ useEffect(() => {
   }, [queue, queueIndex, isRepeat, currentTime])
 
   const toggleLike = (track: Track) => {
-    setLikedTracks(prev => {
-      const isLiked = prev.some(t => t.videoId === track.videoId)
-      if (isLiked) {
-        return prev.filter(t => t.videoId !== track.videoId)
-      }
-      return [track, ...prev]
-    })
+  const wasLiked = likedTracks.some(t => t.videoId === track.videoId)
+  setLikedTracks(prev => {
+  const isLiked = prev.some(t => t.videoId === track.videoId)
+  if (isLiked) {
+  return prev.filter(t => t.videoId !== track.videoId)
+  }
+  return [track, ...prev]
+  })
+  toast(wasLiked ? "Removed from liked songs" : "Added to liked songs", {
+    description: track.title
+  })
   }
 
   const isLiked = (track: Track) => likedTracks.some(t => t.videoId === track.videoId)
   
   // Queue management
   const addToQueue = (track: Track) => {
-    setQueue(prev => [...prev, track])
+  setQueue(prev => [...prev, track])
+  toast.success("Added to queue", {
+    description: track.title
+  })
   }
   
   const removeFromQueue = (index: number) => {
@@ -1820,25 +1829,25 @@ useEffect(() => {
         {!loading && !error && searchResults.length === 0 && (
           <>
             {activeTab === "home" && (
-              <div>
-                {/* Listen Again (Recently Played) */}
+              <div className="space-y-6">
+                {/* Quick Picks - Metrolist Style Grid */}
                 {recentlyPlayed.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-xl font-bold text-white mb-4">Listen Again</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {recentlyPlayed.slice(0, 8).map((track, idx) => (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Quick picks</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {recentlyPlayed.slice(0, 6).map((track, idx) => (
                         <button
-                          key={`recent-${track.videoId}-${idx}`}
+                          key={`quick-${track.videoId}-${idx}`}
                           onClick={() => playTrack(track)}
-                          className="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-lg overflow-hidden transition-colors"
+                          className="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-md overflow-hidden transition-colors h-14"
                         >
                           <img
                             src={track.thumbnail || "/placeholder.svg"}
-                            alt={track.title}
-                            className="w-14 h-14 object-cover"
+                            alt=""
+                            className="w-14 h-14 object-cover flex-shrink-0"
                             referrerPolicy="no-referrer"
                           />
-                          <span className="text-sm text-white font-medium line-clamp-2 pr-2">
+                          <span className="text-sm text-white font-medium line-clamp-2 pr-3 text-left">
                             {track.title}
                           </span>
                         </button>
@@ -1847,14 +1856,130 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* Shelves from YT Music */}
+                {/* Forgotten Favorites - Show if history exists */}
+                {recentlyPlayed.length > 6 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Forgotten favorites</h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+                      {recentlyPlayed.slice(6, 12).map((track, idx) => (
+                        <button
+                          key={`forgotten-${track.videoId}-${idx}`}
+                          onClick={() => playTrack(track)}
+                          className="flex-shrink-0 w-36 text-left group"
+                        >
+                          <div className="relative aspect-square rounded-lg overflow-hidden mb-2">
+                            <img
+                              src={track.thumbnail || "/placeholder.svg"}
+                              alt=""
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                              <Play className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="white" />
+                            </div>
+                          </div>
+                          <p className="text-sm text-white font-medium line-clamp-1">{track.title}</p>
+                          <p className="text-xs text-slate-400 line-clamp-1">{track.artist || "Unknown"}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Shelves from YT Music - Clean Metrolist Style */}
                 {shelves.map((shelf, idx) => (
                   <ShelfSection key={`shelf-${idx}`} shelf={shelf} />
                 ))}
+
+                {/* Your Playlists - If user has any */}
+                {playlists.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-3">Your playlists</h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+                      {playlists.map((playlist) => (
+                        <button
+                          key={`home-playlist-${playlist.id}`}
+                          onClick={() => {
+                            setSelectedPlaylist(playlist.id)
+                            setShowPlaylistPage(true)
+                          }}
+                          className="flex-shrink-0 w-36 text-left group"
+                        >
+                          <div className="relative aspect-square rounded-lg overflow-hidden mb-2 bg-white/5">
+                            {playlist.tracks.length >= 4 ? (
+                              <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+                                {playlist.tracks.slice(0, 4).map((track, tidx) => (
+                                  <img
+                                    key={`pl-cover-${tidx}`}
+                                    src={track.thumbnail || "/placeholder.svg"}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ))}
+                              </div>
+                            ) : playlist.tracks.length > 0 ? (
+                              <img
+                                src={playlist.tracks[0].thumbnail || "/placeholder.svg"}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Music className="w-12 h-12 text-slate-600" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm text-white font-medium line-clamp-1">{playlist.name}</p>
+                          <p className="text-xs text-slate-400">{playlist.tracks.length} songs</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Liked Songs Quick Access */}
+                {likedTracks.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-white">Liked songs</h3>
+                      <button 
+                        onClick={() => { setActiveTab("library"); setLibrarySubTab("liked"); }}
+                        className="text-sm text-slate-400 hover:text-white transition-colors"
+                      >
+                        View all
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      {likedTracks.slice(0, 4).map((track, idx) => (
+                        <button
+                          key={`liked-home-${track.videoId}-${idx}`}
+                          onClick={() => playTrack(track, likedTracks)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        >
+                          <img
+                            src={track.thumbnail || "/placeholder.svg"}
+                            alt=""
+                            className="w-12 h-12 rounded object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm text-white font-medium line-clamp-1">{track.title}</p>
+                            <p className="text-xs text-slate-400 line-clamp-1">{track.artist || "Unknown"}</p>
+                          </div>
+                          <Heart className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
-                {shelves.length === 0 && !loading && (
-                  <div className="text-center py-10">
-                    <p className="text-slate-400">Loading YouTube Music content...</p>
+                {shelves.length === 0 && recentlyPlayed.length === 0 && !loading && (
+                  <div className="text-center py-16">
+                    <Music className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">Welcome to Music</h3>
+                    <p className="text-slate-400 text-sm">Search for songs, artists, or albums to get started</p>
                   </div>
                 )}
               </div>
@@ -2147,10 +2272,37 @@ useEffect(() => {
                         <button
                           key={playlist.id}
                           className="flex flex-col items-start p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-left"
-                          onClick={() => setSelectedPlaylist(playlist.id)}
+                          onClick={() => {
+                            setSelectedPlaylist(playlist.id)
+                            setShowPlaylistPage(true)
+                          }}
                         >
-                          <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center mb-2">
-                            <Music className="w-8 h-8 text-white" />
+                          {/* Playlist Cover - 2x2 Grid of first 4 tracks or gradient fallback */}
+                          <div className="w-full aspect-square rounded-lg overflow-hidden mb-2">
+                            {playlist.tracks.length >= 4 ? (
+                              <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+                                {playlist.tracks.slice(0, 4).map((track, idx) => (
+                                  <img
+                                    key={`cover-${playlist.id}-${idx}`}
+                                    src={track.thumbnail || "/placeholder.svg"}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ))}
+                              </div>
+                            ) : playlist.tracks.length > 0 ? (
+                              <img
+                                src={playlist.tracks[0].thumbnail || "/placeholder.svg"}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
+                                <Music className="w-8 h-8 text-white" />
+                              </div>
+                            )}
                           </div>
                           <h4 className="text-white font-medium text-sm truncate w-full">{playlist.name}</h4>
                           <p className="text-xs text-slate-400">{playlist.tracks.length} songs</p>
@@ -2740,6 +2892,222 @@ useEffect(() => {
           </button>
         </div>
       </div>,
+      document.body
+    )}
+    
+    {/* User Playlist Page - Full Screen Portal */}
+    {showPlaylistPage && selectedPlaylist && isMounted && createPortal(
+      (() => {
+        const playlist = playlists.find(p => p.id === selectedPlaylist)
+        if (!playlist) return null
+        
+        return (
+          <div className="fixed inset-0 z-[9999] flex flex-col bg-black overflow-hidden w-screen max-w-full">
+            {/* Header */}
+            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-white hover:bg-white/10 flex-shrink-0"
+                onClick={() => {
+                  setShowPlaylistPage(false)
+                  setSelectedPlaylist(null)
+                }}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-lg font-bold text-white truncate flex-1 mx-4 text-center">{playlist.name}</h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-white hover:bg-white/10 flex-shrink-0"
+                onClick={() => {
+                  // Delete playlist
+                  if (confirm(`Delete playlist "${playlist.name}"?`)) {
+                    setPlaylists(prev => prev.filter(p => p.id !== selectedPlaylist))
+                    setShowPlaylistPage(false)
+                    setSelectedPlaylist(null)
+                  }
+                }}
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto overflow-x-hidden w-full pt-16">
+              {/* Playlist Header with 2x2 Cover */}
+              <div className="flex flex-col items-center px-4 py-6">
+                {/* 2x2 Album Art Grid Cover */}
+                <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-lg overflow-hidden shadow-2xl">
+                  {playlist.tracks.length >= 4 ? (
+                    <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+                      {playlist.tracks.slice(0, 4).map((track, idx) => (
+                        <img
+                          key={`playlist-cover-${idx}`}
+                          src={track.thumbnail || "/placeholder.svg"}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ))}
+                    </div>
+                  ) : playlist.tracks.length > 0 ? (
+                    <img
+                      src={playlist.tracks[0].thumbnail || "/placeholder.svg"}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
+                      <Music className="w-16 h-16 text-white" />
+                    </div>
+                  )}
+                </div>
+                
+                <h2 className="text-xl sm:text-2xl font-bold text-white mt-4 text-center">{playlist.name}</h2>
+                <p className="text-slate-400 text-sm mt-1">{playlist.tracks.length} songs</p>
+                
+                {/* Play/Shuffle Buttons */}
+                <div className="flex items-center gap-4 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full border-white/50 text-white bg-transparent hover:bg-white/10 flex items-center gap-2 px-6"
+                    onClick={() => {
+                      if (playlist.tracks.length > 0) {
+                        playTrack(playlist.tracks[0], playlist.tracks)
+                      }
+                    }}
+                    disabled={playlist.tracks.length === 0}
+                  >
+                    <Play className="h-4 w-4 fill-white" />
+                    Play
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white h-10 w-10"
+                    onClick={() => {
+                      if (playlist.tracks.length > 0) {
+                        const shuffled = [...playlist.tracks].sort(() => Math.random() - 0.5)
+                        playTrack(shuffled[0], shuffled)
+                      }
+                    }}
+                    disabled={playlist.tracks.length === 0}
+                  >
+                    <Shuffle className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Track List */}
+              <div className="px-4 pb-32">
+                <h3 className="text-lg font-bold text-white mb-3">Tracks</h3>
+                {playlist.tracks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Music className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-400">This playlist is empty</p>
+                    <p className="text-sm text-slate-500 mt-1">Add songs from the track menu</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {playlist.tracks.map((track, idx) => (
+                      <div
+                        key={`playlist-track-${track.videoId}-${idx}`}
+                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition-colors group"
+                      >
+                        <button
+                          className="flex items-center gap-3 flex-1 min-w-0"
+                          onClick={() => playTrack(track, playlist.tracks)}
+                        >
+                          <span className="w-6 text-slate-500 text-sm text-center">{idx + 1}</span>
+                          <img
+                            src={track.thumbnail || "/placeholder.svg"}
+                            alt={track.title}
+                            className="w-12 h-12 rounded object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="flex-1 text-left min-w-0">
+                            <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
+                            <p className="text-sm text-slate-400 line-clamp-1">{track.artist}</p>
+                          </div>
+                        </button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            // Remove track from playlist
+                            setPlaylists(prev => prev.map(p => 
+                              p.id === selectedPlaylist 
+                                ? { ...p, tracks: p.tracks.filter((_, i) => i !== idx) }
+                                : p
+                            ))
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <button
+                          className="p-2 -mr-2 hover:bg-white/10 rounded-full transition-colors"
+                          onClick={(e) => openTrackMenu(track, e)}
+                        >
+                          <MoreVertical className="h-5 w-5 text-slate-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Mini Player */}
+            {showPlayer && currentTrack && !showFullPlayer && (
+              <div
+                className="absolute bottom-14 left-0 right-0 border-t border-white/10"
+                style={{
+                  background: dynamicThemeEnabled
+                    ? `linear-gradient(to right, ${secondaryColor}, ${dominantColor})`
+                    : 'linear-gradient(to right, #0f172a, #1e293b)',
+                }}
+                onClick={() => setShowFullPlayer(true)}
+              >
+                <div className="flex items-center gap-3 p-3">
+                  <img src={currentTrack.thumbnail || "/placeholder.svg"} alt={currentTrack.title} className="w-12 h-12 rounded-lg object-cover" referrerPolicy="no-referrer" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{currentTrack.title}</p>
+                    <p className="text-white/60 text-xs truncate">{currentTrack.artist}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-white" onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
+                      {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-white" onClick={(e) => { e.stopPropagation(); playNext(); }}>
+                      <SkipForward className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Bottom Navigation */}
+            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around p-2 bg-black/90 border-t border-white/10">
+              <button onClick={() => { setShowPlaylistPage(false); setSelectedPlaylist(null); setActiveTab("home"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+                <Home className="h-5 w-5" />
+                <span className="text-xs">Home</span>
+              </button>
+              <button onClick={() => { setShowPlaylistPage(false); setSelectedPlaylist(null); setActiveTab("explore"); }} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-white">
+                <Compass className="h-5 w-5" />
+                <span className="text-xs">Explore</span>
+              </button>
+              <button onClick={() => { setShowPlaylistPage(false); setSelectedPlaylist(null); setActiveTab("library"); }} className="flex flex-col items-center gap-1 p-2 text-white">
+                <Library className="h-5 w-5" />
+                <span className="text-xs">Library</span>
+              </button>
+            </div>
+          </div>
+        )
+      })(),
       document.body
     )}
   

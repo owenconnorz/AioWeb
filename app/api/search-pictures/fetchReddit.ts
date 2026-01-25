@@ -118,6 +118,9 @@ export async function fetchReddit(subreddit: string, sort: string, after: string
         let isVideo = false
         
         // Reddit hosted video - use HLS playlist for better compatibility
+        let audioUrl = null
+        let hasAudio = false
+        
         if (p.is_video && p.media?.reddit_video) {
           const redditVideo = p.media.reddit_video
           // Prefer HLS stream if available, fallback to direct URL
@@ -128,6 +131,19 @@ export async function fetchReddit(subreddit: string, sort: string, after: string
             videoUrl = redditVideo.fallback_url.replace(/\?source=fallback$/, "")
           }
           isVideo = true
+          
+          // Check if video has audio and construct audio URL
+          // Reddit stores audio separately at DASH_AUDIO_128.mp4 or DASH_audio.mp4
+          if (redditVideo.has_audio !== false) {
+            // Extract base URL from the video URL (remove DASH_xxx.mp4 part)
+            const baseVideoUrl = redditVideo.fallback_url?.replace(/DASH_\d+\.mp4.*$/, "") || 
+                                 redditVideo.fallback_url?.replace(/DASH_[^/]+\.mp4.*$/, "")
+            if (baseVideoUrl) {
+              // Try 128kbps audio first (most common)
+              audioUrl = `${baseVideoUrl}DASH_AUDIO_128.mp4`
+              hasAudio = true
+            }
+          }
         }
         // Embedded video (redgifs, gfycat, etc)
         else if (p.post_hint === "rich:video") {
@@ -191,6 +207,8 @@ export async function fetchReddit(subreddit: string, sort: string, after: string
           title: p.title || "Untitled",
           url: mediaUrl,
           videoUrl,
+          audioUrl,
+          hasAudio,
           thumbnail: thumbnail && thumbnail !== "self" && thumbnail !== "default" ? thumbnail : preview || mediaUrl,
           preview: preview || mediaUrl,
           tags: [p.subreddit, ...(p.link_flair_text ? [p.link_flair_text] : [])],
