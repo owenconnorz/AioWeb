@@ -5,7 +5,7 @@ import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, ExternalLink, Loader2, ArrowRight, X, Play, Heart, Share2, MessageCircle } from "lucide-react"
+import { Search, ExternalLink, Loader2, ArrowRight, X, Play, Heart, Share2, MessageCircle, Volume2, VolumeX } from "lucide-react"
 
 interface Gallery {
   id: string
@@ -16,6 +16,10 @@ interface Gallery {
   tags: string[]
   photos?: string[]
   isVideo?: boolean
+  videoUrl?: string
+  audioUrl?: string
+  hasAudio?: boolean
+  permalink?: string
 }
 
 const loadingCache = new Map<string, Promise<void>>()
@@ -36,7 +40,9 @@ export function PornPictures() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
+  const audioRefs = useRef<(HTMLAudioElement | null)[]>([])
   const playingVideos = useRef<Set<number>>(new Set())
+  const [isMuted, setIsMuted] = useState(true)
 
   const getVideoUrl = (url: string) => {
     if (apiSource === "redgifs" && url.includes("redgifs.com")) {
@@ -50,6 +56,45 @@ export function PornPictures() {
       return `/api/proxy-media?url=${encodeURIComponent(url)}`
     }
     return url
+  }
+
+  const syncAudioWithVideo = (video: HTMLVideoElement, audio: HTMLAudioElement | null) => {
+    if (!audio) return
+    
+    // Sync audio time with video
+    const syncTime = () => {
+      if (Math.abs(audio.currentTime - video.currentTime) > 0.3) {
+        audio.currentTime = video.currentTime
+      }
+    }
+    
+    // Handle video events
+    const handlePlay = () => {
+      if (!isMuted) {
+        audio.currentTime = video.currentTime
+        audio.play().catch(() => {})
+      }
+    }
+    
+    const handlePause = () => {
+      audio.pause()
+    }
+    
+    const handleSeeked = () => {
+      audio.currentTime = video.currentTime
+    }
+    
+    video.addEventListener("play", handlePlay)
+    video.addEventListener("pause", handlePause)
+    video.addEventListener("seeked", handleSeeked)
+    video.addEventListener("timeupdate", syncTime)
+    
+    return () => {
+      video.removeEventListener("play", handlePlay)
+      video.removeEventListener("pause", handlePause)
+      video.removeEventListener("seeked", handleSeeked)
+      video.removeEventListener("timeupdate", syncTime)
+    }
   }
 
   const preloadVideo = (video: HTMLVideoElement, priority: "high" | "medium" | "low") => {
@@ -105,11 +150,12 @@ export function PornPictures() {
   }, [apiSource])
 
   useEffect(() => {
-    if (!feedView || apiSource !== "redgifs") return
+    if (!feedView || (apiSource !== "redgifs" && apiSource !== "reddit")) return
 
     const timeoutId = setTimeout(() => {
       videoRefs.current.forEach((video, idx) => {
         if (!video) return
+        const audio = audioRefs.current[idx]
 
         const distance = Math.abs(idx - currentVideoIndex)
 
@@ -121,18 +167,25 @@ export function PornPictures() {
             video.play().catch(() => {
               playingVideos.current.delete(idx)
             })
+            // Play audio if not muted and audio exists
+            if (audio && !isMuted) {
+              audio.currentTime = video.currentTime
+              audio.play().catch(() => {})
+            }
           }
         } else if (distance === 1) {
           // Adjacent videos: medium priority
           preloadVideo(video, "medium")
           if (playingVideos.current.has(idx)) {
             video.pause()
+            if (audio) audio.pause()
             playingVideos.current.delete(idx)
           }
         } else {
           // Far videos: pause and unload
           if (playingVideos.current.has(idx)) {
             video.pause()
+            if (audio) audio.pause()
             playingVideos.current.delete(idx)
           }
           video.preload = "none"
@@ -144,10 +197,10 @@ export function PornPictures() {
     }, 150) // Debounce to prevent rapid changes
 
     return () => clearTimeout(timeoutId)
-  }, [currentVideoIndex, feedView, apiSource])
+  }, [currentVideoIndex, feedView, apiSource, isMuted])
 
   useEffect(() => {
-    if (!feedView || apiSource !== "redgifs") return
+    if (!feedView || (apiSource !== "redgifs" && apiSource !== "reddit")) return
 
     const handleScroll = () => {
       const container = document.querySelector(".feed-container")
@@ -181,8 +234,8 @@ export function PornPictures() {
     const mainNav = document.querySelector("nav.fixed.bottom-4")
     const topNav = document.querySelector(".glass-nav-pill")
 
-    if (feedView && apiSource === "redgifs") {
-      if (mainNav) (mainNav as HTMLElement).style.display = "none"
+  if (feedView && (apiSource === "redgifs" || apiSource === "reddit")) {
+    if (mainNav) (mainNav as HTMLElement).style.display = "none"
       if (topNav && topNav.parentElement?.parentElement?.classList.contains("mb-6")) {
         ;(topNav.parentElement as HTMLElement).style.display = "none"
       }
@@ -255,11 +308,14 @@ export function PornPictures() {
   }
 
   const handleCategoryClick = (gallery: Gallery, index: number) => {
-    if (apiSource === "redgifs") {
-      setCurrentVideoIndex(index)
+    if (apiSource === "redgifs" || (apiSource === "reddit" && gallery.isVideo)) {
+      // For Reddit, we need to find the index in the filtered video galleries
+      const videoGalleries = galleries.filter(g => g.isVideo)
+      const videoIndex = videoGalleries.findIndex(g => g.id === gallery.id)
+      setCurrentVideoIndex(videoIndex >= 0 ? videoIndex : index)
       setFeedView(true)
     } else {
-      window.open(gallery.url, "_blank", "noopener,noreferrer")
+      window.open(gallery.url || gallery.permalink, "_blank", "noopener,noreferrer")
     }
   }
 
@@ -272,7 +328,28 @@ export function PornPictures() {
     loadGalleries()
   }
 
-  if (feedView && apiSource === "redgifs") {
+  const toggleMute = () => {
+    setIsMuted((prev) => {
+      const newMuted = !prev
+      const currentVideo = videoRefs.current[currentVideoIndex]
+      const currentAudio = audioRefs.current[currentVideoIndex]
+      
+      if (currentAudio) {
+        if (newMuted) {
+          currentAudio.pause()
+        } else if (currentVideo && !currentVideo.paused) {
+          currentAudio.currentTime = currentVideo.currentTime
+          currentAudio.play().catch(() => {})
+        }
+      }
+      
+      return newMuted
+    })
+  }
+
+  if (feedView && (apiSource === "redgifs" || apiSource === "reddit")) {
+    const videoGalleries = galleries.filter(g => g.isVideo)
+    
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <button
@@ -283,70 +360,111 @@ export function PornPictures() {
           <X className="h-6 w-6 text-white" />
         </button>
 
-        <button
-          onClick={handleRefresh}
-          className="absolute right-4 top-4 z-50 rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
-          aria-label="Refresh"
-        >
-          <ArrowRight className="h-6 w-6 rotate-90 text-white" />
-        </button>
+        <div className="absolute right-4 top-4 z-50 flex gap-2">
+          {/* Mute/Unmute button - only show if any video has audio */}
+          {videoGalleries.some(g => g.hasAudio || g.audioUrl) && (
+            <button
+              onClick={toggleMute}
+              className="rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+              aria-label={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? (
+                <VolumeX className="h-6 w-6 text-white" />
+              ) : (
+                <Volume2 className="h-6 w-6 text-white" />
+              )}
+            </button>
+          )}
+          <button
+            onClick={handleRefresh}
+            className="rounded-full bg-black/50 p-3 backdrop-blur-sm transition-colors hover:bg-black/70"
+            aria-label="Refresh"
+          >
+            <ArrowRight className="h-6 w-6 rotate-90 text-white" />
+          </button>
+        </div>
 
         <div className="feed-container h-screen w-full snap-y snap-mandatory overflow-y-scroll">
-          {galleries.map((gallery, index) => (
-            <div key={gallery.id} className="relative h-screen w-full snap-start snap-always">
-              <video
-                ref={(el) => {
-                  videoRefs.current[index] = el
-                }}
-                src={getVideoUrl(gallery.url)}
-                poster={getVideoUrl(gallery.thumbnail)}
-                loop
-                playsInline
-                muted
-                className="h-full w-full object-contain bg-black"
-                crossOrigin="anonymous"
-              />
-
-              <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                <h3 className="mb-2 text-xl font-bold text-white">{gallery.title}</h3>
-                {gallery.tags && gallery.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {gallery.tags.slice(0, 3).map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="rounded-full bg-white/20 px-3 py-1 text-xs text-white backdrop-blur-sm"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
+          {videoGalleries.map((gallery, index) => {
+            const videoSrc = apiSource === "reddit" 
+              ? (gallery.videoUrl || gallery.url) 
+              : getVideoUrl(gallery.url)
+            
+            return (
+              <div key={gallery.id} className="relative h-screen w-full snap-start snap-always">
+                <video
+                  ref={(el) => {
+                    videoRefs.current[index] = el
+                  }}
+                  src={videoSrc}
+                  poster={apiSource === "reddit" ? gallery.thumbnail : getVideoUrl(gallery.thumbnail)}
+                  loop
+                  playsInline
+                  muted
+                  className="h-full w-full object-contain bg-black"
+                  crossOrigin="anonymous"
+                />
+                
+                {/* Hidden audio element for Reddit videos with audio */}
+                {apiSource === "reddit" && gallery.audioUrl && (
+                  <audio
+                    ref={(el) => {
+                      audioRefs.current[index] = el
+                    }}
+                    src={gallery.audioUrl}
+                    loop
+                    preload="metadata"
+                  />
                 )}
+
+                <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                  <h3 className="mb-2 text-xl font-bold text-white">{gallery.title}</h3>
+                  {gallery.tags && gallery.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {gallery.tags.slice(0, 3).map((tag, idx) => (
+                        <span
+                          key={idx}
+                          className="rounded-full bg-white/20 px-3 py-1 text-xs text-white backdrop-blur-sm"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Audio indicator */}
+                  {gallery.hasAudio && (
+                    <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
+                      <Volume2 className="h-3 w-3" />
+                      <span>Has audio</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="absolute bottom-32 right-4 flex flex-col gap-6">
+                  <button className="flex flex-col items-center gap-1">
+                    <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                      <Heart className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs text-white">Like</span>
+                  </button>
+
+                  <button className="flex flex-col items-center gap-1">
+                    <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                      <MessageCircle className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs text-white">Comment</span>
+                  </button>
+
+                  <button className="flex flex-col items-center gap-1">
+                    <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
+                      <Share2 className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs text-white">Share</span>
+                  </button>
+                </div>
               </div>
-
-              <div className="absolute bottom-32 right-4 flex flex-col gap-6">
-                <button className="flex flex-col items-center gap-1">
-                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    <Heart className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-xs text-white">Like</span>
-                </button>
-
-                <button className="flex flex-col items-center gap-1">
-                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    <MessageCircle className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-xs text-white">Comment</span>
-                </button>
-
-                <button className="flex flex-col items-center gap-1">
-                  <div className="rounded-full bg-white/20 p-3 backdrop-blur-sm transition-colors hover:bg-white/30">
-                    <Share2 className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-xs text-white">Share</span>
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     )
@@ -479,19 +597,26 @@ export function PornPictures() {
                     </div>
 
                     <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
-                      {gallery.isVideo && apiSource === "redgifs" ? (
+                      {gallery.isVideo && (apiSource === "redgifs" || apiSource === "reddit") ? (
                         <div className="relative h-full w-full">
                           <img
-                            src={getVideoUrl(gallery.thumbnail) || "/placeholder.svg"}
+                            src={apiSource === "reddit" ? gallery.thumbnail : getVideoUrl(gallery.thumbnail) || "/placeholder.svg"}
                             alt={gallery.title}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                            <div className="rounded-full bg-purple-600/90 p-4 backdrop-blur-sm transition-transform group-hover:scale-110">
+                            <div className={`rounded-full p-4 backdrop-blur-sm transition-transform group-hover:scale-110 ${apiSource === "reddit" ? "bg-orange-500/90" : "bg-purple-600/90"}`}>
                               <Play className="h-8 w-8 text-white" fill="white" />
                             </div>
                           </div>
+                          {/* Audio indicator */}
+                          {gallery.hasAudio && (
+                            <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-xs text-white backdrop-blur-sm">
+                              <Volume2 className="h-3 w-3" />
+                              <span>Audio</span>
+                            </div>
+                          )}
                         </div>
                       ) : gallery.thumbnail ? (
                         <Image

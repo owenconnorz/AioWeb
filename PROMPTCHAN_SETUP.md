@@ -20,9 +20,9 @@ This guide will help you set up PromptChan AI for image and video generation in 
 
 Create a `.env.local` file in your project root and add:
 
-```env
+\`\`\`env
 PROMPTCHAN_API_KEY=your_api_key_here
-```
+\`\`\`
 
 ### For Vercel Deployment
 
