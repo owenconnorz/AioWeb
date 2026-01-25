@@ -1177,29 +1177,68 @@ if (false) { // Popup feed view no longer used
 
   const handleDownload = async (video: Video) => {
     try {
-      const videoUrl = video.url || video.embed
-      if (!videoUrl) return
+      // Get the actual video URL - Reddit stores it in videoUrl property
+      const mediaUrl = (video as any).videoUrl || video.url || video.embed
+      if (!mediaUrl) return
 
-      // For RedGifs, use the proxy to download
-      const downloadUrl = videoUrl.includes("redgifs.com")
-        ? `/api/proxy-media?url=${encodeURIComponent(videoUrl)}&download=true`
-        : videoUrl
+      // Check if it's a downloadable video (not an iframe embed like redgifs.com/watch)
+      const isDirectVideo = mediaUrl.includes(".mp4") || 
+                           mediaUrl.includes(".webm") || 
+                           mediaUrl.includes("v.redd.it") ||
+                           mediaUrl.includes(".m3u8")
+      
+      // For Reddit and RedGifs direct videos, use the proxy to download
+      const needsProxy = mediaUrl.includes("redd.it") || 
+                        mediaUrl.includes("redgifs.com") ||
+                        mediaUrl.includes("imgur.com")
+      
+      if (!isDirectVideo) {
+        // Can't download iframe embeds, open in new tab instead
+        window.open(mediaUrl, "_blank")
+        return
+      }
+
+      const downloadUrl = needsProxy
+        ? `/api/proxy-media?url=${encodeURIComponent(mediaUrl)}&download=true`
+        : mediaUrl
 
       const response = await fetch(downloadUrl)
+      
+      if (!response.ok) {
+        throw new Error("Download failed")
+      }
+      
       const blob = await response.blob()
+      
+      // Determine file extension
+      const contentType = response.headers.get("content-type") || ""
+      let extension = ".mp4"
+      if (contentType.includes("webm")) extension = ".webm"
+      else if (contentType.includes("gif")) extension = ".gif"
+      else if (mediaUrl.includes(".webm")) extension = ".webm"
+      else if (mediaUrl.includes(".gif")) extension = ".gif"
+      
+      // Sanitize filename
+      const filename = (video.title || video.id || "video")
+        .replace(/[^a-zA-Z0-9\s-]/g, "")
+        .replace(/\s+/g, "_")
+        .substring(0, 50)
       
       // Create download link
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${video.title || video.id || "video"}.mp4`
+      a.download = `${filename}${extension}`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
     } catch (err) {
       // Fallback: open in new tab
-      window.open(video.url || video.embed, "_blank")
+      const fallbackUrl = (video as any).videoUrl || video.url || video.embed
+      if (fallbackUrl) {
+        window.open(fallbackUrl, "_blank")
+      }
     }
   }
 
@@ -1451,35 +1490,37 @@ const getEmbedUrl = (video: Video, quality?: string) => {
         </div>
       )}
 
-      {/* Search Bar */}
-      <div className="flex gap-2">
-        <Input
-          type="text"
-          placeholder={apiSource === "reddit" ? "Enter subreddit name..." : "Search videos..."}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          className="flex-1 border-slate-700 bg-slate-800/50 text-white placeholder:text-slate-400"
-        />
-        <Button onClick={handleSearch} className="bg-violet-600 hover:bg-violet-700">
-          <Search className="h-5 w-5" />
-        </Button>
-        {apiSource === "xvidapi" && (
-          <Button
-            onClick={() => setShowCategories(true)}
-            variant="outline"
-            className="border-slate-700 bg-slate-800/50 text-white"
-          >
-            <Menu className="h-5 w-5" />
+      {/* Search Bar - hidden for Reddit since we use quick nav */}
+      {apiSource !== "reddit" && (
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            placeholder="Search videos..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="flex-1 border-slate-700 bg-slate-800/50 text-white placeholder:text-slate-400"
+          />
+          <Button onClick={handleSearch} className="bg-violet-600 hover:bg-violet-700">
+            <Search className="h-5 w-5" />
           </Button>
-        )}
-      </div>
+          {apiSource === "xvidapi" && (
+            <Button
+              onClick={() => setShowCategories(true)}
+              variant="outline"
+              className="border-slate-700 bg-slate-800/50 text-white"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Inline Feed View for Reddit, RedGifs, Cam4, Chaturbate */}
       {(apiSource === "reddit" || apiSource === "redgifs" || apiSource === "cam4" || apiSource === "chaturbate") && videos.length > 0 && !loading ? (
         <div className="relative -mx-4 sm:-mx-6">
           <div 
-            className="feed-container h-[calc(100vh-280px)] w-full snap-y snap-mandatory overflow-y-scroll"
+            className="feed-container h-[calc(100vh-200px)] w-full snap-y snap-mandatory overflow-y-scroll"
             ref={(el) => {
               if (el) {
                 el.addEventListener('scroll', () => {
@@ -1513,7 +1554,7 @@ const getEmbedUrl = (video: Video, quality?: string) => {
             }}
           >
             {videos.map((video, index) => (
-              <div key={`${video.id}-${index}`} className="relative h-[calc(100vh-280px)] w-full snap-start snap-always bg-black">
+              <div key={`${video.id}-${index}`} className="relative h-[calc(100vh-200px)] w-full snap-start snap-always bg-black">
                 {(() => {
                   // Handle different API sources
                   if (apiSource === "redgifs") {

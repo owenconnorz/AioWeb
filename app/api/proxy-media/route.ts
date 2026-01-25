@@ -15,6 +15,8 @@ export async function GET(request: Request) {
         headers: { "Content-Type": "application/json" },
       })
     }
+    
+    const isDownload = url.searchParams.get("download") === "true"
 
     const cached = cache.get(targetUrl)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -35,6 +37,12 @@ export async function GET(request: Request) {
     } else if (targetUrl.includes("embed.redtube.com")) {
       referer = "https://embed.redtube.com/"
       origin = "https://embed.redtube.com"
+    } else if (targetUrl.includes("redd.it") || targetUrl.includes("reddit.com")) {
+      referer = "https://www.reddit.com/"
+      origin = "https://www.reddit.com"
+    } else if (targetUrl.includes("imgur.com")) {
+      referer = "https://imgur.com/"
+      origin = "https://imgur.com"
     }
 
     const fetchHeaders: HeadersInit = {
@@ -81,6 +89,14 @@ export async function GET(request: Request) {
     if (contentLength) responseHeaders["Content-Length"] = contentLength
     if (acceptRanges) responseHeaders["Accept-Ranges"] = acceptRanges
     if (contentRange) responseHeaders["Content-Range"] = contentRange
+    
+    // Add content-disposition for downloads
+    if (isDownload) {
+      // Extract filename from URL or use default
+      const urlPath = new URL(targetUrl).pathname
+      const filename = urlPath.split("/").pop() || "video.mp4"
+      responseHeaders["Content-Disposition"] = `attachment; filename="${filename}"`
+    }
 
     if (!range && buffer.byteLength < 10 * 1024 * 1024) {
       cache.set(targetUrl, { data: buffer, headers: responseHeaders, timestamp: Date.now() })
