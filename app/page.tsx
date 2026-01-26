@@ -8,9 +8,14 @@ import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
 import { PornVideos, PornLibrary } from "@/components/porn-videos"
-import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2, FileText, Music } from "lucide-react"
+import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2, FileText, Music, Search, HelpCircle } from "lucide-react"
 import { MusicBrowser } from "@/components/music-browser"
 import { ChangelogModal, useChangelog, CURRENT_VERSION, CHANGELOG, BUILD_INFO } from "@/components/changelog"
+import { GlobalSearch } from "@/components/global-search"
+import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { toast } from "sonner"
 
 
 export default function Home() {
@@ -20,7 +25,62 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [showFullChangelog, setShowFullChangelog] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const { showChangelog, hasNewUpdate, dismissChangelog, openChangelog } = useChangelog()
+
+  const handleNavigate = (tab: string, subTab?: string) => {
+    setActiveTab(tab)
+    if (subTab && tab === "ai") {
+      setAiSubTab(subTab as "image" | "video" | "faceswap")
+    }
+    toast.success(`Navigated to ${tab}${subTab ? ` - ${subTab}` : ''}`)
+  }
+
+  useKeyboardShortcuts([
+    {
+      key: 'k',
+      ctrl: true,
+      action: () => setShowSearch(true),
+      description: 'Open search'
+    },
+    {
+      key: '/',
+      shift: true,
+      action: () => setShowShortcutsHelp(true),
+      description: 'Show keyboard shortcuts'
+    },
+    {
+      key: '1',
+      alt: true,
+      action: () => handleNavigate('porn'),
+      description: 'Go to Porn'
+    },
+    {
+      key: '2',
+      alt: true,
+      action: () => handleNavigate('library'),
+      description: 'Go to Library'
+    },
+    {
+      key: '3',
+      alt: true,
+      action: () => handleNavigate('music'),
+      description: 'Go to Music'
+    },
+    {
+      key: '4',
+      alt: true,
+      action: () => handleNavigate('ai'),
+      description: 'Go to AI'
+    },
+    {
+      key: '5',
+      alt: true,
+      action: () => handleNavigate('settings'),
+      description: 'Go to Settings'
+    },
+  ], mounted)
 
   useEffect(() => {
     setMounted(true)
@@ -50,27 +110,46 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12 m3-page-enter">
-        {activeTab !== "porn" && activeTab !== "library" && (
-          <div className="mb-8 text-center sm:mb-12 m3-stagger">
-            <div className="mb-4 flex flex-col items-center justify-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm m3-button">
-                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-                Powered by AI
+    <ErrorBoundary>
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 pb-28 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-12 m3-page-enter">
+          {activeTab !== "porn" && activeTab !== "library" && activeTab !== "music" && (
+            <div className="mb-8 flex items-center justify-between sm:mb-12">
+              <div className="flex-1 text-center">
+                <div className="mb-4 flex flex-col items-center justify-center gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 sm:px-4 sm:py-2 sm:text-sm m3-button">
+                    <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Powered by AI
+                  </div>
+                </div>
+                <div className="mb-4 flex items-center justify-center gap-3">
+                  <Image src="/icon-512x512.png" alt="Tempted Logo" width={60} height={60} className="h-12 w-12 sm:h-16 sm:w-16" />
+                  <h1 className="text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+                    Tempted
+                  </h1>
+                </div>
+                <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
+                  Generate stunning images, craft compelling text, create videos, and transform faces with cutting-edge AI
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-md transition-all hover:bg-blue-50 hover:text-blue-600 hover:shadow-lg dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-blue-400"
+                  title="Search (Ctrl+K)"
+                >
+                  <Search className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setShowShortcutsHelp(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-md transition-all hover:bg-blue-50 hover:text-blue-600 hover:shadow-lg dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-blue-400"
+                  title="Keyboard Shortcuts (Shift+/)"
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </button>
               </div>
             </div>
-            <div className="mb-4 flex items-center justify-center gap-3">
-              <Image src="/icon-512x512.png" alt="Tempted Logo" width={60} height={60} className="h-12 w-12 sm:h-16 sm:w-16" />
-              <h1 className="text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
-                Tempted
-              </h1>
-            </div>
-            <p className="text-pretty text-base text-slate-600 dark:text-slate-300 sm:text-lg">
-              Generate stunning images, craft compelling text, create videos, and transform faces with cutting-edge AI
-            </p>
-          </div>
-        )}
+          )}
 
         <div className="w-full">
           {activeTab === "porn" && (
@@ -105,7 +184,7 @@ export default function Home() {
                       onClick={() => setAiSubTab("image")}
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all m3-button m3-ripple ${
                         aiSubTab === "image"
-                          ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
+                          ? "bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       }`}
                     >
@@ -116,7 +195,7 @@ export default function Home() {
                       onClick={() => setAiSubTab("video")}
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all m3-button m3-ripple ${
                         aiSubTab === "video"
-                          ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
+                          ? "bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       }`}
                     >
@@ -127,7 +206,7 @@ export default function Home() {
                       onClick={() => setAiSubTab("faceswap")}
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all m3-button m3-ripple ${
                         aiSubTab === "faceswap"
-                          ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400"
+                          ? "bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       }`}
                     >
@@ -137,10 +216,9 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* AI Model Selector - HuggingFace Only */}
                 <div className="mb-6">
-                  <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-800 dark:bg-indigo-900/30">
-                    <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                  <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/30">
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                       Powered by HuggingFace Premium
                     </span>
                   </div>
@@ -245,13 +323,25 @@ export default function Home() {
     showAllVersions={false} 
   />
   
-  {/* Full Changelog Modal (from Settings) */}
-  <ChangelogModal 
-    isOpen={showFullChangelog} 
-    onClose={() => setShowFullChangelog(false)} 
-    showAllVersions={true} 
-  />
-  </main>
+        {/* Full Changelog Modal (from Settings) */}
+        <ChangelogModal
+          isOpen={showFullChangelog}
+          onClose={() => setShowFullChangelog(false)}
+          showAllVersions={true}
+        />
+
+        <GlobalSearch
+          isOpen={showSearch}
+          onClose={() => setShowSearch(false)}
+          onNavigate={handleNavigate}
+        />
+
+        <KeyboardShortcutsHelp
+          isOpen={showShortcutsHelp}
+          onClose={() => setShowShortcutsHelp(false)}
+        />
+      </main>
+    </ErrorBoundary>
   )
   }
   
@@ -555,7 +645,7 @@ export default function Home() {
               onTouchEnd={handleTouchEnd}
               className={`flex cursor-move items-center gap-3 rounded-lg border p-3 transition-all select-none ${
                 draggedItem === api
-                  ? "border-indigo-500 bg-indigo-100 scale-105 shadow-lg dark:bg-indigo-900/40"
+                  ? "border-blue-500 bg-blue-100 scale-105 shadow-lg dark:bg-blue-900/40"
                   : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
               }`}
             >
@@ -628,7 +718,7 @@ export default function Home() {
                 }}
                 className="peer sr-only"
               />
-              <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+              <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-blue-500"></div>
             </label>
           </div>
         </div>
@@ -651,7 +741,7 @@ export default function Home() {
                   }}
                   className="peer sr-only"
                 />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-blue-500"></div>
               </label>
             </div>
 
@@ -670,7 +760,7 @@ export default function Home() {
                   }}
                   className="peer sr-only"
                 />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-blue-500"></div>
               </label>
             </div>
 
@@ -689,7 +779,7 @@ export default function Home() {
                   }}
                   className="peer sr-only"
                 />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-blue-500"></div>
               </label>
             </div>
           </div>
@@ -710,7 +800,7 @@ export default function Home() {
                   onChange={(e) => handleDarkModeToggle(e.target.checked)}
                   className="peer sr-only"
                 />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-blue-500"></div>
               </label>
             </div>
             
@@ -730,7 +820,7 @@ export default function Home() {
                   }}
                   className="peer sr-only"
                 />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-indigo-500"></div>
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-600 dark:after:border-slate-600 dark:peer-checked:bg-blue-500"></div>
               </label>
             </div>
           </div>
@@ -751,7 +841,7 @@ export default function Home() {
               className={`flex items-center gap-2 rounded-lg px-4 py-2 font-medium transition-colors ${
                 isInstalled || !isInstallable
                   ? "cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
-                  : "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
