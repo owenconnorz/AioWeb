@@ -23,7 +23,7 @@ export default function AboutPage() {
           <CardContent className="pt-6 space-y-4">
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Tempted AI</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Version 2.4.0</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Version 2.5.0</p>
             </div>
             <Separator />
             <p className="text-sm text-slate-600 dark:text-slate-400">
