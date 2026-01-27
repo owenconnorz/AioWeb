@@ -2257,14 +2257,14 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                 className="h-full w-full object-contain"
               />
               ) : apiSource === "xvidapi" ? (
-                // xvidapi - always use embed (upload18.net player)
+                // xvidapi - use proxy to block popups
                 selectedVideo.embed ? (
                   <iframe
-                    src={selectedVideo.embed}
+                    src={`/api/proxy-embed?url=${encodeURIComponent(selectedVideo.embed)}`}
                     className="h-full w-full border-0"
                     allowFullScreen
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture; clipboard-write"
-                    sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    sandbox="allow-scripts allow-same-origin"
                     title={selectedVideo.title}
                     referrerPolicy="no-referrer"
                   />
