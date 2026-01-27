@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { CacheClearer } from "@/components/cache-clearer"
 import { Toaster } from "@/components/ui/sonner"
+import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -50,17 +51,19 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon-192x192.png" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={`font-sans antialiased`}>
-        <CacheClearer />
-        {children}
-        <Toaster position="bottom-center" richColors closeButton />
-        <Analytics />
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <CacheClearer />
+          {children}
+          <Toaster position="bottom-center" richColors closeButton />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )

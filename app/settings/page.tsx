@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Settings, Shield, Zap, ImageIcon } from "lucide-react"
+import { useTheme } from "next-themes"
 import Link from "next/link"
 
 export default function SettingsPage() {
@@ -14,9 +15,11 @@ export default function SettingsPage() {
   const [autoSave, setAutoSave] = useState(false)
   const [highQuality, setHighQuality] = useState(true)
   const [showWatermark, setShowWatermark] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
     if (savedSettings) {
       const settings = JSON.parse(savedSettings)
@@ -24,37 +27,38 @@ export default function SettingsPage() {
       setAutoSave(settings.autoSave ?? false)
       setHighQuality(settings.highQuality ?? true)
       setShowWatermark(settings.showWatermark ?? false)
-      setDarkMode(settings.darkMode ?? false)
     }
   }, [])
 
   const handleSaveSettings = () => {
-    // Save settings to localStorage or backend
     const settings = {
       nsfwFilter,
       autoSave,
       highQuality,
       showWatermark,
-      darkMode,
     }
     localStorage.setItem("aiCreativeSuiteSettings", JSON.stringify(settings))
     alert("Settings saved successfully!")
   }
 
+  const handleThemeToggle = (checked: boolean) => {
+    setTheme(checked ? "dark" : "light")
+  }
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-4xl px-3 py-6 sm:px-4 sm:py-12">
         <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 sm:px-4 sm:py-2 sm:text-sm">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 sm:px-4 sm:py-2 sm:text-sm">
               <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
               Configuration
             </div>
-            <h1 className="mb-2 text-balance text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Settings</h1>
-            <p className="text-pretty text-sm text-slate-600 sm:text-base">Customize your Naughty AI experience</p>
+            <h1 className="mb-2 text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">Settings</h1>
+            <p className="text-pretty text-sm text-slate-600 dark:text-slate-400 sm:text-base">Customize your Naughty AI experience</p>
           </div>
           <Link href="/">
-            <Button variant="outline" className="w-full sm:w-auto bg-transparent">
+            <Button variant="outline" className="w-full sm:w-auto">
               Back to Home
             </Button>
           </Link>
@@ -62,10 +66,10 @@ export default function SettingsPage() {
 
         <div className="space-y-4 sm:space-y-6">
           {/* Content Safety Settings */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-indigo-600 sm:h-5 sm:w-5" />
+                <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400 sm:h-5 sm:w-5" />
                 <CardTitle className="text-base sm:text-lg">Content Safety</CardTitle>
               </div>
               <CardDescription className="text-xs sm:text-sm">
@@ -78,7 +82,7 @@ export default function SettingsPage() {
                   <Label htmlFor="nsfw-filter" className="text-sm font-medium sm:text-base">
                     NSFW Filter
                   </Label>
-                  <p className="text-xs text-slate-500 sm:text-sm">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
                     Block adult or inappropriate content from being generated
                   </p>
                 </div>
@@ -88,10 +92,10 @@ export default function SettingsPage() {
           </Card>
 
           {/* Generation Settings */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-indigo-600 sm:h-5 sm:w-5" />
+                <ImageIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 sm:h-5 sm:w-5" />
                 <CardTitle className="text-base sm:text-lg">Generation Settings</CardTitle>
               </div>
               <CardDescription className="text-xs sm:text-sm">Configure how content is generated</CardDescription>
@@ -102,7 +106,7 @@ export default function SettingsPage() {
                   <Label htmlFor="high-quality" className="text-sm font-medium sm:text-base">
                     High Quality Mode
                   </Label>
-                  <p className="text-xs text-slate-500 sm:text-sm">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
                     Generate higher quality images and text (may take longer)
                   </p>
                 </div>
@@ -116,7 +120,7 @@ export default function SettingsPage() {
                   <Label htmlFor="watermark" className="text-sm font-medium sm:text-base">
                     Add Watermark
                   </Label>
-                  <p className="text-xs text-slate-500 sm:text-sm">Include a small watermark on generated images</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Include a small watermark on generated images</p>
                 </div>
                 <Switch id="watermark" checked={showWatermark} onCheckedChange={setShowWatermark} />
               </div>
@@ -124,10 +128,10 @@ export default function SettingsPage() {
           </Card>
 
           {/* Application Settings */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-indigo-600 sm:h-5 sm:w-5" />
+                <Zap className="h-4 w-4 text-indigo-600 dark:text-indigo-400 sm:h-5 sm:w-5" />
                 <CardTitle className="text-base sm:text-lg">Application Settings</CardTitle>
               </div>
               <CardDescription className="text-xs sm:text-sm">Personalize your workflow</CardDescription>
@@ -138,7 +142,7 @@ export default function SettingsPage() {
                   <Label htmlFor="auto-save" className="text-sm font-medium sm:text-base">
                     Auto-save Results
                   </Label>
-                  <p className="text-xs text-slate-500 sm:text-sm">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
                     Automatically save generated content to your history
                   </p>
                 </div>
@@ -152,9 +156,14 @@ export default function SettingsPage() {
                   <Label htmlFor="dark-mode" className="text-sm font-medium sm:text-base">
                     Dark Mode
                   </Label>
-                  <p className="text-xs text-slate-500 sm:text-sm">Switch to a darker color scheme</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Switch to a darker color scheme</p>
                 </div>
-                <Switch id="dark-mode" checked={darkMode} onCheckedChange={setDarkMode} />
+                <Switch
+                  id="dark-mode"
+                  checked={mounted ? theme === "dark" : false}
+                  onCheckedChange={handleThemeToggle}
+                  disabled={!mounted}
+                />
               </div>
             </CardContent>
           </Card>
@@ -164,7 +173,7 @@ export default function SettingsPage() {
             <Button variant="outline" onClick={() => window.location.reload()} className="w-full sm:w-auto">
               Reset to Defaults
             </Button>
-            <Button onClick={handleSaveSettings} className="w-full bg-indigo-600 hover:bg-indigo-700 sm:w-auto">
+            <Button onClick={handleSaveSettings} className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 sm:w-auto">
               Save Settings
             </Button>
           </div>
