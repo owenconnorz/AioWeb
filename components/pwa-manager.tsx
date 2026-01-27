@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { X, RefreshCw, Download } from "lucide-react"
 
-const APP_VERSION = "2.5.0"
+const APP_VERSION = "2.6.0"
 const UPDATE_CHECK_INTERVAL = 60000 // Check every 60 seconds
 
 export function PWAManager() {
