@@ -872,12 +872,13 @@ useEffect(() => {
   // Handle search input change with debounced suggestions
   const handleSearchInputChange = (value: string) => {
     setSearchQuery(value)
-    
+    setSearchResults([])
+
     // Clear previous debounce timer
     if (suggestionsDebounceRef.current) {
       clearTimeout(suggestionsDebounceRef.current)
     }
-    
+
     // Debounce suggestions fetch
     suggestionsDebounceRef.current = setTimeout(() => {
       fetchSuggestions(value)
@@ -991,12 +992,13 @@ useEffect(() => {
   }
   
   // Search
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return
+  const handleSearch = async (query?: string) => {
+    const searchTerm = query || searchQuery
+    if (!searchTerm.trim()) return
     setShowSuggestions(false)
     setIsSearching(true)
     try {
-      const response = await fetch(`/api/music?action=search&query=${encodeURIComponent(searchQuery)}`)
+      const response = await fetch(`/api/music?action=search&query=${encodeURIComponent(searchTerm)}`)
       const data = await response.json()
       setSearchResults(data.results || [])
     } catch (err) {
@@ -1628,234 +1630,20 @@ useEffect(() => {
             <span className="text-lg font-bold text-white hidden sm:block">Music</span>
           </div>
         </div>
-        
-        {/* Search */}
-        <div className="flex-1 max-w-md mx-4 relative">
-          {showSearch ? (
-            <div className="relative">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    value={searchQuery}
-                    onChange={(e) => handleSearchInputChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setShowSuggestions(false)
-                        handleSearch()
-                      }
-                      if (e.key === "Escape") {
-                        setShowSuggestions(false)
-                      }
-                    }}
-                    onFocus={() => textSuggestions.length > 0 && setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    placeholder="Search songs, artists..."
-                    className="bg-white/10 border-0 text-white placeholder:text-slate-400"
-                    autoFocus
-                  />
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowSearch(false)
-                    setSearchQuery("")
-                    setSearchResults([])
-                    setTextSuggestions([])
-                    setShowSuggestions(false)
-                  }}
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              
-              {/* Search Suggestions Dropdown - YT Music Style */}
-              {showSuggestions && (textSuggestions.length > 0 || artistSuggestions.length > 0 || songSuggestions.length > 0) && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-[#212121] rounded-lg shadow-2xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto">
-                  {/* Text Suggestions */}
-                  {textSuggestions.map((suggestion, index) => (
-                    <div
-                      key={`text-${index}`}
-                      className="flex items-center hover:bg-white/10 transition-colors"
-                    >
-                      <button
-                        className="flex-1 px-4 py-3 text-left text-white flex items-center gap-4 min-w-0"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectSuggestion(suggestion)}
-                      >
-                        <Search className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate text-[15px]">{suggestion}</span>
-                      </button>
-                      <button
-                        className="px-4 py-3 text-slate-400 hover:text-white transition-colors"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          fillSuggestion(suggestion)
-                        }}
-                        title="Fill search"
-                      >
-                        <ArrowLeft className="h-4 w-4 rotate-[135deg]" />
-                      </button>
-                    </div>
-                  ))}
-                  
-                  {/* Artist & Song Results */}
-                  {(artistSuggestions.length > 0 || songSuggestions.length > 0) && textSuggestions.length > 0 && (
-                    <div className="border-t border-white/10 my-1" />
-                  )}
-                  
-                  {/* Artist Suggestions */}
-                  {artistSuggestions.map((artist, index) => (
-                    <button
-                      key={`artist-${index}`}
-                      className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => openArtistPage(artist.browseId, artist.name, artist.thumbnail)}
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <img 
-                          src={artist.thumbnail || "/placeholder.svg"} 
-                          alt={artist.name}
-                          className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-                        />
-                        <span className="truncate font-medium text-[15px]">{artist.name}</span>
-                      </div>
-                      <MoreVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                    </button>
-                  ))}
-                  
-                  {/* Song Suggestions */}
-                  {songSuggestions.map((song, index) => {
-                    const track: Track = {
-                      id: song.videoId,
-                      videoId: song.videoId,
-                      title: song.title,
-                      artist: song.artist,
-                      thumbnail: song.thumbnail,
-                    }
-                    return (
-                      <div
-                        key={`song-${index}`}
-                        className="w-full px-4 py-2.5 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors cursor-pointer"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setShowSuggestions(false)
-                          playTrack(track, [track])
-                        }}
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <img
-                            src={song.thumbnail || "/placeholder.svg"}
-                            alt={song.title}
-                            className="w-12 h-12 rounded object-cover flex-shrink-0"
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="truncate font-medium text-[15px]">{song.title}</span>
-                            <span className="truncate text-sm text-slate-400">{song.artist}</span>
-                          </div>
-                        </div>
-                        <button
-                          className="p-2 -mr-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
-                          onClick={(e) => {
-                            setShowSuggestions(false)
-                            openTrackMenu(track, e)
-                          }}
-                        >
-                          <MoreVertical className="h-5 w-5 text-slate-400" />
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-slate-400 bg-white/10 hover:bg-white/20"
-              onClick={() => setShowSearch(true)}
-            >
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
-          )}
-        </div>
+
+        {/* Search Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 text-white hover:bg-white/10"
+          onClick={() => setShowSearch(true)}
+        >
+          <Search className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Search Results */}
-        {searchResults.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Search Results</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchResults([])
-                  setSearchQuery("")
-                  setShowSearch(false)
-                }}
-              >
-                Clear
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {searchResults.map((track, idx) => (
-                <button
-                  key={`${track.videoId}-${idx}`}
-                  onClick={() => playTrack(track, searchResults)}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  <img
-                    src={track.thumbnail || "/placeholder.svg"}
-                    alt={track.title}
-                    className="w-12 h-12 rounded object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="flex-1 text-left">
-                    <h4 className="text-white font-medium line-clamp-1">{track.title}</h4>
-                    <p className="text-sm text-slate-400 line-clamp-1">
-                      {track.artist} {track.album && `• ${track.album}`}
-                    </p>
-                  </div>
-  <span className="text-sm text-slate-500">{track.duration}</span>
-  <Button
-  variant="ghost"
-  size="icon"
-  className="h-8 w-8"
-  onClick={(e) => {
-  e.stopPropagation()
-  handleDownload(track)
-  }}
-  >
-  {downloadProgress.get(track.videoId)?.status === "downloading" ? (
-    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
-  ) : isDownloaded(track.videoId) ? (
-    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-  ) : (
-    <Download className="h-4 w-4" />
-  )}
-  </Button>
-  <Button
-  variant="ghost"
-  size="icon"
-  className="h-8 w-8"
-  onClick={(e) => {
-  e.stopPropagation()
-  toggleLike(track)
-  }}
-  >
-  <Heart className={`h-4 w-4 ${isLiked(track) ? "fill-red-500 text-red-500" : ""}`} />
-  </Button>
-  </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
@@ -4221,6 +4009,217 @@ useEffect(() => {
                 Create
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Page Search Overlay */}
+      {showSearch && (
+        <div className="fixed inset-0 z-[9999] bg-[#121212] flex flex-col">
+          {/* Search Header */}
+          <div className="flex items-center gap-3 p-4 bg-[#232323] border-b border-white/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-white hover:bg-white/10 flex-shrink-0"
+              onClick={() => {
+                setShowSearch(false)
+                setSearchQuery("")
+                setSearchResults([])
+                setTextSuggestions([])
+                setArtistSuggestions([])
+                setSongSuggestions([])
+                setShowSuggestions(false)
+              }}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+
+            <div className="flex-1 flex items-center bg-transparent">
+              <Input
+                value={searchQuery}
+                onChange={(e) => handleSearchInputChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    setShowSuggestions(false)
+                    handleSearch()
+                  }
+                }}
+                placeholder="Search songs, artists..."
+                className="bg-transparent border-0 text-white text-lg placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                autoFocus
+              />
+            </div>
+
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-white hover:bg-white/10 flex-shrink-0"
+                onClick={() => {
+                  setSearchQuery("")
+                  setSearchResults([])
+                  setTextSuggestions([])
+                  setArtistSuggestions([])
+                  setSongSuggestions([])
+                }}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
+
+          {/* Search Content */}
+          <div className="flex-1 overflow-y-auto">
+            {/* Show suggestions when typing */}
+            {searchQuery && (textSuggestions.length > 0 || artistSuggestions.length > 0 || songSuggestions.length > 0) && !isSearching && (
+              <div className="p-0">
+                {/* Text Suggestions */}
+                {textSuggestions.map((suggestion, index) => (
+                  <div
+                    key={`text-${index}`}
+                    className="flex items-center hover:bg-white/10 transition-colors border-b border-white/5"
+                  >
+                    <button
+                      className="flex-1 px-4 py-3 text-left text-white flex items-center gap-4 min-w-0"
+                      onClick={() => {
+                        setSearchQuery(suggestion)
+                        handleSearch(suggestion)
+                      }}
+                    >
+                      <Search className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                      <span className="truncate text-base">{suggestion}</span>
+                    </button>
+                    <button
+                      className="px-4 py-3 text-slate-400 hover:text-white transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSearchQuery(suggestion)
+                      }}
+                      title="Fill search"
+                    >
+                      <ArrowLeft className="h-4 w-4 rotate-[135deg]" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Divider between suggestions and results */}
+                {(artistSuggestions.length > 0 || songSuggestions.length > 0) && textSuggestions.length > 0 && (
+                  <div className="h-2 bg-[#0a0a0a]" />
+                )}
+
+                {/* Artist Suggestions */}
+                {artistSuggestions.map((artist, index) => (
+                  <button
+                    key={`artist-${index}`}
+                    className="w-full px-4 py-3 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors border-b border-white/5"
+                    onClick={() => {
+                      setShowSearch(false)
+                      openArtistPage(artist.browseId, artist.name, artist.thumbnail)
+                    }}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <img
+                        src={artist.thumbnail || "/placeholder.svg"}
+                        alt={artist.name}
+                        className="w-14 h-14 rounded-full object-cover flex-shrink-0"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-medium text-base">{artist.name}</span>
+                        <span className="text-sm text-slate-400">Artist</span>
+                      </div>
+                    </div>
+                    <MoreVertical className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                  </button>
+                ))}
+
+                {/* Song Suggestions */}
+                {songSuggestions.map((song, index) => {
+                  const track: Track = {
+                    id: song.videoId,
+                    videoId: song.videoId,
+                    title: song.title,
+                    artist: song.artist,
+                    thumbnail: song.thumbnail,
+                  }
+                  return (
+                    <div
+                      key={`song-${index}`}
+                      className="w-full px-4 py-3 text-left text-white hover:bg-white/10 flex items-center justify-between transition-colors cursor-pointer border-b border-white/5"
+                      onClick={() => {
+                        setShowSearch(false)
+                        playTrack(track, [track])
+                      }}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <img
+                          src={song.thumbnail || "/placeholder.svg"}
+                          alt={song.title}
+                          className="w-14 h-14 rounded object-cover flex-shrink-0"
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate font-medium text-base">{song.title}</span>
+                          <span className="truncate text-sm text-slate-400">{song.artist}</span>
+                        </div>
+                      </div>
+                      <button
+                        className="p-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openTrackMenu(track, e)
+                        }}
+                      >
+                        <MoreVertical className="h-5 w-5 text-slate-400" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div className="p-4">
+                <h3 className="text-lg font-semibold text-white mb-4">Results</h3>
+                <div className="space-y-2">
+                  {searchResults.map((track) => (
+                    <button
+                      key={track.id}
+                      className="w-full p-3 rounded-lg hover:bg-white/10 transition-colors flex items-center gap-3"
+                      onClick={() => {
+                        setShowSearch(false)
+                        playTrack(track, searchResults)
+                      }}
+                    >
+                      <img
+                        src={track.thumbnail}
+                        alt={track.title}
+                        className="w-14 h-14 rounded object-cover flex-shrink-0"
+                      />
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="text-white font-medium truncate">{track.title}</p>
+                        <p className="text-slate-400 text-sm truncate">{track.artist}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!searchQuery && (
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <Search className="h-16 w-16 text-slate-600 mb-4" />
+                <p className="text-slate-400 text-lg">Search for songs and artists</p>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {isSearching && (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+              </div>
+            )}
           </div>
         </div>
       )}
