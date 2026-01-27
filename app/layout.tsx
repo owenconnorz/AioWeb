@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { CacheClearer } from "@/components/cache-clearer"
+import { PWAManager } from "@/components/pwa-manager"
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
@@ -75,6 +76,7 @@ export default function RootLayout({
           storageKey="naughty-ai-theme"
         >
           <CacheClearer />
+          <PWAManager />
           {children}
           <Toaster position="bottom-center" richColors closeButton />
           <Analytics />

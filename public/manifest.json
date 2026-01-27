@@ -2,8 +2,10 @@
   "name": "Tempted - AI Image & Text Generator",
   "short_name": "Tempted",
   "description": "Generate stunning images, craft compelling text, and transform faces with cutting-edge AI technology",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "background_color": "#0f172a",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
@@ -22,9 +24,14 @@
     }
   ],
   "categories": ["entertainment", "productivity", "utilities"],
-  "permissions": [
-    "storage",
-    "unlimitedStorage"
-  ],
-  "prefer_related_applications": false
+  "screenshots": [],
+  "shortcuts": [],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "serviceworker": {
+    "src": "/sw.js",
+    "scope": "/",
+    "type": "classic",
+    "update_via_cache": "none"
+  }
 }

@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Shield, Zap, ImageIcon, Palette, ChevronRight, ArrowLeft, Info } from "lucide-react"
+import { Shield, Zap, ImageIcon, Palette, ChevronRight, ArrowLeft, Info, Trash2, RefreshCw, Database } from "lucide-react"
+import { toast } from "sonner"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 
@@ -47,6 +48,47 @@ export default function SettingsPage() {
   const handleThemeToggle = useCallback((checked: boolean) => {
     setTheme(checked ? "dark" : "light")
   }, [setTheme])
+
+  const handleClearCache = useCallback(async () => {
+    try {
+      if ('caches' in window) {
+        const cacheNames = await caches.keys()
+        await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)))
+      }
+
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations()
+        for (const registration of registrations) {
+          if (registration.active) {
+            registration.active.postMessage({ type: 'CLEAR_CACHE' })
+          }
+          await registration.update()
+        }
+      }
+
+      toast.success("Cache cleared successfully")
+      setTimeout(() => window.location.reload(), 1000)
+    } catch (error) {
+      toast.error("Failed to clear cache")
+    }
+  }, [])
+
+  const handleRequestStorage = useCallback(async () => {
+    try {
+      if ('storage' in navigator && 'persist' in navigator.storage) {
+        const isPersisted = await navigator.storage.persist()
+        if (isPersisted) {
+          toast.success("Persistent storage enabled")
+        } else {
+          toast.warning("Storage permission denied")
+        }
+      } else {
+        toast.warning("Storage API not supported")
+      }
+    } catch (error) {
+      toast.error("Failed to request storage permission")
+    }
+  }, [])
 
   const CategoryButton = ({ icon: Icon, title, onClick }: { icon: any; title: string; onClick: () => void }) => (
     <button
@@ -222,6 +264,37 @@ export default function SettingsPage() {
                 </div>
                 <Switch id="auto-save" checked={autoSave} onCheckedChange={setAutoSave} />
               </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div className="flex-1 space-y-0.5">
+                  <Label className="text-base font-medium">Storage & Cache</Label>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Manage app data and updates
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleRequestStorage}
+                  >
+                    <Database className="mr-2 h-4 w-4" />
+                    Enable Persistent Storage
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleClearCache}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear Cache & Update
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </>
@@ -238,13 +311,18 @@ export default function SettingsPage() {
           <Card className="border-0 shadow-lg dark:bg-slate-800/50">
             <CardContent className="pt-6 space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Naughty AI</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Version 1.0.0</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Tempted AI</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Version 2.4.0</p>
               </div>
               <Separator />
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 An AI-powered creative suite for generating images, videos, text, and more.
               </p>
+              <Separator />
+              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                <p>Updates automatically check every hour</p>
+                <p>Clear cache in Application settings if updates don&apos;t appear</p>
+              </div>
             </CardContent>
           </Card>
         </>
