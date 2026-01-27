@@ -1245,14 +1245,29 @@ useEffect(() => {
   }
   
   const addToPlaylist = (playlistId: string, track: Track) => {
+    const playlist = playlists.find(p => p.id === playlistId)
+
+    if (playlist && playlist.tracks.some(t => t.videoId === track.videoId)) {
+      toast.error("Already in playlist", {
+        description: `"${track.title}" is already in "${playlist.name}"`,
+        duration: 3000
+      })
+      return
+    }
+
     setPlaylists(prev => prev.map(p => {
       if (p.id === playlistId) {
-        // Avoid duplicates
-        if (p.tracks.some(t => t.videoId === track.videoId)) return p
         return { ...p, tracks: [...p.tracks, track] }
       }
       return p
     }))
+
+    if (playlist) {
+      toast.success("Added to playlist", {
+        description: `"${track.title}" added to "${playlist.name}"`,
+        duration: 2000
+      })
+    }
   }
   
   const removeFromPlaylist = (playlistId: string, trackId: string) => {

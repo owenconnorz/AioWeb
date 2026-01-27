@@ -37,6 +37,7 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination"
+import { toast } from "sonner"
 
 interface VideoQuality {
   label: string
@@ -971,6 +972,16 @@ if (false) { // Popup feed view no longer used
   const addToPlaylist = (playlistId: string, videoToAdd: Video) => {
     try {
       const videoId = videoToAdd.id
+      const playlist = playlists.find(p => p.id === playlistId)
+
+      if (playlist && playlist.videoIds.includes(videoId)) {
+        toast.error("Already in playlist", {
+          description: `"${videoToAdd.title}" is already in "${playlist.name}"`,
+          duration: 3000
+        })
+        setShowAddToPlaylist(null)
+        return
+      }
 
       // Always save the video to savedVideos so it persists across sessions
       const isAlreadySaved = savedVideos.some((v) => v.id === videoId)
@@ -982,17 +993,12 @@ if (false) { // Popup feed view no longer used
 
       const updatedPlaylists = playlists.map((playlist) => {
         if (playlist.id === playlistId) {
-          const isAlreadyAdded = playlist.videoIds.includes(videoId)
           const currentVideos = playlist.videos || []
-          
+
           return {
             ...playlist,
-            videoIds: isAlreadyAdded
-              ? playlist.videoIds.filter((id) => id !== videoId)
-              : [...playlist.videoIds, videoId],
-            videos: isAlreadyAdded
-              ? currentVideos.filter((v) => v.id !== videoId)
-              : [...currentVideos, videoToAdd],
+            videoIds: [...playlist.videoIds, videoId],
+            videos: [...currentVideos, videoToAdd],
           }
         }
         return playlist
@@ -1000,9 +1006,21 @@ if (false) { // Popup feed view no longer used
 
       setPlaylists(updatedPlaylists)
       safeStorage.setItem("porn_playlists", JSON.stringify(updatedPlaylists))
+
+      if (playlist) {
+        toast.success("Added to playlist", {
+          description: `"${videoToAdd.title}" added to "${playlist.name}"`,
+          duration: 2000
+        })
+      }
+
       setShowAddToPlaylist(null)
     } catch (err) {
       console.error("Error adding to playlist:", err)
+      toast.error("Failed to add to playlist", {
+        description: "Please try again",
+        duration: 3000
+      })
     }
   }
 
