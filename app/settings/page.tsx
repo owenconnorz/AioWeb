@@ -1,98 +1,21 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Shield, Zap, ImageIcon, Palette, ChevronRight, ArrowLeft, Info, Trash2, RefreshCw, Database } from "lucide-react"
-import { toast } from "sonner"
-import { useTheme } from "next-themes"
+import { ArrowLeft, User, Library, HardDrive, Palette, Layout, Play, RotateCcw, Database, FlaskConical, Info, ChevronRight } from "lucide-react"
 import Link from "next/link"
 
-type SettingsView = "list" | "safety" | "generation" | "appearance" | "application" | "about"
-
 export default function SettingsPage() {
-  const [currentView, setCurrentView] = useState<SettingsView>("list")
-  const [nsfwFilter, setNsfwFilter] = useState(true)
-  const [autoSave, setAutoSave] = useState(false)
-  const [highQuality, setHighQuality] = useState(true)
-  const [showWatermark, setShowWatermark] = useState(false)
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    const savedSettings = localStorage.getItem("aiCreativeSuiteSettings")
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings)
-      setNsfwFilter(settings.nsfwFilter ?? true)
-      setAutoSave(settings.autoSave ?? false)
-      setHighQuality(settings.highQuality ?? true)
-      setShowWatermark(settings.showWatermark ?? false)
-    }
-  }, [])
-
-  const handleSaveSettings = useCallback(() => {
-    const settings = {
-      nsfwFilter,
-      autoSave,
-      highQuality,
-      showWatermark,
-    }
-    localStorage.setItem("aiCreativeSuiteSettings", JSON.stringify(settings))
-    alert("Settings saved successfully!")
-  }, [nsfwFilter, autoSave, highQuality, showWatermark])
-
-  const handleThemeToggle = useCallback((checked: boolean) => {
-    setTheme(checked ? "dark" : "light")
-  }, [setTheme])
-
-  const handleClearCache = useCallback(async () => {
-    try {
-      if ('caches' in window) {
-        const cacheNames = await caches.keys()
-        await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)))
-      }
-
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations()
-        for (const registration of registrations) {
-          if (registration.active) {
-            registration.active.postMessage({ type: 'CLEAR_CACHE' })
-          }
-          await registration.update()
-        }
-      }
-
-      toast.success("Cache cleared successfully")
-      setTimeout(() => window.location.reload(), 1000)
-    } catch (error) {
-      toast.error("Failed to clear cache")
-    }
-  }, [])
-
-  const handleRequestStorage = useCallback(async () => {
-    try {
-      if ('storage' in navigator && 'persist' in navigator.storage) {
-        const isPersisted = await navigator.storage.persist()
-        if (isPersisted) {
-          toast.success("Persistent storage enabled")
-        } else {
-          toast.warning("Storage permission denied")
-        }
-      } else {
-        toast.warning("Storage API not supported")
-      }
-    } catch (error) {
-      toast.error("Failed to request storage permission")
-    }
-  }, [])
-
-  const CategoryButton = ({ icon: Icon, title, onClick }: { icon: any; title: string; onClick: () => void }) => (
-    <button
-      onClick={onClick}
+  const CategoryButton = ({
+    icon: Icon,
+    title,
+    href
+  }: {
+    icon: any
+    title: string
+    href: string
+  }) => (
+    <Link
+      href={href}
       className="flex items-center gap-4 w-full p-4 bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg border-0 shadow-sm"
     >
       <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700">
@@ -100,253 +23,90 @@ export default function SettingsPage() {
       </div>
       <span className="flex-1 text-left text-base font-medium text-slate-900 dark:text-slate-100">{title}</span>
       <ChevronRight className="h-5 w-5 text-slate-400" />
-    </button>
+    </Link>
   )
-
-  const renderListView = () => (
-    <>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Settings</h1>
-        <Link href="/">
-          <Button variant="ghost" size="icon" className="h-10 w-10">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-      </div>
-
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <CategoryButton icon={Shield} title="Content Safety" onClick={() => setCurrentView("safety")} />
-          <CategoryButton icon={ImageIcon} title="Generation Settings" onClick={() => setCurrentView("generation")} />
-        </div>
-
-        <div className="space-y-2">
-          <CategoryButton icon={Palette} title="Appearance" onClick={() => setCurrentView("appearance")} />
-        </div>
-
-        <div className="space-y-2">
-          <CategoryButton icon={Zap} title="Application" onClick={() => setCurrentView("application")} />
-        </div>
-
-        <div className="space-y-2">
-          <CategoryButton icon={Info} title="About" onClick={() => setCurrentView("about")} />
-        </div>
-      </div>
-    </>
-  )
-
-  const renderDetailView = () => {
-    const backButton = (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-10 w-10"
-        onClick={() => setCurrentView("list")}
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </Button>
-    )
-
-    if (currentView === "safety") {
-      return (
-        <>
-          <div className="mb-6 flex items-center gap-3">
-            {backButton}
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Content Safety</h1>
-          </div>
-          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-            <CardContent className="pt-6 space-y-6">
-              <div className="flex items-start justify-between gap-4 sm:items-center">
-                <div className="flex-1 space-y-0.5">
-                  <Label htmlFor="nsfw-filter" className="text-base font-medium">
-                    NSFW Filter
-                  </Label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Block adult or inappropriate content from being generated
-                  </p>
-                </div>
-                <Switch id="nsfw-filter" checked={nsfwFilter} onCheckedChange={setNsfwFilter} />
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )
-    }
-
-    if (currentView === "generation") {
-      return (
-        <>
-          <div className="mb-6 flex items-center gap-3">
-            {backButton}
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Generation Settings</h1>
-          </div>
-          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-            <CardContent className="pt-6 space-y-6">
-              <div className="flex items-start justify-between gap-4 sm:items-center">
-                <div className="flex-1 space-y-0.5">
-                  <Label htmlFor="high-quality" className="text-base font-medium">
-                    High Quality Mode
-                  </Label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Generate higher quality images and text (may take longer)
-                  </p>
-                </div>
-                <Switch id="high-quality" checked={highQuality} onCheckedChange={setHighQuality} />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-start justify-between gap-4 sm:items-center">
-                <div className="flex-1 space-y-0.5">
-                  <Label htmlFor="watermark" className="text-base font-medium">
-                    Add Watermark
-                  </Label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Include a small watermark on generated images
-                  </p>
-                </div>
-                <Switch id="watermark" checked={showWatermark} onCheckedChange={setShowWatermark} />
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )
-    }
-
-    if (currentView === "appearance") {
-      return (
-        <>
-          <div className="mb-6 flex items-center gap-3">
-            {backButton}
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Appearance</h1>
-          </div>
-          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-            <CardContent className="pt-6 space-y-6">
-              <div className="flex items-start justify-between gap-4 sm:items-center">
-                <div className="flex-1 space-y-0.5">
-                  <Label htmlFor="dark-mode" className="text-base font-medium">
-                    Dark Mode
-                  </Label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Switch to a darker color scheme
-                  </p>
-                </div>
-                <Switch
-                  id="dark-mode"
-                  checked={mounted ? theme === "dark" : false}
-                  onCheckedChange={handleThemeToggle}
-                  disabled={!mounted}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )
-    }
-
-    if (currentView === "application") {
-      return (
-        <>
-          <div className="mb-6 flex items-center gap-3">
-            {backButton}
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Application</h1>
-          </div>
-          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-            <CardContent className="pt-6 space-y-6">
-              <div className="flex items-start justify-between gap-4 sm:items-center">
-                <div className="flex-1 space-y-0.5">
-                  <Label htmlFor="auto-save" className="text-base font-medium">
-                    Auto-save Results
-                  </Label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Automatically save generated content to your history
-                  </p>
-                </div>
-                <Switch id="auto-save" checked={autoSave} onCheckedChange={setAutoSave} />
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <div className="flex-1 space-y-0.5">
-                  <Label className="text-base font-medium">Storage & Cache</Label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Manage app data and updates
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={handleRequestStorage}
-                  >
-                    <Database className="mr-2 h-4 w-4" />
-                    Enable Persistent Storage
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={handleClearCache}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Clear Cache & Update
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )
-    }
-
-    if (currentView === "about") {
-      return (
-        <>
-          <div className="mb-6 flex items-center gap-3">
-            {backButton}
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">About</h1>
-          </div>
-          <Card className="border-0 shadow-lg dark:bg-slate-800/50">
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Tempted AI</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Version 2.4.0</p>
-              </div>
-              <Separator />
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                An AI-powered creative suite for generating images, videos, text, and more.
-              </p>
-              <Separator />
-              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                <p>Updates automatically check every hour</p>
-                <p>Clear cache in Application settings if updates don&apos;t appear</p>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )
-    }
-
-    return null
-  }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-2xl px-4 py-6">
-        {currentView === "list" ? renderListView() : renderDetailView()}
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Settings</h1>
+          <Link href="/">
+            <Button variant="ghost" size="icon" className="h-10 w-10">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
 
-        {currentView !== "list" && currentView !== "about" && (
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => window.location.reload()} className="w-full sm:w-auto">
-              Reset to Defaults
-            </Button>
-            <Button onClick={handleSaveSettings} className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 sm:w-auto">
-              Save Settings
-            </Button>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <CategoryButton
+              icon={User}
+              title="Account and sync"
+              href="/settings/account-and-sync"
+            />
+            <CategoryButton
+              icon={Library}
+              title="Library and content"
+              href="/settings/library-and-content"
+            />
+            <CategoryButton
+              icon={HardDrive}
+              title="Local media"
+              href="/settings/local-media"
+            />
           </div>
-        )}
+
+          <div className="space-y-2">
+            <CategoryButton
+              icon={Palette}
+              title="Appearance"
+              href="/settings/appearance"
+            />
+            <CategoryButton
+              icon={Layout}
+              title="Interface"
+              href="/settings/interface"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <CategoryButton
+              icon={Play}
+              title="Player and audio"
+              href="/settings/player-and-audio"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <CategoryButton
+              icon={RotateCcw}
+              title="Backup and restore"
+              href="/settings/backup-and-restore"
+            />
+            <CategoryButton
+              icon={Database}
+              title="Storage"
+              href="/settings/storage"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <CategoryButton
+              icon={FlaskConical}
+              title="Experimental"
+              href="/settings/experimental"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <CategoryButton
+              icon={Info}
+              title="About"
+              href="/settings/about"
+            />
+          </div>
+        </div>
       </div>
     </main>
   )
