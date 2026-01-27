@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Final fallback: Try IOS client
+    // Fallback: Try IOS client
     if (!audioUrl) {
       try {
         const response = await fetch(
@@ -201,11 +201,48 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Final fallback: Try WEB client
     if (!audioUrl) {
+      try {
+        const response = await fetch(
+          "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            },
+            body: JSON.stringify({
+              videoId,
+              context: {
+                client: {
+                  clientName: "WEB",
+                  clientVersion: "2.20240304.00.00",
+                  hl: "en",
+                  gl: "US",
+                },
+              },
+            }),
+          },
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.playabilityStatus?.status === "OK" && data.streamingData) {
+            audioUrl = extractAudioUrl(data.streamingData)
+          }
+        }
+      } catch (e) {
+        error = e instanceof Error ? e.message : "WEB error"
+      }
+    }
+
+    if (!audioUrl) {
+      const details = error || "Unable to access this track. It may be age-restricted, region-locked, or unavailable."
       return NextResponse.json(
         {
           error: "Could not get audio stream",
-          details: error || "All methods failed",
+          details,
         },
         { status: 500 },
       )
@@ -248,14 +285,15 @@ export async function POST(request: NextRequest) {
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`)
+      const statusText = response.statusText || "Unknown error"
+      throw new Error(`Unable to download audio (${response.status}). The file may be unavailable or too large.`)
     }
 
     const contentType = response.headers.get("content-type") || "audio/mpeg"
     const audioBuffer = await response.arrayBuffer()
 
     if (audioBuffer.byteLength === 0) {
-      throw new Error("Received empty audio file")
+      throw new Error("Downloaded file is empty. The track may be unavailable.")
     }
 
     return new Response(audioBuffer, {

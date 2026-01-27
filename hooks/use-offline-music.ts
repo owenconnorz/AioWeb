@@ -169,7 +169,8 @@ export function useOfflineMusic() {
       if (!streamResponse.ok) {
         const errorData = await streamResponse.json().catch(() => ({}))
         console.error("Failed to get audio URL:", errorData)
-        throw new Error(errorData.error || errorData.details || "Failed to get audio stream")
+        const errorMsg = errorData.details || errorData.error || "Unable to access audio stream. The video may be restricted or unavailable."
+        throw new Error(errorMsg)
       }
 
       const streamData = await streamResponse.json()
@@ -177,7 +178,8 @@ export function useOfflineMusic() {
 
       if (!streamData.success || !streamData.audioUrl) {
         console.error("Invalid stream data:", streamData)
-        throw new Error(streamData.error || streamData.details || "Failed to get audio stream")
+        const errorMsg = streamData.details || streamData.error || "Unable to retrieve audio stream. Please try a different track."
+        throw new Error(errorMsg)
       }
 
       setDownloadProgress(prev => new Map(prev).set(videoId, {
@@ -203,7 +205,8 @@ export function useOfflineMusic() {
       if (!audioResponse.ok) {
         const errorData = await audioResponse.json().catch(() => ({ error: "Download failed" }))
         console.error("Failed to download audio:", errorData)
-        throw new Error(errorData.error || "Failed to download audio")
+        const errorMsg = errorData.error || "Unable to download audio file. Please check your connection and try again."
+        throw new Error(errorMsg)
       }
 
       console.log("Audio downloaded, creating blob...")
@@ -218,7 +221,7 @@ export function useOfflineMusic() {
 
       if (!audioBlob || audioBlob.size === 0) {
         console.error("Received empty audio blob")
-        throw new Error("Received empty audio file")
+        throw new Error("Downloaded file is empty. The audio may be unavailable or restricted.")
       }
 
       console.log(`Audio blob size: ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB`)
@@ -288,10 +291,10 @@ export function useOfflineMusic() {
     } catch (error) {
       console.error("Download error:", error)
 
-      let errorMessage = "Download failed"
+      let errorMessage = "Download failed. Please try again."
       if (error instanceof Error) {
         if (error.name === "AbortError") {
-          errorMessage = "Download timed out"
+          errorMessage = "Download timed out. The file may be too large or your connection is slow."
         } else {
           errorMessage = error.message
         }
