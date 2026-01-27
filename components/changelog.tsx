@@ -20,6 +20,21 @@ const generateVersion = () => {
 // The system will automatically show the popup when new entries are added
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2.7.0",
+    date: "2026-01-27",
+    title: "Settings Redesign & Update System",
+    changes: [
+      "Complete settings page redesign with organized sections",
+      "Added dedicated Updater in settings for manual update checks",
+      "New Privacy settings section",
+      "New Supported Links configuration",
+      "Improved settings navigation with clear categories",
+      "Dark theme optimization for settings pages",
+      "One-tap update installation from settings",
+      "Enhanced update flow with better user feedback",
+    ],
+  },
+  {
     version: "2.6.0",
     date: "2026-01-27",
     title: "Version System Improvements",
