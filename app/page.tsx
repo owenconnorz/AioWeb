@@ -1,15 +1,18 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo, memo } from "react"
 import type React from "react"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { ImageGenerator } from "@/components/image-generator"
 import { FaceSwap } from "@/components/face-swap"
 import { VideoGenerator } from "@/components/video-generator"
-import { PornVideos, PornLibrary } from "@/components/porn-videos"
 import { Sparkles, ImageIcon, Users, Settings, Video, Film, GripVertical, BookmarkIcon, Wand2, FileText, Music, Search, HelpCircle } from "lucide-react"
-import { MusicBrowser } from "@/components/music-browser"
+
+const PornVideos = dynamic(() => import("@/components/porn-videos").then(mod => ({ default: mod.PornVideos })), { ssr: false })
+const PornLibrary = dynamic(() => import("@/components/porn-videos").then(mod => ({ default: mod.PornLibrary })), { ssr: false })
+const MusicBrowser = dynamic(() => import("@/components/music-browser").then(mod => ({ default: mod.MusicBrowser })), { ssr: false })
 import { ChangelogModal, useChangelog, CURRENT_VERSION, CHANGELOG, BUILD_INFO } from "@/components/changelog"
 import { GlobalSearch } from "@/components/global-search"
 import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help"
@@ -29,15 +32,15 @@ export default function Home() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const { showChangelog, hasNewUpdate, dismissChangelog, openChangelog } = useChangelog()
 
-  const handleNavigate = (tab: string, subTab?: string) => {
+  const handleNavigate = useCallback((tab: string, subTab?: string) => {
     setActiveTab(tab)
     if (subTab && tab === "ai") {
       setAiSubTab(subTab as "image" | "video" | "faceswap")
     }
     toast.success(`Navigated to ${tab}${subTab ? ` - ${subTab}` : ''}`)
-  }
+  }, [])
 
-  useKeyboardShortcuts([
+  const shortcuts = useMemo(() => [
     {
       key: 'k',
       ctrl: true,
@@ -80,7 +83,9 @@ export default function Home() {
       action: () => handleNavigate('settings'),
       description: 'Go to Settings'
     },
-  ], mounted)
+  ], [handleNavigate])
+
+  useKeyboardShortcuts(shortcuts, mounted)
 
   useEffect(() => {
     setMounted(true)

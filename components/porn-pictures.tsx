@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import type React from "react"
 import Image from "next/image"
 
@@ -44,21 +44,21 @@ export function PornPictures() {
   const playingVideos = useRef<Set<number>>(new Set())
   const [isMuted, setIsMuted] = useState(true)
 
-  const getVideoUrl = (url: string) => {
+  const getVideoUrl = useCallback((url: string) => {
     if (apiSource === "redgifs" && url.includes("redgifs.com")) {
       return `/api/proxy-media?url=${encodeURIComponent(url)}`
     }
     return url
-  }
+  }, [apiSource])
 
-  const getProxiedUrl = (url: string) => {
+  const getProxiedUrl = useCallback((url: string) => {
     if (apiSource === "redgifs" && url.includes("redgifs.com")) {
       return `/api/proxy-media?url=${encodeURIComponent(url)}`
     }
     return url
-  }
+  }, [apiSource])
 
-  const syncAudioWithVideo = (video: HTMLVideoElement, audio: HTMLAudioElement | null) => {
+  const syncAudioWithVideo = useCallback((video: HTMLVideoElement, audio: HTMLAudioElement | null) => {
     if (!audio) return
     
     // Sync audio time with video
@@ -88,16 +88,16 @@ export function PornPictures() {
     video.addEventListener("pause", handlePause)
     video.addEventListener("seeked", handleSeeked)
     video.addEventListener("timeupdate", syncTime)
-    
+
     return () => {
       video.removeEventListener("play", handlePlay)
       video.removeEventListener("pause", handlePause)
       video.removeEventListener("seeked", handleSeeked)
       video.removeEventListener("timeupdate", syncTime)
     }
-  }
+  }, [isMuted])
 
-  const preloadVideo = (video: HTMLVideoElement, priority: "high" | "medium" | "low") => {
+  const preloadVideo = useCallback((video: HTMLVideoElement, priority: "high" | "medium" | "low") => {
     const url = video.src
     if (!url || loadingCache.has(url)) return
 
@@ -139,7 +139,12 @@ export function PornPictures() {
 
     loadingCache.set(url, loadPromise)
     return loadPromise
-  }
+  }, [])
+
+  const videoGalleries = useMemo(() =>
+    galleries.filter(g => g.isVideo),
+    [galleries]
+  )
 
   useEffect(() => {
     setGalleries([])
@@ -254,7 +259,7 @@ export function PornPictures() {
     }
   }, [feedView, apiSource])
 
-  const loadGalleries = async () => {
+  const loadGalleries = useCallback(async () => {
     try {
       setLoading(true)
       setError("")
@@ -276,9 +281,9 @@ export function PornPictures() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiSource, redditSubreddit, refreshKey])
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) {
       loadGalleries()
@@ -305,23 +310,21 @@ export function PornPictures() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery, apiSource, refreshKey, loadGalleries])
 
-  const handleCategoryClick = (gallery: Gallery, index: number) => {
+  const handleCategoryClick = useCallback((gallery: Gallery, index: number) => {
     if (apiSource === "redgifs" || (apiSource === "reddit" && gallery.isVideo)) {
-      // For Reddit, we need to find the index in the filtered video galleries
-      const videoGalleries = galleries.filter(g => g.isVideo)
       const videoIndex = videoGalleries.findIndex(g => g.id === gallery.id)
       setCurrentVideoIndex(videoIndex >= 0 ? videoIndex : index)
       setFeedView(true)
     } else {
       window.open(gallery.url || gallery.permalink, "_blank", "noopener,noreferrer")
     }
-  }
+  }, [apiSource, videoGalleries])
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setSelectedGallery(null)
-  }
+  }, [])
 
   const handleRefresh = () => {
     setRefreshKey((prev) => prev + 1)

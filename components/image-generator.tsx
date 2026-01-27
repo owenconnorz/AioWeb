@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ChangeEvent, useCallback } from "react"
+import { useState, useEffect, type ChangeEvent, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -80,7 +80,15 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
     }
   }, [history, mounted])
 
-  const handleGenerate = async () => {
+  const positivePrompts = useMemo(() =>
+    history
+      .filter((h) => h.feedback === "positive")
+      .slice(-5)
+      .map((h) => h.prompt),
+    [history]
+  )
+
+  const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) return
 
     setIsLoading(true)
@@ -97,10 +105,6 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
     }, 500)
 
     try {
-      const positivePrompts = history
-        .filter((h) => h.feedback === "positive")
-        .slice(-5)
-        .map((h) => h.prompt)
 
       let nsfwFilter = true
       try {
@@ -158,9 +162,9 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
       clearInterval(progressInterval)
       setIsLoading(false)
     }
-  }
+  }, [prompt, positivePrompts, selectedModel, uploadedImage])
 
-  const handleFeedback = (type: "positive" | "negative") => {
+  const handleFeedback = useCallback((type: "positive" | "negative") => {
     setFeedback(type)
     setHistory((prev) => {
       const updated = [...prev]
@@ -170,9 +174,9 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
       }
       return updated
     })
-  }
+  }, [])
 
-  const handleDownload = async (base64: string, index: number) => {
+  const handleDownload = useCallback(async (base64: string, index: number) => {
     try {
       // Convert base64 to blob for better mobile browser compatibility
       const byteCharacters = atob(base64)
@@ -209,9 +213,9 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
         newTab.document.write(`<img src="data:image/png;base64,${base64}" />`)
       }
     }
-  }
+  }, [])
 
-  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -228,7 +232,7 @@ export function ImageGenerator({ selectedModel = "huggingface", onModelChange }:
       }
       reader.readAsDataURL(file)
     }
-  }
+  }, [])
 
   return (
     <div className="space-y-6 m3-page-enter">

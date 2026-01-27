@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -30,7 +30,7 @@ export default function SettingsPage() {
     }
   }, [])
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = useCallback(() => {
     const settings = {
       nsfwFilter,
       autoSave,
@@ -39,11 +39,11 @@ export default function SettingsPage() {
     }
     localStorage.setItem("aiCreativeSuiteSettings", JSON.stringify(settings))
     alert("Settings saved successfully!")
-  }
+  }, [nsfwFilter, autoSave, highQuality, showWatermark])
 
-  const handleThemeToggle = (checked: boolean) => {
+  const handleThemeToggle = useCallback((checked: boolean) => {
     setTheme(checked ? "dark" : "light")
-  }
+  }, [setTheme])
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
