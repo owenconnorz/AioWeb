@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { X, RefreshCw, Download } from "lucide-react"
 
-const APP_VERSION = "2.4.0"
+const APP_VERSION = "2.5.0"
+const UPDATE_CHECK_INTERVAL = 60000 // Check every 60 seconds
 
 export function PWAManager() {
   const [showUpdate, setShowUpdate] = useState(false)
@@ -24,6 +25,21 @@ export function PWAManager() {
         .then((reg) => {
           setRegistration(reg)
 
+          // Check for updates immediately
+          const checkForUpdate = async () => {
+            try {
+              await reg.update()
+
+              // Check if there's a waiting worker
+              if (reg.waiting) {
+                setShowUpdate(true)
+              }
+            } catch (err) {
+              console.warn('Update check failed:', err)
+            }
+          }
+
+          // Listen for new service worker updates
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing
             if (newWorker) {
@@ -35,7 +51,14 @@ export function PWAManager() {
             }
           })
 
-          reg.update()
+          // Check for updates immediately on load
+          checkForUpdate()
+
+          // Set up periodic update checks
+          const updateInterval = setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL)
+
+          // Cleanup interval on unmount
+          return () => clearInterval(updateInterval)
         })
         .catch((err) => {
           console.warn('Service worker registration failed:', err)
@@ -93,6 +116,16 @@ export function PWAManager() {
     setShowUpdate(false)
   }
 
+  const handleDismiss = () => {
+    setShowUpdate(false)
+    // Show the update prompt again after 5 minutes if they dismiss it
+    setTimeout(() => {
+      if (registration?.waiting) {
+        setShowUpdate(true)
+      }
+    }, 300000) // 5 minutes
+  }
+
   if (!showUpdate && !showPermission) {
     return null
   }
@@ -112,13 +145,13 @@ export function PWAManager() {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 -mt-1 -mr-2"
-                  onClick={() => setShowUpdate(false)}
+                  onClick={handleDismiss}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
               <CardDescription className="text-xs">
-                A new version (v{APP_VERSION}) is ready to install
+                A new version (v{APP_VERSION}) is ready to install. Update to get the latest features and improvements.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
