@@ -35,10 +35,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#3b82f6" },
-    { media: "(prefers-color-scheme: dark)", color: "#1e293b" },
-  ],
+  themeColor: "#3b82f6",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -53,12 +50,30 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const stored = localStorage.getItem('naughty-ai-theme');
+                if (!stored) {
+                  localStorage.setItem('naughty-ai-theme', 'light');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon-192x192.png" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={`font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="naughty-ai-theme">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange={false}
+          storageKey="naughty-ai-theme"
+        >
           <CacheClearer />
           {children}
           <Toaster position="bottom-center" richColors closeButton />

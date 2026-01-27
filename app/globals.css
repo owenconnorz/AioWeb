@@ -122,6 +122,13 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Force ignore system color scheme preference */
+  @media (prefers-color-scheme: dark) {
+    :root:not(.dark) {
+      color-scheme: light;
+    }
+  }
 }
 
 /* Added iOS-style glass morphism navigation pill styles */
