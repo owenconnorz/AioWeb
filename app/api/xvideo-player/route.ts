@@ -8,8 +8,31 @@ export async function GET(request: NextRequest) {
     let videoUrl = searchParams.get("url")
     const poster = searchParams.get("poster") || ""
 
-    if (!videoUrl) {
-      return new Response("Video URL required", { status: 400 })
+    if (!videoUrl || videoUrl === 'undefined' || videoUrl === 'null' || videoUrl.trim() === '') {
+      return new Response(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; }
+            .error { color: #fff; text-align: center; padding: 40px; font-family: -apple-system, sans-serif; }
+            h1 { font-size: 24px; margin-bottom: 16px; }
+            p { font-size: 16px; opacity: 0.8; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h1>Video Not Available</h1>
+            <p>No video URL provided. Please try a different video.</p>
+          </div>
+        </body>
+        </html>
+      `, {
+        status: 400,
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      })
     }
 
     // Determine if HLS or direct video - try to play any URL

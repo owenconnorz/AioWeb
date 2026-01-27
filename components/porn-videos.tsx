@@ -2257,15 +2257,30 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                 className="h-full w-full object-contain"
               />
               ) : apiSource === "xvidapi" ? (
-                // xvidapi - always use our internal player to avoid ad redirects
-                <iframe
-                  src={`/api/xvideo-player?url=${encodeURIComponent(selectedVideo.directUrl || selectedVideo.url || '')}&poster=${encodeURIComponent(selectedVideo.thumbnail || selectedVideo.default_thumb?.src || '')}`}
-                  className="h-full w-full border-0"
-                  allowFullScreen
-                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                  sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
-                  title={selectedVideo.title}
-                />
+                // xvidapi - use our player for direct URLs, fallback to embed
+                selectedVideo.directUrl ? (
+                  <iframe
+                    src={`/api/xvideo-player?url=${encodeURIComponent(selectedVideo.directUrl)}&poster=${encodeURIComponent(selectedVideo.thumbnail || selectedVideo.default_thumb?.src || '')}`}
+                    className="h-full w-full border-0"
+                    allowFullScreen
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                    title={selectedVideo.title}
+                  />
+                ) : selectedVideo.embed ? (
+                  <iframe
+                    src={selectedVideo.embed}
+                    className="h-full w-full border-0"
+                    allowFullScreen
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                    title={selectedVideo.title}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-slate-900">
+                    <p className="text-white">Video not available</p>
+                  </div>
+                )
               ) : (
                 <iframe
                   src={getEmbedUrl(selectedVideo, selectedQuality)}
