@@ -189,7 +189,6 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
       thumbnail = video.poster
     }
 
-    let directVideoUrl = ""
     if (video.episodes?.server_data) {
       const firstServer = Object.values(video.episodes.server_data)[0]
       if (firstServer?.link_embed) {
@@ -199,12 +198,6 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
         if (parts.length > 0 && parts[0].includes(":")) {
           duration = parts[0]
         }
-      }
-      // Try to get direct video URL (m3u8 or mp4)
-      if (firstServer?.link_m3u8) {
-        directVideoUrl = firstServer.link_m3u8
-      } else if (firstServer?.link_mp4) {
-        directVideoUrl = firstServer.link_mp4
       }
     }
 
@@ -216,12 +209,11 @@ async function searchXvidapi(query: string, page = 1, refresh = 0) {
       keywords: video.tag || "",
       views: 0,
       rate: 0,
-      url: directVideoUrl || embedUrl,
+      url: embedUrl,
       added: video.updated_at || video.created_at || "",
       length_sec: 0,
       length_min: duration,
       embed: embedUrl,
-      directUrl: directVideoUrl,
       default_thumb: thumbnail
         ? {
             src: thumbnail,

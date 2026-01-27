@@ -2257,24 +2257,16 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                 className="h-full w-full object-contain"
               />
               ) : apiSource === "xvidapi" ? (
-                // xvidapi - use our player for direct URLs, fallback to embed
-                selectedVideo.directUrl ? (
-                  <iframe
-                    src={`/api/xvideo-player?url=${encodeURIComponent(selectedVideo.directUrl)}&poster=${encodeURIComponent(selectedVideo.thumbnail || selectedVideo.default_thumb?.src || '')}`}
-                    className="h-full w-full border-0"
-                    allowFullScreen
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                    sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
-                    title={selectedVideo.title}
-                  />
-                ) : selectedVideo.embed ? (
+                // xvidapi - always use embed (upload18.net player)
+                selectedVideo.embed ? (
                   <iframe
                     src={selectedVideo.embed}
                     className="h-full w-full border-0"
                     allowFullScreen
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                    sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture; clipboard-write"
+                    sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
                     title={selectedVideo.title}
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-slate-900">
