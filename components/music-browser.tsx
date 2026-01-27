@@ -1067,6 +1067,41 @@ useEffect(() => {
     }
   }
 
+  // Handle download with user feedback
+  const handleDownload = async (track: Track) => {
+    if (isDownloaded(track.videoId)) {
+      const success = await deleteTrack(track.videoId)
+      if (success) {
+        toast.success("Removed from downloads")
+      } else {
+        toast.error("Failed to remove download")
+      }
+      return
+    }
+    
+    toast.info(`Downloading "${track.title}"...`, { duration: 2000 })
+    
+    try {
+      const success = await downloadTrack(track)
+      if (success) {
+        toast.success(`"${track.title}" downloaded successfully!`, { 
+          description: "Available in Downloads tab",
+          duration: 3000 
+        })
+      } else {
+        toast.error("Download failed", { 
+          description: "Please try again later",
+          duration: 4000 
+        })
+      }
+    } catch (error) {
+      toast.error("Download failed", { 
+        description: error instanceof Error ? error.message : "Unknown error",
+        duration: 4000 
+      })
+    }
+  }
+
   const playNext = useCallback(() => {
   if (queue.length === 0) return
   
