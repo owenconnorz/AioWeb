@@ -58,7 +58,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={`font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="naughty-ai-theme">
           <CacheClearer />
           {children}
           <Toaster position="bottom-center" richColors closeButton />
