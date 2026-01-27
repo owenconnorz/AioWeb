@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2.7.0';
+const CACHE_VERSION = '2.8.0';
 const CACHE_NAME = `tempted-v${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [

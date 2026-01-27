@@ -15,5 +15,5 @@
 // 3. Automatic page refresh
 // 4. Changelog popup showing what's new
 
-export const APP_VERSION = "2.7.0"
+export const APP_VERSION = "2.8.0"
 export const CACHE_NAME = `tempted-v${APP_VERSION}`
