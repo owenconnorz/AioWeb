@@ -13,6 +13,7 @@ export function PWAManager() {
   const [showPermission, setShowPermission] = useState(false)
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null)
   const [isSamsungBrowser, setIsSamsungBrowser] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase()
@@ -64,11 +65,25 @@ export function PWAManager() {
           console.warn('Service worker registration failed:', err)
         })
 
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'CACHE_UPDATED') {
+          console.log('Cache updated to version:', event.data.version)
+          setIsUpdating(true)
+          setTimeout(() => {
+            window.location.reload()
+          }, 500)
+        }
+      })
+
       let refreshing = false
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
           refreshing = true
-          window.location.reload()
+          console.log('Controller changed, reloading...')
+          setIsUpdating(true)
+          setTimeout(() => {
+            window.location.reload()
+          }, 500)
         }
       })
     }
@@ -109,11 +124,17 @@ export function PWAManager() {
     setShowPermission(false)
   }
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
+    setIsUpdating(true)
+    setShowUpdate(false)
+
     if (registration?.waiting) {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+    } else {
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     }
-    setShowUpdate(false)
   }
 
   const handleDismiss = () => {
@@ -126,12 +147,20 @@ export function PWAManager() {
     }, 300000) // 5 minutes
   }
 
-  if (!showUpdate && !showPermission) {
-    return null
-  }
-
   return (
     <>
+      {isUpdating && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="text-center">
+            <RefreshCw className="h-12 w-12 text-white animate-spin mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Updating App</h2>
+            <p className="text-sm text-white/80">Installing new features...</p>
+          </div>
+        </div>
+      )}
+
+      {!isUpdating && !showUpdate && !showPermission ? null : (
+        <>
       {showUpdate && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md">
           <Card className="border-blue-500 shadow-lg">
@@ -192,6 +221,8 @@ export function PWAManager() {
             </CardContent>
           </Card>
         </div>
+      )}
+        </>
       )}
     </>
   )

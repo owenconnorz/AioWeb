@@ -28,6 +28,10 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Automatic version synchronization",
       "Improved service worker update detection",
       "Enhanced PWA update notifications",
+      "Automatic app refresh on updates",
+      "Smart cache management (network-first for pages)",
+      "Loading screen during update installation",
+      "Better cache busting for new features",
     ],
   },
   {
