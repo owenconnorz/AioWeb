@@ -3,10 +3,59 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, RefreshCw } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import { toast } from "sonner"
 
 export default function AboutPage() {
+  const [isChecking, setIsChecking] = useState(false)
+
+  const checkForUpdates = async () => {
+    setIsChecking(true)
+    toast.info("Checking for updates...")
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration()
+
+        if (registration) {
+          await registration.update()
+
+          if (registration.waiting) {
+            toast.success("Update available! Reloading...", {
+              description: "A new version is ready to install"
+            })
+
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              window.location.reload()
+            })
+          } else {
+            toast.success("You're up to date!", {
+              description: "Running the latest version"
+            })
+          }
+        } else {
+          toast.info("Service worker not registered", {
+            description: "Updates will be checked automatically"
+          })
+        }
+      } else {
+        toast.error("Updates not supported", {
+          description: "Your browser doesn't support service workers"
+        })
+      }
+    } catch (error) {
+      console.error('Error checking for updates:', error)
+      toast.error("Failed to check for updates", {
+        description: "Please try again later"
+      })
+    } finally {
+      setIsChecking(false)
+    }
+  }
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-2xl px-4 py-6">
@@ -55,7 +104,19 @@ export default function AboutPage() {
           </CardContent>
         </Card>
 
-        <div className="mt-6 space-y-2">
+        <div className="mt-6">
+          <Button
+            variant="default"
+            className="w-full"
+            onClick={checkForUpdates}
+            disabled={isChecking}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
+            {isChecking ? 'Checking for updates...' : 'Check for updates'}
+          </Button>
+        </div>
+
+        <div className="mt-4 space-y-2">
           <Button
             variant="outline"
             className="w-full"
