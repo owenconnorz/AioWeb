@@ -1828,11 +1828,7 @@ useEffect(() => {
   className="h-8 w-8"
   onClick={(e) => {
   e.stopPropagation()
-  if (isDownloaded(track.videoId)) {
-    deleteTrack(track.videoId)
-  } else {
-    downloadTrack(track)
-  }
+  handleDownload(track)
   }}
   >
   {downloadProgress.get(track.videoId)?.status === "downloading" ? (
@@ -3744,11 +3740,7 @@ useEffect(() => {
                   className="h-8 w-8 shrink-0"
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (isDownloaded(track.videoId)) {
-                      deleteTrack(track.videoId)
-                    } else {
-                      downloadTrack(track)
-                    }
+                    handleDownload(track)
                   }}
                 >
                   {downloadProgress.get(track.videoId)?.status === "downloading" ? (
@@ -4008,11 +4000,7 @@ useEffect(() => {
           <button
             className="w-full flex items-center gap-4 px-4 py-4 hover:bg-[#2a3545] transition-colors"
             onClick={() => {
-              if (isDownloaded(selectedTrackForMenu.videoId)) {
-                deleteTrack(selectedTrackForMenu.videoId)
-              } else {
-                downloadTrack(selectedTrackForMenu)
-              }
+              handleDownload(selectedTrackForMenu)
               closeTrackMenu()
             }}
           >
