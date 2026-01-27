@@ -7,6 +7,7 @@ import { ArrowLeft, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
+import { APP_VERSION } from "@/lib/version"
 
 export default function AboutPage() {
   const [isChecking, setIsChecking] = useState(false)
@@ -72,7 +73,7 @@ export default function AboutPage() {
           <CardContent className="pt-6 space-y-4">
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Tempted AI</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Version 2.5.0</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Version {APP_VERSION}</p>
             </div>
             <Separator />
             <p className="text-sm text-slate-600 dark:text-slate-400">

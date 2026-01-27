@@ -20,6 +20,17 @@ const generateVersion = () => {
 // The system will automatically show the popup when new entries are added
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2.6.0",
+    date: "2026-01-27",
+    title: "Version System Improvements",
+    changes: [
+      "Centralized version management across app",
+      "Automatic version synchronization",
+      "Improved service worker update detection",
+      "Enhanced PWA update notifications",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-01-23",
     title: "Quality Selector & Library Fixes",

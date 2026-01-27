@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { X, RefreshCw, Download } from "lucide-react"
+import { APP_VERSION } from "@/lib/version"
 
-const APP_VERSION = "2.6.0"
 const UPDATE_CHECK_INTERVAL = 60000 // Check every 60 seconds
 
 export function PWAManager() {
