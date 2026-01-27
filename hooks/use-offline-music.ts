@@ -37,32 +37,51 @@ export function useOfflineMusic() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
+    const initStorage = async () => {
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          const isPersisted = await navigator.storage.persist()
+          console.log(`Persistent storage: ${isPersisted ? "granted" : "denied"}`)
 
-    request.onerror = () => {
-      console.error("Failed to open IndexedDB")
-      setIsLoading(false)
-    }
+          if (!isPersisted) {
+            console.warn("Storage may be cleared by browser. Downloads might be lost.")
+          }
+        }
+      } catch (err) {
+        console.warn("Could not request persistent storage:", err)
+      }
 
-    request.onsuccess = () => {
-      setDb(request.result)
-      loadDownloadedTracks(request.result)
-    }
+      const request = indexedDB.open(DB_NAME, DB_VERSION)
 
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        const store = database.createObjectStore(STORE_NAME, { keyPath: "videoId" })
-        store.createIndex("downloadedAt", "downloadedAt", { unique: false })
-        store.createIndex("title", "title", { unique: false })
+      request.onerror = (event) => {
+        console.error("Failed to open IndexedDB:", (event.target as IDBOpenDBRequest).error)
+        setIsLoading(false)
+      }
+
+      request.onsuccess = () => {
+        console.log("IndexedDB opened successfully")
+        setDb(request.result)
+        loadDownloadedTracks(request.result)
+      }
+
+      request.onupgradeneeded = (event) => {
+        const database = (event.target as IDBOpenDBRequest).result
+
+        if (!database.objectStoreNames.contains(STORE_NAME)) {
+          const store = database.createObjectStore(STORE_NAME, { keyPath: "videoId" })
+          store.createIndex("downloadedAt", "downloadedAt", { unique: false })
+          store.createIndex("title", "title", { unique: false })
+          console.log("IndexedDB store created")
+        }
       }
     }
+
+    initStorage()
 
     // Monitor online status
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
-    
+
     setIsOnline(navigator.onLine)
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
@@ -113,9 +132,14 @@ export function useOfflineMusic() {
     duration?: string
     thumbnail: string
   }) => {
-    if (!db) return false
+    if (!db) {
+      console.error("IndexedDB not initialized")
+      return false
+    }
 
     const { videoId } = track
+
+    console.log(`Starting download for: ${track.title} (${videoId})`)
 
     // Update progress
     setDownloadProgress(prev => new Map(prev).set(videoId, {
@@ -132,6 +156,8 @@ export function useOfflineMusic() {
         status: "downloading"
       }))
 
+      console.log(`Fetching audio URL for ${videoId}...`)
+
       const streamController = new AbortController()
       const streamTimeout = setTimeout(() => streamController.abort(), 30000)
 
@@ -142,12 +168,15 @@ export function useOfflineMusic() {
 
       if (!streamResponse.ok) {
         const errorData = await streamResponse.json().catch(() => ({}))
+        console.error("Failed to get audio URL:", errorData)
         throw new Error(errorData.error || errorData.details || "Failed to get audio stream")
       }
 
       const streamData = await streamResponse.json()
+      console.log("Audio URL received:", streamData.success)
 
       if (!streamData.success || !streamData.audioUrl) {
+        console.error("Invalid stream data:", streamData)
         throw new Error(streamData.error || streamData.details || "Failed to get audio stream")
       }
 
@@ -158,6 +187,8 @@ export function useOfflineMusic() {
       }))
 
       // Step 2: Download the audio via proxy
+      console.log("Downloading audio file...")
+
       const audioController = new AbortController()
       const audioTimeout = setTimeout(() => audioController.abort(), 180000)
 
@@ -171,8 +202,11 @@ export function useOfflineMusic() {
 
       if (!audioResponse.ok) {
         const errorData = await audioResponse.json().catch(() => ({ error: "Download failed" }))
+        console.error("Failed to download audio:", errorData)
         throw new Error(errorData.error || "Failed to download audio")
       }
+
+      console.log("Audio downloaded, creating blob...")
 
       setDownloadProgress(prev => new Map(prev).set(videoId, {
         videoId,
@@ -183,10 +217,15 @@ export function useOfflineMusic() {
       const audioBlob = await audioResponse.blob()
 
       if (!audioBlob || audioBlob.size === 0) {
+        console.error("Received empty audio blob")
         throw new Error("Received empty audio file")
       }
 
+      console.log(`Audio blob size: ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB`)
+
       // Step 3: Save to IndexedDB
+      console.log("Saving to IndexedDB...")
+
       const downloadedTrack: DownloadedTrack = {
         id: videoId,
         videoId,
@@ -206,12 +245,14 @@ export function useOfflineMusic() {
         const request = store.put(downloadedTrack)
 
         request.onsuccess = () => {
+          console.log(`Successfully saved ${track.title} to IndexedDB`)
+
           setDownloadProgress(prev => new Map(prev).set(videoId, {
             videoId,
             progress: 100,
             status: "complete"
           }))
-          
+
           // Update tracks list
           downloadedTrack.blobUrl = URL.createObjectURL(audioBlob)
           setDownloadedTracks(prev => {
@@ -231,12 +272,15 @@ export function useOfflineMusic() {
           resolve(true)
         }
 
-        request.onerror = () => {
+        request.onerror = (event) => {
+          const error = (event.target as IDBRequest).error
+          console.error("Failed to save to IndexedDB:", error)
+
           setDownloadProgress(prev => new Map(prev).set(videoId, {
             videoId,
             progress: 0,
             status: "error",
-            error: "Failed to save to storage"
+            error: `Storage error: ${error?.message || "Unknown"}`
           }))
           resolve(false)
         }
