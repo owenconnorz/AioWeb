@@ -1,6 +1,40 @@
-import { supabase, getUserId, type Favorite } from './supabase'
+import { supabase, isSupabaseConfigured, getUserId, type Favorite } from './supabase'
+
+// Local storage fallback for favorites when Supabase is not configured
+const FAVORITES_KEY = 'local_favorites'
+
+function getLocalFavorites(): Favorite[] {
+  if (typeof window === 'undefined') return []
+  try {
+    return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function setLocalFavorites(favorites: Favorite[]): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
+}
 
 export async function addFavorite(contentType: string, contentId: string, contentData: any): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) {
+    // Use localStorage fallback
+    const favorites = getLocalFavorites()
+    const exists = favorites.some(f => f.content_type === contentType && f.content_id === contentId)
+    if (!exists) {
+      favorites.unshift({
+        user_id: getUserId(),
+        content_type: contentType,
+        content_id: contentId,
+        content_data: contentData,
+        created_at: new Date().toISOString()
+      })
+      setLocalFavorites(favorites)
+    }
+    return true
+  }
+
   try {
     const { error } = await supabase
       .from('user_favorites')
@@ -19,6 +53,13 @@ export async function addFavorite(contentType: string, contentId: string, conten
 }
 
 export async function removeFavorite(contentType: string, contentId: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) {
+    const favorites = getLocalFavorites()
+    const filtered = favorites.filter(f => !(f.content_type === contentType && f.content_id === contentId))
+    setLocalFavorites(filtered)
+    return true
+  }
+
   try {
     const { error } = await supabase
       .from('user_favorites')
@@ -35,6 +76,14 @@ export async function removeFavorite(contentType: string, contentId: string): Pr
 }
 
 export async function getFavorites(contentType?: string): Promise<Favorite[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    let favorites = getLocalFavorites()
+    if (contentType) {
+      favorites = favorites.filter(f => f.content_type === contentType)
+    }
+    return favorites
+  }
+
   try {
     let query = supabase
       .from('user_favorites')
@@ -57,6 +106,11 @@ export async function getFavorites(contentType?: string): Promise<Favorite[]> {
 }
 
 export async function isFavorite(contentType: string, contentId: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) {
+    const favorites = getLocalFavorites()
+    return favorites.some(f => f.content_type === contentType && f.content_id === contentId)
+  }
+
   try {
     const { data } = await supabase
       .from('user_favorites')
