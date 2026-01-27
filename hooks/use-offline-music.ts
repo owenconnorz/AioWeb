@@ -132,12 +132,22 @@ export function useOfflineMusic() {
         status: "downloading"
       }))
 
+      const streamController = new AbortController()
+      const streamTimeout = setTimeout(() => streamController.abort(), 30000)
+
       const streamResponse = await fetch(`/api/music-download?videoId=${videoId}`, {
-        signal: AbortSignal.timeout(30000), // 30s timeout
+        signal: streamController.signal,
       })
+      clearTimeout(streamTimeout)
+
+      if (!streamResponse.ok) {
+        const errorData = await streamResponse.json().catch(() => ({}))
+        throw new Error(errorData.error || errorData.details || "Failed to get audio stream")
+      }
+
       const streamData = await streamResponse.json()
 
-      if (!streamData.audioUrl) {
+      if (!streamData.success || !streamData.audioUrl) {
         throw new Error(streamData.error || streamData.details || "Failed to get audio stream")
       }
 
@@ -148,16 +158,20 @@ export function useOfflineMusic() {
       }))
 
       // Step 2: Download the audio via proxy
+      const audioController = new AbortController()
+      const audioTimeout = setTimeout(() => audioController.abort(), 180000)
+
       const audioResponse = await fetch("/api/music-download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audioUrl: streamData.audioUrl }),
-        signal: AbortSignal.timeout(120000), // 2 min timeout for large files
+        signal: audioController.signal,
       })
+      clearTimeout(audioTimeout)
 
       if (!audioResponse.ok) {
-        const errorText = await audioResponse.text()
-        throw new Error("Failed to download audio: " + errorText)
+        const errorData = await audioResponse.json().catch(() => ({ error: "Download failed" }))
+        throw new Error(errorData.error || "Failed to download audio")
       }
 
       setDownloadProgress(prev => new Map(prev).set(videoId, {
@@ -167,6 +181,10 @@ export function useOfflineMusic() {
       }))
 
       const audioBlob = await audioResponse.blob()
+
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error("Received empty audio file")
+      }
 
       // Step 3: Save to IndexedDB
       const downloadedTrack: DownloadedTrack = {
@@ -224,12 +242,33 @@ export function useOfflineMusic() {
         }
       })
     } catch (error) {
+      console.error("Download error:", error)
+
+      let errorMessage = "Download failed"
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          errorMessage = "Download timed out"
+        } else {
+          errorMessage = error.message
+        }
+      }
+
       setDownloadProgress(prev => new Map(prev).set(videoId, {
         videoId,
         progress: 0,
         status: "error",
-        error: error instanceof Error ? error.message : "Download failed"
+        error: errorMessage
       }))
+
+      // Clear error after delay
+      setTimeout(() => {
+        setDownloadProgress(prev => {
+          const newMap = new Map(prev)
+          newMap.delete(videoId)
+          return newMap
+        })
+      }, 5000)
+
       return false
     }
   }, [db])
