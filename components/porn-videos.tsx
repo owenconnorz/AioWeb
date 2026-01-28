@@ -497,6 +497,7 @@ export function PornVideos() {
   const [jumpToPage, setJumpToPage] = useState("")
   const [refreshKey, setRefreshKey] = useState(0)
   const [feedView, setFeedView] = useState(false)
+  const [viewMode, setViewMode] = useState<"grid" | "compact">("grid")
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const iframeRefs = useRef<(HTMLIFrameElement | HTMLVideoElement | null)[]>([])
@@ -1531,6 +1532,26 @@ const getEmbedUrl = (video: Video, quality?: string) => {
               <Menu className="h-5 w-5" />
             </Button>
           )}
+          <div className="flex gap-1">
+            <Button
+              onClick={() => setViewMode("grid")}
+              variant="outline"
+              size="icon"
+              className={viewMode === "grid" ? "bg-violet-600 text-white border-violet-600" : "border-slate-700 bg-slate-800/50 text-slate-400"}
+              title="3 Column Grid"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </Button>
+            <Button
+              onClick={() => setViewMode("compact")}
+              variant="outline"
+              size="icon"
+              className={viewMode === "compact" ? "bg-violet-600 text-white border-violet-600" : "border-slate-700 bg-slate-800/50 text-slate-400"}
+              title="2 Column Compact"
+            >
+              <List className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1755,7 +1776,7 @@ const getEmbedUrl = (video: Video, quality?: string) => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 m3-stagger">
+          <div className={viewMode === "compact" ? "grid grid-cols-2 gap-3 m3-stagger" : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 m3-stagger"}>
             {videos.map((video, index) => {
               const isLast = index === videos.length - 1
 
@@ -2328,7 +2349,7 @@ export function PornLibrary() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState("")
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid")
 
   useEffect(() => {
     loadLibraryData()
