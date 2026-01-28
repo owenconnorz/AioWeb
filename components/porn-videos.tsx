@@ -2257,10 +2257,10 @@ const getEmbedUrl = (video: Video, quality?: string) => {
                 className="h-full w-full object-contain"
               />
               ) : apiSource === "xvidapi" ? (
-                // xvidapi - use proxy to block popups
+                // xvidapi - extract video URL and play directly
                 selectedVideo.embed ? (
                   <iframe
-                    src={`/api/proxy-embed?url=${encodeURIComponent(selectedVideo.embed)}`}
+                    src={`/api/xvidapi-player?url=${encodeURIComponent(selectedVideo.embed)}`}
                     className="h-full w-full border-0"
                     allowFullScreen
                     allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
